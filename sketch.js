@@ -1,194 +1,234 @@
- 
 /** ===========================================================
- * Day Spiral Clock: Sunrise & Sunset shown on 12-hr clock face.
- *  
- * By Charlie Wallace coolweird.com
+ * Day Spiral Clock V2: Sunrise & Sunset shown on 12-hr clock face.
+ * This clock initially shows the current day as a spiral, with 2 turns because
+ * of AM and PM on the 12-hour clock face.  
+ * It also provides week mode via button at upper left.
+ *
+ * A web service from OpenStreetMap is used to fetch location
+ * of a user-entered city. 
+ * A separate web servce at GeoNames is used to fetch the time zone.
+ * That call requires a free account; if you clone this project, please
+ * create your own login and revise the url.  However no API key is needed.
+ *
+ * By Charlie Wallace coolweird.net
  * 
+
+TODO Fixes  Bugs -----------------------
+  * Replace lots of bare numeric color values with variables centrally set, used in fill()
+  *   and stroke() calls.  Similar needed for other bare constants like podition offsets.
+  * Fix to recalc the IsDst state on new day
+  * Bug: spiral incorrect at exreme latitude where sunset&rise are on the same side of noon,
+  *   usually due to daylight savings
+  * Bug: On the first day of the year Jan 1st, the calc of rise/set was
+    inaccurate. sunset was about 10-15min late, sunrise similar amt early.
+  * Bug: Some combos of manually entered loc and tz cause all-night result. 
+     Happens when sunset time is shifted back so far back (earlier) that is passes 
+     midnight.  Shows flaw in logic - FIX 
+
+Future Enhancement Ideas ------------
+  * Replace SetDaySpiral() that uses a toggling button with a set of buttons 
+  *  for each clock type,  programmed to work as radio buttons.  
+  *  Will set ClockMode to indicate type.
+  * Idea: add mode where the current time is always in the middle of the spiral, so
+  *  both past and future are equally shown
+  * Idea: add today+tomorrow mode showing 2 days, or 4 turns of the spiral
+  * Idea: an option to show a diff location's time in the spiral (like GMT) while  
+  *  the hands show the local time. So both are viewable in one display
+  *  ALT: add a second hour hand for the non-local time.
+  * Consider using GeoNames for both location and timezone, thus eliminating
+  *  need for nominatim.openstreetmap.org call; or could use it as fallback
+  * Add Save Location button, makes cookie (?)
+  * Implement 24 hour mode
  
-TODO -----------------------
- * Add display of current time at upper rt
- * Change layout of buttons from proportional to fixed
- * Redo lower left layout - smaller font
- * Reorder cities at lower rt, maybe add Irvine, Auckland
- * Add Save Location button, makes cookie
- * Add code to calc SunsetYesterday and SunriseTomorrow, instead
-     of assuming same as today
- * Revise to allow window resizing
- * Fix to update time of sunRiseSet on transition to new day
- * Fix to recalc the isDst / isDstAu state on new day
- * Implement 24 hour mode
- * fix bug at exreme latitude where sunset passes noon due to daylight savings
- 
-Bug Notes -----------------
-
-* Bug when sunset passes noon (only possible in daylight savings).  
-This only happens within band about a quarter degree wide, after 
- that it's 24 hours day. PLAN: don't fix.
-While current time was 1:27 pm, 
-I gradually increase latitude up to 75.754, gives sunset of 12pm sunrise 1:52am,
-strip is all white except for bit just after midnight. Was ok - but going to 
-lat 75.755 causes strip to go black, sunset time went to 0:00 am,
-rise is still 1:52am.  Date is 220424. 
-Note, due to daylight savings, this puts sunrise and set both just after midnight,
-a weird state. Transition to No-Daylight is at 76.04 -> 76.05, last sunset/rise is
-at 0:40Am/1:32AM.   Example, on 4/26 5:22pm, lat 75.101 is ok, 
-with sunset == 12 pm, but 75.102 flips to dark, sunset goes to 0 AM
-
-* FAILED TEST in melbourne - gmt offset of +11 was correct, but I see 
- the lat/long of San Diego, meaning the position error function was called
-
-Concept: -----------------
-
-This 12-hour clock includes a spiral outer band that indicates if it's
-dark or light, and showing sunset and sunrise. This band is wrapped in an
-overlapping way so that it shows 12 hours of past and 12 hours of future.
-The band is fully overlapped at the current hour location, pointed to
-by the hour hand, thus clearly indicating if it's dark or light. 
-Following the band clockwise (into the future) we can scan forward
-to find the next sunset/sunrise; and following counter clockwise into
-the past, we can see the previous sunrise/sunset. At the point opposite
-the current time the past and future branches of the band meet, offset
-so they don't overlap; from this point on they continue to get narrower 
-in order to fit within the outer circle.  This results in a spiral shape.
-
-The logic depends on the GMT offset that it fetches to be auto-adjusted
-for daylight savings time.
-
-On first launch it will ask for permission to get the location in order
-to fetch the lat/long needed for sunrise/sunset calcs.
-
-IMPL NOTES  -------------------
-
+==== IMPL / FEATURE NOTES  =====
+* The logic depends on the GMT offset that it fetches to be auto-adjusted 
+   for daylight savings time. This appears to be the case.
+* ATTN, on first launch, browser will ask user for permission to get the location in
+   order to fetch the lat/long needed for sunrise/sunset calcs. I added a message
+   assuring user that it's not saved. The popup can be hard to find...
 * FEATURE: input field validation via delay - when I immediately remove invalid numbers,
    this doesn't allow temporarily wrong content, like a minus sign with nothing else. 
    FIX: allow invalid content to sit for a 2 seconds before overwriting, so the 
-   user has time to fix typos etc.
-* now validating the lat/long and gmt offset fields.
-* now calculating isDst and isDstAu, this allows use of buttons to set cities
-* Added buttons for Melbourne AU, Boulder, Berkeley, San Diego, London, Kansas City
+   user has time to fix typos etc. Otherwise would need a submit button.
+   NOTE, this is not used for the city field since I rely on the web service return
+   to determine if the field is valid.  Instead the submit button is used.
 * Added fields allowing manual entry of lat/long/GMT, with button to reset to local.
-   
- ============================================================== */
+* Added support for finding lat/long/tz from city name:
+   OpenStreetmap (Nominitim) appears to work except it doesn't supply a time zone. 
+   Example of the url used:
+  `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
+   It's also possible to get lat/long using geoNames, FWIW
+   To get the time zone, used GeoNames; Example of url:
+  `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`
+* Added support for window resizing - see reInit and windowResized()
+============================================================== */
 
 
-var cx, cy;
-var secondsRadius;
-var minutesRadius;
-var hoursRadius;
-var hourNumbersRadius;
-var stripRadius;
-var minuteNumbersRadius;
-var clockDiameter;
-var bkColor;
+//======== GLOBALS ===================================
+// Name convention: global vars are capitalized
+var CityNameInput;
 
-var fontScaleFactor;
-var refFontSize;
-var currentFontSize;
+var CenterX, CenterY;
+var SecondsRadius;
+var MinutesRadius;
+var HoursRadius;
+var HourNumbersRadius;
+var InnerFaceRadius;
+var ClockDiameter;
+var BkColor;
 
-var lastMillisec;
-var lastSec;
+var FontScaleFactor;
+var RefFontSize;
+var CurrentFontSize;
 
-var hourDigitColor;
+var LastMillisec;
+
+var HourDigitColor;
 
 // for monitoring window size
-var mywidth, myheight;
-var theHeight, theWidth;
+var Mywidth, Myheight;
+var TheHeight, TheWidth;
 
-var speedIncrement;
-var msSoFar;  // ms since start of am or pm 
-var secondsSoFar;
-var msFromStartToResetTime;
+var SecondsSoFar;
+var MsFromStartToResetTime;
 
-var latitude, longitude;
-var lastLat, lastLong;
-var latLocal, longLocal;
-var tzOffset, tzOffsetLocal;
-var lastTz;
-var isSunRiseSetObtained;
+var Latitude, Longitude;
+var NewLatitude, NewLongitude;
+var LastLat, LastLong;
+var LatLocal, LngLocal;
+var TzOffset, TzOffsetLocal;
+var LastTz;
+var IsSunRiseSetObtained;
 
-var outputHour, outputMin;
-var sunsetHour, sunsetMin, secondsToSunset, baseMsSunset;
-var sunsetHourYesterday, sunsetMinYesterday;
-var secondsToSunsetYesterday; // starting at midnight yesterday
-var sunriseHour, sunriseMin, secondsToSunrise, baseMsSunrise;
-var sunriseHourTomorrow, sunriseMinTomorrow;
-var secondsToSunriseTomorrow; // starting at midnight tomorrow
+var OutputHour, OutputMin;
+var SunsetHour, SunsetMin, SecondsToSunset, BaseMsSunset;
+var SunriseHour, SunriseMin, SecondsToSunrise, BaseMsSunrise;
 
-var sunriseMinString;  
-var sunriseAmpmString;
-var sunriseHourString;
+var SunriseMinString;  
+var SunriseAmpmString;
+var SunriseHourString;
 
-var sunsetMinString; 
-var sunsetAmpmString;
-var sunsetHourString;
+var SunsetMinString; 
+var SunsetAmpmString;
+var SunsetHourString;
 
-var isDaylightSavings;
-var isDay;
-var dayState;
-var iSec, iMin, iHour;
-var iHour12;
-var isAM;
-var timeString;
-var iMs;
+var IsDay;  // true when sun is up. Not used 240201 
+var DayState;
+var ISec, IMin, IHour;
+var IDow;
+var IDowPrevious;
+var IHour12;
+var IsAM;
+var TimeString;
+var DateString;
+var IMsSinceDayStart;
 
-var tzInput;
-var tzInputTimestampMs;  // ms since pgm start when input happened
-var latInput;
-var latInputTimestampMs;  // ms since pgm start when input happened
+var InputFieldProcessingTimeout; // processing of field contents happens on timeout
 
-var longInput;
-var longInputTimestampMs;  // ms since pgm start when input happened
+var TzInput;
+var TzInputTimestampMs;  // ms since pgm start when input happened
+var LatInput;
+var LatInputTimestampMs;  // ms since pgm start when input happened
 
-var autoButton;
+var LngInput;
+var LngInputTimestampMs;  // ms since pgm start when input happened
 
-var melbourneButton;
-var sanDiegoButton;
-var kansasCityButton;
-var londonButton;
-var boulderButton;
-var berkeleyButton;
-var irvineButton;
-var stLouisButton;
-var auburnButton;
+var ResetToLocalButton;
 
-var isDst;
-var isDstAu;
+var MelbourneButton;
+var SanDiegoButton;
+var KansasCityButton;
+var LondonButton;
+var BerkeleyButton;
+var SilveradoButton;
+
+var DaySpiralButton;
+var DaySpiralButtonLabel;  // needed when button label must change
+
+var ColorfulModeButton;
+var ColorfulModeButtonLabel;  // needed when button label must change
+
+var GmtDisplayButton;
+var GmtDisplayButtonLabel;  // needed when button label must change
+
+var CitySubmitButton;
+
+var IsDst; // daylight savings time
+
+var SunsetWeekSecFromSunArray;
+var SunriseWeekHourArray;  // only used to check for no-day or no-night results
+var SunriseWeekSecFromSunArray;
+
+var XSpiralArray;
+var YSpiralArray;
+var RadiusSpiralArray;
+var NumSpiralPointsPerTurn;
+var NumSpiralTurns;
+
+var IsWindows;
+var IsDesktop;
+
+var IsOnlyTodayInColor;
+var IsDaySpiral;
+var IsGmtShown;
+var ClockMode;
 
 
-function setup() {
-  initializeFields();
+var CityName;
+
+var LocaleTitle;
+var PrevLocaleTitle;
+//var tempTest = true;  // used only for testing
+
+
+// This only runs at startup, see Init() below
+function oneTimeInit()
+{
+  // state vars.  Preserve these thru window resize.
+  IsOnlyTodayInColor = true; // false; //
+  IsDaySpiral = true; 
+  IsGmtShown = false; //true; // false; //
+  
+  ClockMode = 0;
+
+    
+  // Use this to allow customizing layout for windows vs mobile
+  IsWindows = (window.navigator.platform == "Win32");
+  IsDesktop = IsWindows ||
+      (window.navigator.platform.indexOf("Mac") === 0)
+  console.log("IsWindows="+ IsWindows)
   
   //fullscreen(); 
   createCanvas(window.innerWidth, window.innerHeight);
-  //createCanvas(400,400); // for mobile
   
-  mywidth = width;
-  myheight = height;
   
   //========= get gps position ==========	
   navigator.geolocation.getCurrentPosition(
     // Success callback.  This runs later, after setup()
     function(position) 
     {
+      //console.log(position);
+      // ATTN this runs a bit later when the gps comes in...
 	  background(220);
 	  textSize(32);
       print("latitude: " + position.coords.latitude);
-      latitude = position.coords.latitude;
+      Latitude = position.coords.latitude;
       // Round to 3 places after decimal
-      latitude = round(latitude, 3);
-      var latString = str(latitude);
-      latInput.value(latString);
-      latLocal = latitude;
-      lastLat = latitude;
+      // findme
+      Latitude = round(Latitude, 3);
+      var latString = str(Latitude);
+      LatInput.value(latString);
+      LatLocal = Latitude;
+      LastLat = Latitude;
       
 	  print("longitude: " + position.coords.longitude);
-      longitude = position.coords.longitude;
+      Longitude = position.coords.longitude;
       // Round to 3 places after decimal
-      longitude = round(longitude, 3);
-      var longString = str(longitude);
-      longInput.value(longString);
-      longLocal = longitude;
-      lastLong = longitude;
+      Longitude = round(Longitude, 3);
+      var longString = str(Longitude);
+      LngInput.value(longString);
+      LngLocal = Longitude;
+      LastLong = Longitude;
     },
 
     // Optional error callback
@@ -205,413 +245,592 @@ function setup() {
 
       print("Gps error happened, code=" + error.code + " " + error.code);
       
-      // default to Melbourne
-      latitude = -37.8;
-      longitude = 144.96;
-      tzOffset = 10; // assume DST
+      // HACK: default to Melbourne.   
+      Latitude = -37.8;
+      Longitude = 144.96;
+      TzOffset = 10; // assume DST
      
-      latitudeLocal = latitude;
-      longitudeLocal = longitude;
-      tzOffsetLocal = tzOffset;
+      latitudeLocal = Latitude;
+      longitudeLocal = Longitude;
+      TzOffsetLocal = TzOffset;
       
-      var tzString = str(tzOffset);
+      var tzString = str(TzOffset);
       // Add in a plus sign if not negative
-      if (tzOffset > 0)
+      if (TzOffset > 0)
       {
-        tzString = "+" + String(tzOffset);
+        tzString = "+" + str(TzOffset);
       }
       // init the UI field
-      tzInput.value(tzString);
-      lastTz = tzOffset;
+      TzInput.value(tzString);
+      LastTz = TzOffset;
 
-      var latString = str(latitude);
-      latInput.value(latString);
-      lastLat = latitude;
+      var latString = str(Latitude);
+      LatInput.value(latString);
+      LastLat = Latitude;
 
-      var longString = str(longitude);
-      longInput.value(longString); 
-      lastLong = longitude;
+      var longString = str(Longitude);
+      LngInput.value(longString); 
+      LastLong = Longitude;
         
-      //  san diego tzOffset -7 DST, -8 STD
-      //latitude = 33.1;
+      //  san diego TzOffset -7 DST, -8 STD
+      //Latitude = 33.1;
       //longitude = -117.1;
     }
   );  // end of error function
-	  
-  //============= end of position fetch =========================
+  //============= end of deferred position fetch =========================
+
+
+  // ==== button and field creation and setup done here only once; ======
+  //  but position is set in reInit() since it will change on window resize.
+  //
+  
+  //     misc buttons
+  ResetToLocalButton = createButton('Reset to local');
+  ResetToLocalButton.mousePressed(resetToLocal);
+  
+  //     mode buttons  
+  DaySpiralButtonLabel = "Week Spiral";
+  DaySpiralButton = createButton(DaySpiralButtonLabel);
+  DaySpiralButton.mousePressed(setDaySpiral);
    
-  stroke(255);  // set white stroke color for lines and fonts
+  ColorfulModeButtonLabel = "More Colorful";
+  ColorfulModeButton = createButton(ColorfulModeButtonLabel);
+  ColorfulModeButton.mousePressed(setColorfulMode);
+  ColorfulModeButton.hide();
+   
+  GmtDisplayButtonLabel = "Show GMT";
+  GmtDisplayButton = createButton(GmtDisplayButtonLabel);
+  GmtDisplayButton.mousePressed(setGmtDisplay);
+  GmtDisplayButton.show();  
   
-  // On phones, height looks ok, but width is too big
-  theHeight = window.innerHeight; //*0.8; //height * 0.7;
-  theWidth = window.innerWidth; //*0.9; //width * 0.7;
+  //    Location buttons
+  SilveradoButton = createButton('Silverado');
+  SilveradoButton.mousePressed(setSilverado);
+ 
+  BerkeleyButton = createButton('Berkeley');
+  BerkeleyButton.mousePressed(setBerkeley); 
   
-  var smallerDim = min(theWidth, theHeight);
-  var radius = smallerDim / 2;
-  
-  secondsRadius = radius * 0.73;
-  minutesRadius = radius * 0.65;
-  hoursRadius = radius * 0.44;
-  clockDiameter = radius * 1.78;
-  
-  // radius to centers of numbers
-  hourNumbersRadius = radius * 0.8;
-  stripRadius = hourNumbersRadius * 0.85;
-  
-  cx = theWidth / 2;  // center
-  cy = theHeight / 2; // center
+  LondonButton = createButton('San Diego');
+  LondonButton.mousePressed(setSanDiego);
     
-  refFontSize = 60;
-  fontScaleFactor = smallerDim / 900; //240;
+  KansasCityButton = createButton('Kansas City');
+  KansasCityButton.mousePressed(setKansasCity);
   
-  currentFontSize = refFontSize;
+  MelbourneButton = createButton('Melbourne');
+  MelbourneButton.mousePressed(setMelbourne);  
+  
+  SanDiegoButton = createButton('London');
+  SanDiegoButton.mousePressed(setLondon);  
+  
+  //     Input fields setup
+  TzInput = createInput('');
+  TzInput.value("100")
+  TzInput.input(tzInputEvent);  
+    
+  LatInput = createInput('');
+  LatInput.input(latInputEvent);
+    
+  LngInput = createInput('');  
+  LngInput.input(longInputEvent);
+  
+  //    Create field for entering name of a city    
+  CityNameInput = createInput('');
+  //    Create button for submitting city
+  CitySubmitButton = createButton('Submit');
+  CitySubmitButton.mousePressed(handleCitySubmit);
+	  
+  // get local time zone of the user's browser ============.
+  // ATTN: by convention, this returns positive value when
+  //   it should be negative. Returns minutes, must convert to hours.
+  // ATTN: the returned gmt offset takes daylight savings
+  //   into account.  
+  TzOffset = (-new Date().getTimezoneOffset())/60;
+  TzOffsetLocal = TzOffset;
+  var tzString = str(TzOffset);
+  // Add in a plus sign if not negative
+  if (TzOffset > 0)
+  {
+    tzString = "+" + str(TzOffset);
+  }
+  
+  if (new Date().dst())  // if daylight savings is in effect at browser location
+  {
+    IsDst = true;
+  }
+  console.log(">> DST is ", IsDst);
+  
+  // init the time zone field on screen
+  TzInput.value(tzString);
+  LastTz = TzOffset;
+  
+  // init for the week spiral mode
+  SunsetWeekSecFromSunArray = new Array(7);
+  SunriseWeekHourArray = new Array(7);  
+  SunriseWeekSecFromSunArray = new Array(7);
+
+  XSpiralArray = [];
+  YSpiralArray = [];
+  RadiusSpiralArray = [];
+  NumSpiralPointsPerTurn = 300;
+  NumSpiralTurns = 2;  // must set this in the init
+  
+  
+  CityName = ""
+  LocaleTitle = "Local Time"
+  PrevLocaleTitle = "";
+  
+  BkColor = 0;
+  LastMillisec = 0;
+  HourDigitColor = color(25, 25, 25); //0xe8, 0xe0, 0x22);
+
+  SecondsSoFar = 0;
+  MsFromStartToResetTime = 0;
+  
+  // init to unique value to allow detection when set properly
+  Latitude = 99999;  // an illegal value
+  longitude = 99999;
+  NewLatitude = 99999;
+  NewLongitude = 99999;
+  LastLat = 99999;
+  LastLong = 99999;
+  LatLocal = 99999;
+  LngLocal = 99999;
+
+  stroke(255);  // set white stroke color for lines and fonts
   
   // init last millisec
   // millis is ms since program started
   // (actually since setup was called, so should be 0 ish)
-  lastMillisec = millis(); 
-  
-// EEE 
-  autoButton = createButton('Reset to local');
-  //autoButton.position(cx * 0.02, cy* 1.67);
-  autoButton.position(10, cy*2 - 140);
-  autoButton.mousePressed(resetToCurrent);
-  
-  //----------- Location buttons
-  
-  // First column
-  auburnButton = createButton('Auburn');
-  auburnButton.position(cx*2 - 195, cy*2 - 110);  
-  auburnButton.mousePressed(setAuburn);  
+  LastMillisec = millis(); 
 
-  stLouisButton = createButton('St Louis');
-  stLouisButton.position(cx*2 - 195, cy*2 - 85);  
-  stLouisButton.mousePressed(setStLouis);
-
-  irvineButton = createButton('Irvine');
-  irvineButton.position(cx*2 - 195, cy*2 - 60);  
-  irvineButton.mousePressed(setIrvine);
-  
-  boulderButton = createButton('Boulder');
-  boulderButton.position(cx*2 - 195, cy*2 - 35);  
-  boulderButton.mousePressed(setBoulder); 
- 
-  // second column
-  berkeleyButton = createButton('Berkeley');
-  berkeleyButton.position(cx*2 - 115, cy*2 - 135);  
-  berkeleyButton.mousePressed(setBerkeley); 
-  
-  londonButton = createButton('San Diego');
-  londonButton.position(cx*2 - 115, cy*2 - 110);  
-  londonButton.mousePressed(setSanDiego);
-    
-  kansasCityButton = createButton('Kansas City');
-  kansasCityButton.position(cx*2 - 115, cy*2 - 85);  
-  kansasCityButton.mousePressed(setKansasCity);
-  
-  melbourneButton = createButton('Melbourne');
-  melbourneButton.position(cx*2 - 115, cy*2 - 60);  
-  melbourneButton.mousePressed(setMelbourne);  
-  
-  sanDiegoButton = createButton('London');
-  sanDiegoButton.position(cx*2 - 115, cy*2 - 35);  
-  sanDiegoButton.mousePressed(setLondon);  
-  
+}  // end of oneTimeInit()  ====================
 
 
-//var boulderButton; 
+
+//============================================================================
+//============ Primary Entry Point ===========================================
+//
+function setup() 
+{
+  oneTimeInit();  // init that is not redone on window resize
   
-  //tzInput.position(cx * 0.27, cy* 1.75);
-  tzInput.position(110, cy*2 - 100);//cy* 1.75);
-  tzInput.size(20);
-  tzInput.value("100")
-  tzInput.input(tzInputEvent);  
-    
-  latInput.position(110, cy*2 - 70);//cy* 1.83);
-  latInput.size(60);
-  //latInput.value("100")
-  latInput.input(latInputEvent);
-    
-  longInput.position(110, cy*2 - 40);//cy* 1.9);
-  longInput.size(60);
-  //longInput.value("200")
-  longInput.input(longInputEvent);
+  reInit();  // all init that must be redone on window resize
   
-  // keep this false, the GMT offset is adjusted to compensate
-  isDaylightSavings = false; 
+  //======================= UPDATE time vars ====================
+  updateTimeThisDay();  // sets baseMs and MsFromStartToResetTime
   
-  updateTimeThisDay();  // sets baseMs and msFromStartToResetTime
   //document.cookie = "a cookie"
-  
-  speedIncr = 0.25;
-  
-  // get time zone.
-  // ATTN: for some reason this returns positive value when
-  //   it should be negative. Returns minutes, must convert to hours.
-  // ATTN: We assume that the returned gmt offset takes daylight savings
-  //   into account.  Thus we don't need to know if it's dst or not.
-  tzOffset = (-new Date().getTimezoneOffset())/60;
-  tzOffsetLocal = tzOffset;
-  var tzString = str(tzOffset);
-  // Add in a plus sign if not negative
-  if (tzOffset > 0)
-  {
-    tzString = "+" + String(tzOffset);
-  }
-  
-  // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
-  
-  setIsDst();  // sets global isDst, applies to northern hemisphere
-  setIsDstAu(); // set global isDstAu
-  
-  
+ 
   // NOTE: we can't update the sunrise/sunset times here
   // because the call to navigator.geolocation.getCurrentPosition()
   // has not yet happened.  Must do it later in updateTimeThisDay()
   // after we have the lat/long.
+}
+//==========================================================================
 
+
+
+//==================================================
+// This is run at startup and also when window size changes
+function reInit() 
+{
+  // On phones, height looks ok, but width is too big
+  TheHeight = window.innerHeight; //*0.8; //height * 0.7;
+  TheWidth = window.innerWidth; //*0.9; //width * 0.7;
+  
+  var smallerDim = min(TheWidth, TheHeight);
+  var radius = smallerDim / 2;
+  
+  SecondsRadius = radius * 0.73;
+  MinutesRadius = radius * 0.7
+  HoursRadius = radius * 0.44;
+  ClockDiameter = radius * 1.78;
+  
+  // radius to centers of numbers
+  HourNumbersRadius = radius * 0.83;
+  InnerFaceRadius = HourNumbersRadius * 0.93;
+  
+  CenterX = TheWidth / 2;  // center
+  CenterY = TheHeight / 2; // center
+
+  genSpiral();  // pre-calc arrays used to size and position the spiral.
+  // Above call depends on current CenterX/Y, nSpiralTurns, etc. 
+    
+  RefFontSize = 40;
+  FontScaleFactor = smallerDim / 900; //240;
+  
+  CurrentFontSize = RefFontSize;
+  
+  // ==== (re)set button and field positions ========
+  
+  ResetToLocalButton.position(10, CenterY*2 - 160);
+  
+  //    mode buttons
+  DaySpiralButton.position(CenterX*0.02, CenterY*0.33);  
+  ColorfulModeButton.position(CenterX*0.02, CenterY*0.395);  
+  GmtDisplayButton.position(CenterX*0.02, CenterY*0.395);  
+  
+  //    Location buttons
+  SilveradoButton.position(CenterX*2 - 115, CenterY*2 - 160);  
+  BerkeleyButton.position(CenterX*2 - 115, CenterY*2 - 135);  
+  LondonButton.position(CenterX*2 - 115, CenterY*2 - 110);  
+  KansasCityButton.position(CenterX*2 - 115, CenterY*2 - 85);  
+  MelbourneButton.position(CenterX*2 - 115, CenterY*2 - 60);  
+  SanDiegoButton.position(CenterX*2 - 115, CenterY*2 - 35);  
+  
+  //    Input fields
+  TzInput.position(110, CenterY*2 - 130);//CenterY* 1.75);
+  TzInput.size(35);
+  LatInput.position(110, CenterY*2 - 100);//CenterY* 1.83);
+  LatInput.size(60);
+  LngInput.position(110, CenterY*2 - 70);//CenterY* 1.9);
+  LngInput.size(60);
+
+  //    button for entering name of a city    
+  CityNameInput.position(50, CenterY*2 - 40);
+  CitySubmitButton.position(223, CenterY*2 - 40);
+}    // End of reInit()  ============================================
+
+
+
+//======   Extend the Date object to allow detection of daylight savings. ======
+
+// This compares january to july tz offsets to see which is largest; that will be 
+// the non-dst (std) offset
+Date.prototype.stdTimezoneOffset = function() {
+    var jan = new Date(this.getFullYear(), 0, 1);
+    var jul = new Date(this.getFullYear(), 6, 1);
+    return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+}
+
+// Since timezone offset gets smaller during dst, can determine if dst in effect
+Date.prototype.dst = function() {
+    return this.getTimezoneOffset() < this.stdTimezoneOffset();
 }
 
 
-//=========================================================
-// Figure out if it's currently daylight savings time in the USA.
-// daylight savings in the USA begins on the second Sunday of March 
-// and ends on the first Sunday of November.
-function setIsDst()
+
+//******************************************
+// Resize the canvas when the
+// browser's size changes.
+//BUG NOTES: on resize, the pre-resize buttons remain active, while new active ones are 
+//  created. A whole stack of functional working buttons
+//  Looks like new code in Initialize is not successfully destroing the old buttons.
+function windowResized() 
 {
+  console.log("Resize Detected;")
+  resizeCanvas(window.innerWidth, window.innerHeight);
+  reInit();
+}
+//*************************/
 
-  var da = day();
-  var mo = month();
-  var yr = year();
-  var todayDate = new Date();
-  var todayDow = todayDate.getDay();  // gets day of week, where 0 is sunday.
+
+
+
+//=========================================================
+// Generate the spiral arrays: radii, x-coords, and y-coords.
+// The startFrac refers to the inner end of the spiral, as a 
+//  fraction of the distance from center to the nearest edge
+//  of the usable window. endFrac is the outer end.
+function genSpiral() //III
+{
+  let startFrac = 0.1;
+  let endFrac = 0.72;
   
-  isDst = false;
-  
-  if (mo<3 || mo > 11)
+  if (IsDaySpiral)
   {
-    isDst = false;
-  }  
-  else if (mo<11 && mo>3)
-  {
-    isDst = true;
+    startFrac = 0.24;
+    endFrac = 0.6;
   }
   else
   {
-    // month is either march or november.
-
-    var dow = -1;
-    var dd = 0;
-
-    if (mo == 3)
-    {
-      // daylight savings in the USA begins on the second Sunday of March
-
-      // we need to create a Date representing the start of March this year.
-      var dstStart = new Date(yr, 2, 1, 2);  // 2am of march 1st (month is 0-based)
-      var numSundays = 0;
-      var firstDstDay = 0;  
-      for (dd = 1; dd<31; dd++)
-      {
-        dstStart.setDate(dd);  // set the day within March
-        dow = dstStart.getDay();
-        if (dow==0)
-        {
-          // found a sunday
-          numSundays++;
-        }
-        if (numSundays >=2)
-        {
-          // found the second sunday in March
-          firstDstDay = dd;
-          break;      
-        }
-      }
-      // we found the first day of daylight savings, dstDtart
-      if (todayDate >= dstStart) // (da >= firstDstDay) // 
-      {
-        isDst = true;
-      }
-      else
-      {
-        isDst = false;
-      }
-    }
-    else // must be november
-    {
-      // dst ends on the first Sunday of November
-
-      // we need to create a Date representing the start of November this year.
-      var dstEnd = new Date(yr, 10, 1, 2);  //2am of nov 1st (month is 0-based)
-      var lastDstDay = 0;  
-      for (dd = 1; dd<31; dd++)
-      {
-        dstEnd.setDate(dd);  // set the day within March
-        dow = dstEnd.getDay();
-        if (dow==0)
-        {
-          // found the first sunday in nov
-          lastDstDay = dd;
-          break;      
-        }
-      }
-      // we found the last day of daylight savings, dstEnd
-      if (todayDate >= dstEnd) //da > lastDstDay)
-      {
-        isDst = false;
-      }
-      else
-      {
-        isDst = true;
-      }
-
-    }
+    startFrac = 0.1;
+    endFrac = 0.72;
   }
   
-  if (isDst)
+  var smallerDim = CenterX;
+  if (CenterX > CenterY)
   {
-    print("Is Daylight Savings Time.")
+      smallerDim = CenterY;
   }
-  else
+  
+  var startRadius = smallerDim * startFrac;
+  var endRadius = smallerDim * endFrac;
+  var nTurns = NumSpiralTurns; //2 per day! //wc4 // ==240123a
+  var deltaRadiusPerTurn = (endRadius-startRadius) / nTurns;
+  
+  // NOTE use of <= below, so the array lengths are 1+NumSpiralPointsPerTurn*nTurns
+  for (var ii=0; ii<=NumSpiralPointsPerTurn*nTurns; ii++)
   {
-    print("Is NOT Daylight Savings Time.")    
+    var iiRadians = TWO_PI * (ii/NumSpiralPointsPerTurn) - HALF_PI;
+    // example, for nTurns==2, iiRadians varies from -pi/2 to (4pi - pi/2), 2 full turns.
+    // THe -pi/2 corrects the rotation so the spiral starts from the top rather than the right.
+    var radius = endRadius - deltaRadiusPerTurn * (ii/NumSpiralPointsPerTurn);
+    RadiusSpiralArray[ii] = radius;
+    XSpiralArray[ii] = radius * cos(iiRadians);
+    YSpiralArray[ii] = radius * sin(iiRadians);
   }
+  
   
 }
 
-//=========================================================
-// Figure out if it's currently daylight savings time in Australia.
-// Daylight Saving Time begins at 2am (AEST) on the first Sunday in October and 
-//  ends at 3am (Australian Eastern Daylight Time) on the first Sunday in April
-//  Note, the GMT offset for AEDT is +9. 
-function setIsDstAu()
+//==========================================
+// Custom mapping of color depicting daytime to the 7 days of the week,
+// progressing from red thru violet for the week spiral mode,
+// but for IsOnlyTodayInColor mode, only the current day is in color, all 
+// the others are monochrome to be less distracting.
+function getDayColor(dow) // range 0-6
 {
-  //var todayAu = new Date().toLocaleString("en-US", {timeZone: 'Australia/Melbourne'});
-  // NOTE, I had trouble creating a date using AU time zone, so just use local FORNOW.
-  
-  var todayAu = new Date();  // gets current date/time in current tz
-
-
-  var da = todayAu.getDate(); //day();
-  var mo = todayAu.getMonth(); //month();
-  var yr = todayAu.getFullYear(); //year();
-  var todayDow = todayAu.getDay();  // gets day of week, where 0 is sunday.
-  
-  isDstAu = false;
-  
-  if (mo<4 || mo>10)
-  {
-    isDstAu = true;
-  }  
-  else if (mo<10 && mo>4)
-  {
-    isDstAu = false;
-  }
-  else
-  {
-    // month is either april or october.
-
-    var dow = -1;
-    var dd = 0;
-
-    if (mo == 10)
+  //III
+    var iColor = color(0,0,0);
+    if (IsDaySpiral)
     {
-      // daylight savings in AU begins at 2am (AEST) on the first Sunday in October
-
-      /*  >>>> Had trouble creating a date in a non-local timezone, so just use local FORNOW.
-      // we need to create a Date representing the start of October this year in AU time zone.
-      // To ensure the time zone is set, first create an AU date at current time/date:
-      var dstStartAu = new Date().toLocaleString("en-US", {timeZone: 'Australia/Melbourne'});
-      
-      // Next change it to the start of October; next we will search for the first sunday.  
-      dstStartAu.SetMonth(9); //(month is 0-based)
-      dstStartAu.SetDate(1);
-      dstStartAu.SetHour(2);
-      dstStartAu.SetMinute(0);
-      */
-      var dstStartAu = new Date(yr, 9, 1, 2);  //2am of oct 1st (month is 0-based) in local tz
-
-
-      var firstDstDay = 0;  
-      for (dd = 1; dd<31; dd++)
-      {
-        dstStartAu.setDate(dd);  // set the day within October
-        dow = dstStartAu.getDay();
-        if (dow==0)
-        {
-          // found the first sunday
-          firstDstDay = dd;
-          break;      
-        }
-      }
-      // we found the first day of daylight savings, dstStartAu
-      // ATTN: since we are using local timezone, the actual dividing line
-      //  for DST will be off by the time difference. FORNOW
-      if (todayAu >= dstStartAu) // (da >= firstDstDay) // 
-      {
-        isDstAu = true;
-      }
-      else
-      {
-        isDstAu = false;
-      }
+      dow = IDow;
     }
-    else // must be april
+    switch(dow) {
+
+        case 0:
+            // r
+            //iColor = color(0xcd, 0x48, 0x49);
+            iColor = color(216, 96, 87);
+            break;
+
+        case 1:
+            // o
+            iColor = color(0xe0, 0x94, 0x35);
+            //iColor = color(234, 191, 115);
+            break;
+
+        case 2:
+            // y
+            //iColor = color(0xfc, 0xfb, 0x46);
+            iColor = color(251, 246, 71);
+            break;
+
+        case 3:
+            // g
+            //iColor = color(0x7c, 0xc4, 0x39);
+            iColor = color(156, 250, 92);
+            break;
+
+        case 4:
+            // b
+            iColor = color(0x84, 0xd2, 0xf1);
+            break;
+
+        case 5:
+            // v
+            //iColor = color(0xa8, 0x82, 0xf1);
+            iColor = color(139, 140, 250);
+            break;
+            
+        case 6:
+            // lt gray/purple
+            iColor = color(190, 160, 190);  //(230, 200, 230)
+            break;
+            
+        case 12:
+            // r - <<< same as case 0
+            //iColor = color(0xcd, 0x48, 0x49);
+            iColor = color(215, 86, 80);
+
+            break;
+        default:
+            iColor = color(0,0,0);
+            break;
+    }
+    
+    if (IsOnlyTodayInColor || IsDaySpiral)
     {
-      // dst ends at 3am (Australian Eastern Daylight Time) on the first Sunday in April
-
-      // we need to create a Date representing the start of April this year in AU time zone.
-      // To ensure the time zone is set, first create an AU date at current time/date:
-      /*
-      var dstEndAu = new Date().toLocaleString("en-US", {timeZone: 'Australia/Melbourne'});
-      
-      // Next change it to the start of October; next we will search for the first sunday.  
-      dstEndAu.SetMonth(3); //(month is 0-based)
-      dstEndAu.SetDate(1);
-      dstEndAu.SetHour(3);
-      dstEndAu.SetMinute(0);   
-      */
-      var dstEndAu = new Date(yr, 3, 1, 3);  //2am of nov 1st (month is 0-based) in local tz
-
-      
-      var lastDstDay = 0;  
-      for (dd = 1; dd<31; dd++)
-      {
-        dstEndAu.setDate(dd);  // set the day within April
-        dow = dstEndAu.getDay();
-        if (dow==0)
+        if (dow != IDow)
         {
-          // found the first sunday in april
-          lastDstDay = dd;
-          break;      
+          iColor = color(210,210,210);
         }
-      }
-      // we found the last day of daylight savings, dstEndAu
-      // ATTN: since we are using local timezone, the actual dividing line
-      //  for DST will be off by the time difference. FORNOW
-      if (todayAu >= dstEndAu) //da > lastDstDay)
-      {
-        isDstAu = false;
-      }
-      else
-      {
-        isDstAu = true;
-      }
+        else
+        {
+          iColor = color(0x84, 0xd2, 0xf1);
+          iColor = color(0x74, 0xc0, 0xff);
+          //iColor = color(0x8a, 0xc7, 0xdb);
+          //iColor = color(0xad, 0xd8, 0xe6);
 
+        }
     }
-  }
+    return iColor;
+}
+
+
+//==========================================
+// Custom mapping of color depicting night to the 7 days of the week,
+// progressing from red thru violet for the week spiral mode,
+// but for IsOnlyTodayInColor mode, only the current day is in color, all 
+// the others are monochrome to be less distracting.
+function getNightColor(dow) // range 0-6
+{
+    var iColor = color(0,0,0);
+    if (IsDaySpiral)
+    {
+      dow = IDow;
+    }
   
-  if (isDstAu)
-  {
-    print("Is AU Daylight Savings Time.")
-  }
-  else
-  {
-    print("Is NOT AU Daylight Savings Time.")    
-  }
+    switch(dow) {
+
+        case 0:
+            // r
+            iColor = color(108, 48, 43);
+            break;
+
+        case 1:
+            // o
+            iColor = color(112, 74, 26);
+            break;
+
+        case 2:
+            // y
+            //iColor = color(125, 123, 35); // a bit too light...
+            iColor = color(112, 102, 31);
+            break;
+
+        case 3:
+            // g
+            iColor = color(78, 125, 46);
+            break;
+
+        case 4:
+            // b
+            iColor = color(66, 105, 120);
+            break;
+
+        case 5:
+            // v
+            iColor = color(69, 70, 125); // too dark
+            iColor = color(73, 85, 137);
+            break;
+            
+        case 6:
+            // lt gray/purple
+            iColor = color(95, 80, 95);
+            break;
+            
+        case 12:
+            // r - <<< same as case 0
+            iColor = color(108, 48, 43);
+
+            break;
+        default:
+            iColor = color(0,0,0);
+            break;
+    }
   
+    if (IsOnlyTodayInColor || IsDaySpiral)
+    {
+        if (dow != IDow)
+        {
+          //iColor = color(90,90,90);
+          iColor = color(70,70,70);
+        }
+        else
+        {
+          //iColor = color(112, 102, 31);
+          //iColor = color(66, 105, 120);
+          if (IsDaySpiral)
+          {
+            iColor = color(20, 80, 100); // darker blue 32, 60, 98
+          }
+          else
+          {
+            //iColor = color(66, 105, 120); // light blue
+            iColor = color(20, 80, 100); // darker blue 32, 60, 98
+          }
+        }
+    }  
+  
+    return iColor;
+}
+
+
+//==========================================
+// Short label for the 7 days of the week.
+// Wraps around to sunday (s) for dow==7.
+function getDayStringShort(dow) // range 0-6
+{
+  //III
+    var dayString = "s";
+    switch(dow) {
+        case 0:
+            dayString = "s";
+            break;
+        case 1:
+            dayString = "m";
+            break;
+
+        case 2:
+            dayString = "tu";
+            break;
+
+        case 3:
+            dayString = "w";
+            break;
+
+        case 4:
+            dayString = "th";
+            break;
+
+        case 5:
+            dayString = "f";
+            break;
+
+        case 6:
+            dayString = "sa";
+            break;
+
+        default:
+            dayString = "s";
+            break;
+    }
+    return dayString;
+}
+
+
+//==========================================
+// Short label for the 7 days of the week
+// Wraps around to sunday for dow==7.
+function getDayStringLong(dow) // range 0-6
+{
+  //III
+    var dayString = "Sunday";
+    switch(dow) {
+        case 0:
+            dayString = "Sunday";
+            break;
+        case 1:
+            dayString = "Monday";
+            break;
+
+        case 2:
+            dayString = "Tuesday";
+            break;
+
+        case 3:
+            dayString = "Wednesday";
+            break;
+
+        case 4:
+            dayString = "Thursday";
+            break;
+
+        case 5:
+            dayString = "Friday";
+            break;
+
+        case 6:
+            dayString = "Saturday";
+            break;
+
+        default:
+            dayString = "Sunday";
+            break;
+    }
+    return dayString;
 }
 
 
@@ -619,410 +838,510 @@ function setIsDstAu()
 function calcSunRiseSet()
 {
   // calc sunrise
-  calcRiseSetTime(
+  calcRiseSetTimeWithOffset(
     true,  // calc sunrise
-    latitude,
-    -longitude,
-    tzOffset,
-    isDaylightSavings);
-  sunriseHour = outputHour;
-  sunriseMin = outputMin;
-  if (sunriseHour >=0)
+    0,
+    Latitude,
+    -Longitude,
+    TzOffset,
+    false);  // always set dst false since Tz offset takes dst into acct
+  
+  SunriseHour = OutputHour;
+  SunriseMin = OutputMin;
+  
+  if (SunriseHour >=0)
   {
-    secondsToSunrise = sunriseMin*60 + sunriseHour*3600;
-    baseMsSunrise = secondsToSunrise * 1000;
+    SecondsToSunrise = SunriseMin*60 + SunriseHour*3600;
+    BaseMsSunrise = SecondsToSunrise * 1000;
   }
   else
   {
-    secondsToSunrise = sunriseHour;
-    baseMsSunrise = sunriseHour;  // -1 no night -2 no day  
+    SecondsToSunrise = SunriseHour;
+    BaseMsSunrise = SunriseHour;  // -1 no day -2 no night  
   }
 
   // calc sunset
-  calcRiseSetTime(
+  calcRiseSetTimeWithOffset(
     false,  // calc sunset
-    latitude,
-    -longitude, // ??? passing neg longitude gives wrong answer
-    tzOffset,
-    isDaylightSavings);
-  sunsetHour = outputHour;
-  sunsetMin = outputMin; 
+    0,
+    Latitude,
+    -Longitude, // ??? passing neg longitude gives wrong answer
+    TzOffset,
+    false);  // always set dst false since Tz offset takes dst into acct
+  SunsetHour = OutputHour;
+  SunsetMin = OutputMin; 
 
-  if (sunsetHour >=0)
+  if (SunsetHour >=0)
   {
-    secondsToSunset = sunsetMin*60 + sunsetHour*3600;
-    baseMsSunset = secondsToSunset * 1000;
+    SecondsToSunset = SunsetMin*60 + SunsetHour*3600;
+    BaseMsSunset = SecondsToSunset * 1000;
   }
   else
   {
-    secondsToSunset = sunsetHour;
-    baseMsSunset = sunsetHour;  // -1 no night -2 no day  
+    SecondsToSunset = SunsetHour;
+    BaseMsSunset = SunsetHour;  // -1 no day -2 no night  
   }    
 
-
-  // FORNOW, 'cuz I'm lazy, just assume rise/set times don't change
-  //  much from day to day.
-  // TODO fix this.
-  sunsetHourYesterday = sunsetHour;
-  sunsetMinYesterday = sunsetMin;
-  secondsToSunsetYesterday = secondsToSunset;
-
-  sunriseHourTomorrow = sunriseHour;
-  sunriseMinTomorrow = sunriseMin;
-  secondsToSunriseTomorrow = secondsToSunrise;
-
   // Create formatted strings for sunrise and set times 
-  sunriseMinString = String(sunriseMin);
-  if (sunriseMin < 10)
+  SunriseMinString = str(SunriseMin);
+  if (SunriseMin < 10)
   {
-    sunriseMinString = "0" + sunriseMinString;
+    SunriseMinString = "0" + SunriseMinString;
   }
-  sunriseAmpmString = " AM";
-  sunriseHourString = nf(sunriseHour,2,0);//String(sunriseHour);
-  if (sunriseHour > 12)
+  SunriseAmpmString = " AM";
+  SunriseHourString = nf(SunriseHour,2,0);//str(SunriseHour);
+  if (SunriseHour > 12)
   {
-    sunriseAmpmString = " PM"
-    sunriseHourString = nf(sunriseHour-12,2,0);
-  }
-
-  sunsetMinString = String(sunsetMin);
-  if (sunsetMin < 10)
-  {
-    sunsetMinString = "0" + sunsetMinString;
+    SunriseAmpmString = " PM"
+    SunriseHourString = nf(SunriseHour-12,2,0);
   }
 
-  sunsetAmpmString = " AM";
-  sunsetHourString = nf(sunsetHour,2,0);
-  if (sunsetHour > 12)
+  SunsetMinString = str(SunsetMin);
+  if (SunsetMin < 10)
   {
-    sunsetAmpmString = " PM"
-    sunsetHourString = nf(sunsetHour-12,2,0);
+    SunsetMinString = "0" + SunsetMinString;
+  }
+
+  SunsetAmpmString = " AM";
+  SunsetHourString = nf(SunsetHour,2,0);
+  if (SunsetHour > 12)
+  {
+    SunsetAmpmString = " PM"
+    SunsetHourString = nf(SunsetHour-12,2,0);
   }  
   
-  //sunsetHour = -1; // TTT
-  print("Sunrise = " + sunriseHour + ":" + sunriseMin);
-  print("Sunset = " + sunsetHour + ":" + sunsetMin);    
-
+  //print("Sunrise = " + SunriseHour + ":" + SunriseMin);
+  //print("Sunset = " + SunsetHour + ":" + SunsetMin);  
+  
+  //print("Sunrise = " + SunriseHourString + ":" + SunriseMinString 
+  //      + SunriseAmpmString);
+  //print("Sunset = " + SunsetHourString + ":" + SunsetMinString
+  //      + SunsetAmpmString);   
 }
 
+
+
 // ========================================================
-// TTT
-function updateTimeThisDay() {
-  iHour = hour(); //EEE
-  // if user has changed the time zone GMT offset,
-  //  adjust the hour accordingly.
-  if (tzOffset != tzOffsetLocal)
-  {
-    iHour += (tzOffset - tzOffsetLocal);
-    if (iHour < 0)
-    {
-      iHour += 24;
-    }
-    else if (iHour > 23)
-    {
-      iHour -= 24;  
-    }
-  } 
-  iMin = minute();
-  iSec = second();
-  iMs = millis();
-  var hoursSoFar = iHour;  // range 0-23
-  msFromStartToResetTime = iMs;
-  var msSinceSecond = 
-      int(fract(msFromStartToResetTime/1000) * 1000);
-  secondsSoFar = iSec + iMin*60 + hoursSoFar*3600
-    + msSinceSecond/1000;
-  msSoFar = secondsSoFar * 1000 + msSinceSecond;
+// Update time-related vars.
+function updateTimeThisDay() 
+{
   
-  iHour12 = iHour;
-  isAM = true;
-  if (iHour == 0)
-  {
-    iHour12 = 12;
-  }
-  else if (iHour >= 12)
-  {
-    isAM = false;
-    if (iHour > 12)
+  IDowPrevious = IDow; // save the previous day of week
+  
+  let currDate = new Date();
+  //let dateRollbackNeeded = false;
+  //let dateAdvanceNeeded = false;
+
+  // Start with local hour and day of week
+  IDow = currDate.getDay(); // 0 is sunday 
+  IHour = hour();
+  
+  // if time zone GMT offset differs from local,
+  //  adjust the hour and day-of-week accordingly.
+  if (TzOffset != TzOffsetLocal)
+  { 
+    
+    /****************************************************************************
+    
+    //Old logic for day of week and hour correction logic - save ==240203a
+    
+    // this block tests new approach that was eventually adopted. <<<<<<<<<<<
+    
+    if (tempTest) // Test: this was set in SetMelbourne() and SetKansasCity() and cleard below
     {
-      iHour12 -= 12;
+      let tempDate = new Date();
+
+      //    currDate = new Date(currDate.getTime() + 86400000); 
+      // figure out how much to rotate the date based on time zone diff
+      if (TzOffset != TzOffsetLocal)
+      {
+        console.log(`Time Zone Offset: ${TzOffset}  TzOffsetLocal= ${TzOffsetLocal}`);
+        let TzDiffHours = TzOffset - TzOffsetLocal;
+        let TzDiffMs = TzDiffHours * 60 * 60 * 1000;
+        tempDate = new Date(tempDate.getTime() + TzDiffMs); 
+        // what's needed: Hour, IDow
+        console.log("Hour is " + str(currDate.getHours()) + " Rotated hour is " + str(tempDate.getHours()));
+        let testIDow =  tempDate.getDay(); // 0 is sunday 
+        console.log("IDow is " + str(IDow) + " Rotated Day is " + str(testIDow));
+        console.log(tempDate.toLocaleDateString(
+          'en-us', { year:"numeric", month:"short", day:"numeric"}) );
+      }
+      tempTest = false;
+    }  
+
+    // Below is the old logic.  This worked but was over complicated. =================
+    
+    var hourDiff = TzOffset - TzOffsetLocal;
+    IHour += hourDiff;
+    if (IHour < 0)
+    {
+      dateRollbackNeeded = true;
+      IHour += 24;
+      // we passed into the previous day
+      IDow--;
+      if (IDow < 0)
+      {
+        IDow = 6;
+      }
+    }
+    else if (IHour > 23)
+    {
+      dateAdvanceNeeded = true;
+      IHour -= 24;  
+      // we passed into the next day.
+      IDow++;
+      if (IDow > 6)
+      {
+        IDow = 0;
+      }
+    }
+    //  Check if changing to new tz has shifted
+    //  us into the next or previous day.
+    if (dateAdvanceNeeded) // we're in the next day
+    {
+      // advance the date by one day
+      currDate = new Date(currDate.getTime() + 86400000); 
+    }  
+
+    if (dateRollbackNeeded) // we're in the previous day
+    {
+      // roll back the date by one day
+      currDate = new Date(current.getTime() - 86400000); 
+    }      
+    ****** End of old tz logic *******************************************/
+
+    // Here is the new simpler logic for tz correction
+    
+    let TzDiffHours = TzOffset - TzOffsetLocal;
+    let TzDiffMs = TzDiffHours * 60 * 60 * 1000;
+    
+    // Rotate the date by the time zone difference
+    currDate = new Date(currDate.getTime() + TzDiffMs); 
+    
+    // Update day of week and hour based on corrected date currDate
+    IDow =  currDate.getDay(); // 0 is sunday 
+    IHour = currDate.getHours();    
+  } 
+  
+  // now that we have the new adjusted day of week, check if it changed
+  if (IDow != IDowPrevious)
+  {
+    // we have started a new day, so need to recompute the sunrise/sunset
+    IsSunRiseSetObtained = false;
+  }
+  
+  // get the current time ==========================
+  IMin = minute();
+  ISec = second();
+  IMsSinceDayStart = millis();
+  //================================================
+
+  var hoursSoFar = IHour;  // range 0-23
+  MsFromStartToResetTime = IMsSinceDayStart;
+  var msSinceSecond = 
+      int(fract(MsFromStartToResetTime/1000) * 1000);
+  SecondsSoFar = ISec + IMin*60 + hoursSoFar*3600 + msSinceSecond/1000;
+  
+  IHour12 = IHour;
+  IsAM = true;
+  if (IHour == 0)
+  {
+    IHour12 = 12;
+  }
+  else if (IHour >= 12)
+  {
+    IsAM = false;
+    if (IHour > 12)
+    {
+      IHour12 -= 12;
     }
   }
-  timeString = nf(iHour12,2,0) + ":" + nf(iMin,2,0);
+  
+  // Set formatted global TimeString to show to user.
+  TimeString = nf(IHour12,2,0) + ":" + nf(IMin,2,0);
+  //console.log("Formatted time string: " + TimeString);
+  
+  // Set formatted global DateString to show to user.
+  DateString = currDate.toLocaleDateString(
+    'en-us', { year:"numeric", month:"short", day:"numeric"}) 
 
   
   // Delay updating the rise/set times until both lat and long are obtained.
   // This isn't until sometime after the setup() method completes.
   // Once it's done, no need to redo on each pass.
-  if (!isSunRiseSetObtained && latitude!=-1 && longitude!=-1)
+  if (!IsSunRiseSetObtained && Latitude!=99999 && Longitude!=99999)
   {
     calcSunRiseSet();  // also call this later if lat/long changed
     
     // init latitude field
-    var latString = str(latitude);
-    latInput.value(latString);
-    lastLat = latitude;
+    var latString = str(Latitude);
+    LatInput.value(latString);
+    LastLat = Latitude;
     
     // init longitude field
-    var longString = str(longitude);
-    longInput.value(longString);
-    lastLong = longitude;
+    var longString = str(Longitude);
+    LngInput.value(longString);
+    LastLong = Longitude;
+
+    // populate the sunrise and sunset arrays for the current week.
+    // Needed only for the week spiral mode.
+    // NOTE, the OutputHour may be -1 (no day) or -2 (no night)
+    var secFromSunday;
+    for (var dd=0; dd<=6; dd++) // loop from sunday to saturday
+    {
+        calcRiseSetTimeWithOffset(
+            true,  // calc sunrise
+            dd-IDow,  // offset from current day-of-week
+            Latitude,
+            -Longitude,
+            TzOffset,
+            false);  // always set dst false since Tz offset takes dst into acct
+
+        // only used to check for -1 or -2 indicating no day or no night.
+        SunriseWeekHourArray[dd] = OutputHour; 
+      
+        secFromSunday = OutputMin*60 + OutputHour*3600 + dd*60*60*24; //III
+        SunriseWeekSecFromSunArray[dd] = secFromSunday;
+
+        calcRiseSetTimeWithOffset(
+            false,  // calc sunset
+            dd-IDow,  // offset from current day-of-week
+            Latitude,
+            -Longitude,
+            TzOffset,
+            false);  // always set dst false since Tz offset takes dst into acct
+
+        secFromSunday = OutputMin*60 + OutputHour*3600 + dd*60*60*24;
+        SunsetWeekSecFromSunArray[dd] = secFromSunday;
+    }
     
-    isSunRiseSetObtained = true;
+    IsSunRiseSetObtained = true;
   }
   
-  if (isSunRiseSetObtained)
+  if (IsSunRiseSetObtained)
   {
-    isDay = true;
-
-    if (secondsSoFar < secondsToSunrise)
+    IsDay = true;
+    
+    // Check for special cases
+    if (SunsetHour==-1) // midnight sun
     {
-      isDay = false;
+      IsDay=true;
     }
-    else if (secondsSoFar > secondsToSunset)
+    else if (SunsetHour==-2) // dark all day
     {
-      isDay = false;
+      IsDay=false;
     }
-
-    //print(isDay)
-
+    else if (SecondsSoFar < SecondsToSunrise)
+    {
+      IsDay = false;
+    }
+    else if (SecondsSoFar > SecondsToSunset)
+    {
+      IsDay = false;
+    }
 
     // Possible dayStates:
     // 1 - Midnight to sunrise.  Second half of a night
     // 2 - Sunrise to noon to sunset 
     // 3 - Sunset to midnight: first half of the night
-
-
-    dayState = 2;
-    if (secondsSoFar < secondsToSunrise)
+    DayState = 2;
+    if (SecondsSoFar < SecondsToSunrise)
     {
-      dayState = 1;
+      DayState = 1;
     }
-    else if (secondsSoFar > secondsToSunset)
+    else if (SecondsSoFar > SecondsToSunset)
     {
-      dayState = 3;
+      DayState = 3;
     }
 
-    //print(secondsToSunset)
-    //print(dayState)
-    
   }
-
   
-} // END OF updateTimeThisDay()
+} // END OF updateTimeThisDay() -----------------------------
 
 
 
-// EEE ========================================================
-function resetToCurrent() {
-  
-  tzOffset = tzOffsetLocal;
-  var tzString = str(tzOffset);
-  // Add in a plus sign if not negative
-  if (tzOffset > 0)
-  {
-    tzString = "+" + String(tzOffset);
-  }
-  // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
-  
-  latitude = latLocal;
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latLocal;
-  
-  longitude = longLocal;
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longLocal;
-  
-  calcSunRiseSet();
-  updateTimeThisDay();
-}
+//========================================================
+//============ Button click handlers =====================
 
-
-
-
-//=======================
-// Set location and timezone to Auburn
-//  
-function setAuburn()
+//=== TODO: replace this toggling button with a set of buttons for each clock type, 
+// programmed to work as radio buttons.  Will set ClockMode to indicate type.
+function setDaySpiral()  // Toggling mode button
 {
-  latitude = 38.89;
-  longitude = -121.07;
-  tzOffset = -8;  
-  if (isDst)
+  if (IsDaySpiral)
   {
-    tzOffset++;
-  }
-  
-  var tzString = str(tzOffset);
-  // Add in a plus sign if not negative
-  if (tzOffset > 0)
-  {
-    tzString = "+" + String(tzOffset);
-  }
-  
-  // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
-  
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
-  
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
+    IsDaySpiral = false;
+    DaySpiralButtonLabel = "Day Spiral";
+    NumSpiralTurns = 14; // a week of am/pm's    
+    genSpiral();  
     
-  calcSunRiseSet();
-  updateTimeThisDay();
+    // show the colorful mode button
+    ColorfulModeButton.show();
+    GmtDisplayButton.hide();
+  }
+  else
+  {
+    IsDaySpiral = true;
+    DaySpiralButtonLabel = "Week Spiral";
+    NumSpiralTurns = 2; // one for am, one for pm
+    genSpiral();  
+    //DaySpiralButton.attribute('disabled', DaySpiralButtonLabel);
+    
+    // hide the colorful mode button
+    ColorfulModeButton.hide();
+    GmtDisplayButton.show();
+  }
+
+  // update button label
+  DaySpiralButton.html(DaySpiralButtonLabel); // Change the button's HTML content
 }
 
-//=======================
-// Set location and timezone to St Louis
-//  
-function setStLouis()
+
+//-----------------------------------------------------------------
+// Handler for the toggling SetColorfulMode button
+function setColorfulMode()  // Toggling mode button
 {
-  latitude = 38.627;
-  longitude = -90.199;
-  tzOffset = -6;  
-  if (isDst)
+  if (IsOnlyTodayInColor)
   {
-    tzOffset++;
+    IsOnlyTodayInColor = false;
+    ColorfulModeButtonLabel = "Less Colorful";
   }
-  
-  var tzString = str(tzOffset);
-  // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  else
   {
-    tzString = "+" + String(tzOffset);
+    IsOnlyTodayInColor = true;
+    ColorfulModeButtonLabel = "More Colorful";
   }
-  
-  // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
-  
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
-  
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
-    
-  calcSunRiseSet();
-  updateTimeThisDay();
+
+  // update button label
+  ColorfulModeButton.html(ColorfulModeButtonLabel); // Change the button's HTML content
 }
 
-//=======================
-// Set location and timezone to Irvine
-//  
-function setIrvine()
+
+//-----------------------------------------------------------------
+// Handler for the toggling SetGmtDisplay button
+function setGmtDisplay()  // Toggling mode button
 {
-  latitude = 33.74;
-  longitude = -117.64;
-  tzOffset = -8;  
-  if (isDst)
+  if (IsGmtShown)
   {
-    tzOffset++;
+    IsGmtShown = false;
+    GmtDisplayButtonLabel = "Show GMT";
   }
+  else
+  {
+    IsGmtShown = true;
+    GmtDisplayButtonLabel = "Hide GMT";
+  }
+
+  // update button label
+  GmtDisplayButton.html(GmtDisplayButtonLabel); // Change the button's HTML content
+}
+
+
+//-----------------------------------------------------------------
+// Handler for the ResetToLocal button
+function resetToLocal() {
   
-  var tzString = str(tzOffset);
+  TzOffset = TzOffsetLocal;
+  var tzString = str(TzOffset);
   // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  if (TzOffset > 0)
   {
-    tzString = "+" + String(tzOffset);
+    tzString = "+" + str(TzOffset);
   }
-  
   // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
+  TzInput.value(tzString);
+  LastTz = TzOffset;
   
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
+  Latitude = LatLocal;
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = LatLocal;
   
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
-    
-  calcSunRiseSet();
+  Longitude = LngLocal;
+  var longString = str(Longitude);
+  LngInput.value(longString);
+  LastLong = LngLocal;
+  
+  CityNameInput.value("Current Location");
+  LocaleTitle = "Local Time";
+
+  // Location may have changed, so need to regen spiral point array.
+  // Clear flag that's checked in updateTimeThisDay()
+  IsSunRiseSetObtained = false;
+  
   updateTimeThisDay();
 }
 
 
 
+
 //=======================
-// Set location and timezone to Boulder CO
+// Set location and timezone to Silverado
 //  
-function setBoulder()
+function setSilverado()
 {
-  latitude = 40.015;
-  longitude = -105.27;
-  tzOffset = -7;  
-  if (isDst)
-  {
-    tzOffset++;
-  }
+  CityNameInput.value("Silverado, CA, USA");
+  LocaleTitle = "Silverado";
+  getLocationUsingCityName("Silverado, CA, USA");
   
-  var tzString = str(tzOffset);
+  var tzString = str(TzOffset);
   // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  if (TzOffset > 0)
   {
-    tzString = "+" + String(tzOffset);
+    tzString = "+" + str(TzOffset);
   }
   
   // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
+  TzInput.value(tzString);
+  LastTz = TzOffset;
   
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = Latitude;
   
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
-    
-  calcSunRiseSet();
+  var longString = str(Longitude);
+  LngInput.value(longString);
+  LastLong = Longitude;
+  
+  // Location may have changed, so need to regen spiral point array.
+  // Clear flag that's checked in updateTimeThisDay()
+  IsSunRiseSetObtained = false;
+  
   updateTimeThisDay();
 }
 
+
 //=======================
-// Set location and timezone to Auburn CA
+// Set location and timezone to London England
 //  
 function setLondon()
 {
-  latitude = 51.5;
-  longitude = -0.127;
-  tzOffset = 0;  
-  if (isDst)
-  {
-    tzOffset++;
-  }
+  CityNameInput.value("London, UK");
+  LocaleTitle = "London";  
+  getLocationUsingCityName("London, UK");
   
-  var tzString = str(tzOffset);
+  var tzString = str(TzOffset);
   // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  if (TzOffset > 0)
   {
-    tzString = "+" + String(tzOffset);
+    tzString = "+" + str(TzOffset);
   }
   
   // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
+  TzInput.value(tzString);
+  LastTz = TzOffset;
   
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = Latitude;
   
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
-    
-  calcSunRiseSet();
+  var longString = str(Longitude);
+  LngInput.value(longString);
+  LastLong = Longitude;
+ 
+  // Location may have changed, so need to regen spiral point array.
+  // Clear flag that's checked in updateTimeThisDay()
+  IsSunRiseSetObtained = false;
+  
   updateTimeThisDay();
 }
 
@@ -1032,34 +1351,33 @@ function setLondon()
 //  
 function setBerkeley()
 {
-  latitude = 37.87;
-  longitude = -122.27;
-  tzOffset = -8;  
-  if (isDst)
-  {
-    tzOffset++;
-  }
-  
-  var tzString = str(tzOffset);
+  CityNameInput.value("Berkeley, CA, USA");
+  LocaleTitle = "Berkeley";
+  getLocationUsingCityName("Berkeley, CA, USA");  
+
+  var tzString = str(TzOffset);
   // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  if (TzOffset > 0)
   {
-    tzString = "+" + String(tzOffset);
+    tzString = "+" + str(TzOffset);
   }
   
   // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
+  TzInput.value(tzString);
+  LastTz = TzOffset;
   
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = Latitude;
   
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
-    
-  calcSunRiseSet();
+  var longString = str(Longitude);
+  LngInput.value(longString);
+  LastLong = Longitude;
+
+  // Location may have changed, so need to regen spiral point array.
+  // Clear flag that's checked in updateTimeThisDay()
+  IsSunRiseSetObtained = false;
+  
   updateTimeThisDay();
 }
 
@@ -1069,34 +1387,35 @@ function setBerkeley()
 //  
 function setKansasCity()
 {
-  latitude = 39.1;
-  longitude = -94.578;
-  tzOffset = -6;  
-  if (isDst)
-  {
-    tzOffset++;
-  }
-  
-  var tzString = str(tzOffset);
+  CityNameInput.value("Kansas City, MO, USA");
+  LocaleTitle = "Kansas City";
+  getLocationUsingCityName("Kansas City, MO, USA");  
+
+  var tzString = str(TzOffset);
   // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  if (TzOffset > 0)
   {
-    tzString = "+" + String(tzOffset);
+    tzString = "+" + str(TzOffset);
   }
   
   // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
+  TzInput.value(tzString);
+  LastTz = TzOffset;
   
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = Latitude;
   
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
-    
-  calcSunRiseSet();
+  var longString = str(Longitude);
+  LngInput.value(longString);
+  LastLong = Longitude;
+
+  // Location may have changed, so need to regen spiral point array.
+  // Clear flag that's checked in updateTimeThisDay()
+  IsSunRiseSetObtained = false;
+  
+  console.log("Kansas City date test");
+  //tempTest = true;
   updateTimeThisDay();
 }
 
@@ -1106,34 +1425,33 @@ function setKansasCity()
 //  
 function setMelbourne()
 {
-  latitude = -37.8;
-  longitude = 144.96;
-  tzOffset = 10;  
-  if (isDstAu)
-  {
-    tzOffset++;
-  }
-  
-  var tzString = str(tzOffset);
+  CityNameInput.value("Melbourne, AU");
+  LocaleTitle = "Melbourne";
+  getLocationUsingCityName("Melbourne, AU");    
+
+  var tzString = str(TzOffset);
   // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  if (TzOffset > 0)
   {
-    tzString = "+" + String(tzOffset);
+    tzString = "+" + str(TzOffset);
   }
   
   // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
+  TzInput.value(tzString);
+  LastTz = TzOffset;
   
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = Latitude;
   
-  var longString = str(longitude);
-  longInput.value(longString);
-  lastLong = longitude;
-    
-  calcSunRiseSet();
+  var longString = str(Longitude);
+  LngInput.value(longString);
+  LastLong = Longitude;
+
+  // Location may have changed, so need to regen spiral point array.
+  // Clear flag that's checked in updateTimeThisDay()
+  IsSunRiseSetObtained = false;
+  //tempTest = true; 
   updateTimeThisDay();
 }
 
@@ -1141,544 +1459,703 @@ function setMelbourne()
 // Set location and timezone to San Diego
 function setSanDiego()
 {
-  latitude = 33.15;
-  longitude = -117.3;
-  tzOffset = -8;
-  if (isDst)
-  {
-    tzOffset++;
-  }
-  
-  var tzString = str(tzOffset);
+  CityNameInput.value("San Diego, CA, USA");
+  LocaleTitle = "San Diego";
+  getLocationUsingCityName("San Diego, CA, USA");    
+ 
+  var tzString = str(TzOffset);
   // Add in a plus sign if not negative
-  if (tzOffset > 0)
+  if (TzOffset > 0)
   {
-    tzString = "+" + String(tzOffset);
+    tzString = "+" + str(TzOffset);
   }
   // init the UI field
-  tzInput.value(tzString);
-  lastTz = tzOffset;
+  TzInput.value(tzString);
+  LastTz = TzOffset;
   
-  var latString = str(latitude);
-  latInput.value(latString);
-  lastLat = latitude;
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = Latitude;
   
-  var longString = str(longitude);
-  longInput.value(longString);   
-  lastLong = longitude;
+  var longString = str(Longitude);
+  LngInput.value(longString);   
+  LastLong = Longitude;  
+ 
+  // Location may have changed, so need to regen spiral point array.
+  // Clear flag that's checked in updateTimeThisDay()
+  IsSunRiseSetObtained = false;
   
-  calcSunRiseSet();
   updateTimeThisDay();
 }
 
+
 // ========================================================
+// Handler for the GMT Offset field.  This is called for all keystrokes in that field.
+// The draw loop keeps track of how long it's been since the last keystroke, and
+// triggers processing (below) when sufficient time has expired.  
+// This approach avoids the need for an enter button.
 function tzInputEvent() {
   console.log('you are typing tz=', this.value());
-  tzInputTimestampMs = millis();  
+  TzInputTimestampMs = millis();  
 }  
 
 //==== delayed processing of tz input allows user to finish
 //  typing, avoiding temporarily invalid numbers like "-"
 function processTzInputEvent() {  
-  tzInputTimestampMs = -1;
-  tzOffset = Number(tzInput.value());
+  TzInputTimestampMs = -1;
+  TzOffset = Number(TzInput.value());
   
-  if (isNaN(tzOffset))
+  if (isNaN(TzOffset))
   {
     // can't convert to a float, restore to previous
-    tzOffset = lastTz;
-    var tzString = str(tzOffset);
+    TzOffset = LastTz;
+    var tzString = str(TzOffset);
     // Add in a plus sign if not negative
-    if (tzOffset > 0)
+    if (TzOffset > 0)
     {
-      tzString = "+" + String(tzOffset);
+      tzString = "+" + str(TzOffset);
     }
-    tzInput.value(tzString);
+    TzInput.value(tzString);
   }
   else
   {    
-    lastTz = tzOffset;
-    calcSunRiseSet();   
+    LastTz = TzOffset;
+    
+    CityNameInput.value("");
+    LocaleTitle = "Entered Location";
+  
+    //calcSunRiseSet();   
+    
+    // Location may have changed, so need to regen spiral point array.
+    // Clear flag that's checked in updateTimeThisDay()
+    IsSunRiseSetObtained = false;
+  
     updateTimeThisDay();
   }  
 
 }
 
-// ========================================================
+// ===== keystroke detected in Latitude field
 function latInputEvent() 
 {
   console.log('you are typing latitude=', this.value());
-  latInputTimestampMs = millis();  
+  LatInputTimestampMs = millis();  
 }  
 
-// ========== delayed processing
+// == delayed processing done after user finishes entering latitude
 function processLatInputEvent() 
 {
-  latInputTimestampMs = -1;  
+  LatInputTimestampMs = -1;  
 
-  //latitude = float(this.value());
+  //Latitude = float(this.value());
   // NOTE: using float above is too tolerant,
   //  it only fails if the non-numeric char is the first,
   //  else just stops parsing 
-  latitude = Number(latInput.value());
+  Latitude = Number(LatInput.value());
   
-  if (isNaN(latitude))
+  if (isNaN(Latitude))
   {
     // can't convert to a float, restore to previous
-    latitude = lastLat;
-    latInput.value(lastLat);
+    Latitude = LastLat;
+    LatInput.value(LastLat);
   }
   else
   {    
-    lastLat = latitude;
-    calcSunRiseSet();   
+    LastLat = Latitude;
+        
+    CityNameInput.value("");
+    LocaleTitle = "Entered Location";
+ 
+    //calcSunRiseSet();   
+    
+    // Location may have changed, so need to regen spiral point array.
+    // Clear flag that's checked in updateTimeThisDay()
+    IsSunRiseSetObtained = false;
+  
     updateTimeThisDay();
   }
-  //print("lat=" + latitude)
+  //print("lat=" + Latitude)
 }
 
 
 
-// ========================================================
+// ===== keystroke detected in longitude field
 function longInputEvent() {
   console.log('you are typing longitude=', this.value());
-  longInputTimestampMs = millis();  
+  LngInputTimestampMs = millis();  
 }  
 
-// ========== delayed processing
+// == delayed processing done after user finishes entering longitude
 function processLongInputEvent() {
-  longInputTimestampMs = -1; 
-  longitude = Number(longInput.value());
+  LngInputTimestampMs = -1; 
+  Longitude = Number(LngInput.value());
   
-  if (isNaN(longitude))
+  if (isNaN(Longitude))
   {
     // can't convert to a float, restore to previous
-    longitude = lastLong;
-    longInput.value(lastLong);
+    Longitude = LastLong;
+    LngInput.value(LastLong);
   }
   else
   {    
-    lastLong = longitude;
-    calcSunRiseSet();   
+    LastLong = Longitude;
+        
+    CityNameInput.value("");
+    LocaleTitle = "Entered Location";
+ 
+    //calcSunRiseSet();   
+    
+    // Location may have changed, so need to regen spiral point array.
+    // Clear flag that's checked in updateTimeThisDay()
+    IsSunRiseSetObtained = false;
+  
     updateTimeThisDay();
   }  
 
 }
 
 
-// =====================================
+// ==230112a
+//findme
+// ==240120d
+// handler for the Submit button that enters a city name
+// The entered city name may contain additional fields such as state/province and 
+// country, comma separated.
+function handleCitySubmit() 
+{
+  CityName = CityNameInput.value();
+  PrevLocaleTitle = LocaleTitle;
+  
+  //LocaleTitle = CityNameInput.value(); << need to extract just the city
+  
+  // We don't have room for the full city name with state and country, so
+  // must extract just the city name.
+  // When splitting at commas, some spaces may remain, so must trim below.
+  let splitString = splitTokens(CityNameInput.value(), ',');
+  
+  //console.log(splitString);
+  //console.log("splitString array len = >" + str(splitString.length) + "<")
+  if (str(splitString.length) > 0)  // If a city was found
+  {
+    LocaleTitle = trim(splitString[0]);
+    
+    // url used for OpenStreetmap (Nominatim)
+    // Use the full string entered by the user, may contain state or country.
+    let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
+
+    // Make a GET request to the Nominatim API (OpenStreetMap)
+    // ATTN: the gotCityLocationDataOpenStMap() fcn will be called a bit later, when the  
+    // response to the url call comes in.  We won't know the lat/lon until then.
+    //  THis means the subsequent API call to get the time zone can't happen until then.
+    loadJSON(apiUrl, gotCityLocationDataOpenStMap);
+  }
+  else // no city name was found
+  {
+    LoaleTitle = PrevLocaleTitle;
+  }
+  
+  // ALT way to get lat/long
+  //let geoApiUrl = 
+  // `https://secure.geonames.org/searchJSON?q=${CityName}&maxRows=1&username=charliewallace`; 
+  //loadJSON(geoApiUrl, gotCityLocationDataGeoNames);
+}
+
+// ==============
+// Alternate way to set location, timezone, and IsDst using passed city name.
+function getLocationUsingCityName(passedCityName) {
+  CityName = passedCityName;
+  
+  // url used for OpenStreetmap (Nominatim)
+  let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
+  
+  // Make a GET request to the Nominatim API (OpenStreetMap)
+  // ATTN: the gotCityLocationDataOpenStMap() fcn will be called a bit later, when the  
+  // response to the url call comes in.  We won't know the lat/lon until then.
+  //  THis means the subsequent API call to get the time zone can't happen until then.
+  loadJSON(apiUrl, gotCityLocationDataOpenStMap);
+
+  // ALT way to get lat/long - this works! SAVE ======
+  //let geoApiUrl = `https://secure.geonames.org/searchJSON?q=${CityName}&maxRows=1&username=charliewallace`; 
+  //loadJSON(geoApiUrl, gotCityLocationDataGeoNames);
+}
+
+
+
+/********************************************  SAVE
+// NOT currently using this!!! <<<<<<<<<<<<< ATTN <<<<<<<<<
+// This is the handler for the commented out web service call just above, using
+//   https://secure.geonames.org/... etc
+// Instead I'm using the nominatim.openstreetmap.org in getLocationUsingCityName() above,
+// that triggers call to gotCityLocationDataOpenStMap() just below.
+// This will need some work if it's ever used - needs to make service call to get tz.
+function gotCityLocationDataGeoNames(data) 
+{
+  //console.log("Entering gotCityLocationDataGeoNames()");
+
+  // Check if the response contains any results
+  var isError = false;
+  if (data.length != 0) 
+  {
+    console.log("City location data from GeoNames:")
+    console.log(data[0].goenames[0]);
+
+    let result = data.geonames[0];
+    // Take the first result
+
+    // Extract latitude, longitude, and time zone offset
+    let lat = result.lat;
+    let lon = result.lng;
+    
+    // Display the information
+    console.log(`City: ${CityName} using GeoNames`);
+    console.log(`Latitude: ${lat}`);
+    console.log(`Longitude: ${lon}`);
+  } 
+  else 
+  {
+    console.log(`In gotCityLocationDataGeoNames(): No results found for ${CityName}`);
+  }  
+}  // this function is not currently used but basically works.
+************************/
+
+
+// using Nominatim OpenStreetMap API
+// The response to the API call for the city name has arrived.
+function gotCityLocationDataOpenStMap(data) 
+{
+  //console.log("Entering gotCityLocationDataOpenStMap().");
+  
+  // Check if the response contains any results
+  var isError = false;
+  if (data.length != 0) 
+  {
+    console.log("City location data from OpenStreetMap:")
+    console.log(data[0]);
+
+    let result = data[0]; // Take the first result
+
+    // Extract latitude, longitude, and time zone offset
+    let lat = result.lat;
+    let lon = result.lon;
+        
+    // ==240111a
+    // initialize time zone to estimate based on longitude.
+    let timeZoneOffset = getTimeZoneOffset(lat, lon);
+    
+    TzOffset = timeZoneOffset;  // store into global
+    
+    // validate the new location
+    if (lat > 90 || lat < -90 || lon < -180 || lon > 180)
+    {
+      isError=true;
+      print("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
+    }
+    //else if (timeZoneOffset/3600 > 13 || timeZoneOffset/3600 < -13) 
+    else if (timeZoneOffset > 13 || timeZoneOffset < -13) 
+    {
+      isError=true;
+      print("Error, invalid time zone offest=" + str(timeZoneOffset));
+    }
+    else // looks like a valid offset
+    {
+      lat = round(lat, 3); // round to 3 places
+      lon = round(lon, 3); // round to 3 places
+      
+      // save into intermediate globals.
+      // We are not yet ready to change the real latitude/longitude
+      // because we don't have the new time zone yet.
+      // We'll get it via the loadJSON() call below, but the new tz
+      // won't show up until a bit later.
+      // In the meantime, the main draw() method will bail out (not draw)
+      // as long as either of these is not equal to 99999. That starts here.
+      NewLatitude = lat;
+      NewLongitude = lon;
+
+      //console.log("OpenStMap: lat=" + str(lat) + " lon=" + str(lon));
+      
+      // Now that we have the lat/lon, we need one more API call to geonames
+      // in order to fetch the time zone offset.    
+      // GeoNames API URL for timezone lookup
+      let timezoneUrl = 
+          `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`;
+      console.log('timezoneUrl='+ timezoneUrl);
+      
+      // Make a GET request using Geonames to get timezone details.
+      // The gotCityTzData() fcn will run a bit later when the response arrives.
+      loadJSON(timezoneUrl, gotCityTzData);
+    }
+  } 
+  else 
+  {
+    console.log(`No results found for ${CityName}`);
+    CityNameInput.value(CityName +" not found");
+    LocaleTitle = PrevLocaleTitle;
+  }
+  
+}
+
+
+// using GeoNames service.  Handler for fetching timezone.
+// The response to the API call to get the city's time zone offset has arrived.
+// There is a time delay between this and the code above where
+// loadJSON is called.
+function gotCityTzData(data) 
+{
+  console.log("Entering gotCityTzData().");
+  
+  // Check if the response contains any results
+  var isError = false;
+  if (data.length != 0) 
+  {     
+    console.log('in gotCityTzData():')
+    console.log(data);  // dump the returned data
+
+    // Extract time zone offset.  This takes daylight savings into acct.
+    let timeZoneOffset = data.gmtOffset;
+    // ATTN: if the data.rawOffset differs from the data.gmtOffset,
+    // that means daylight savings time ("Summer time") is active.  
+    
+    //console.log('Geonames tz offset = ' + str(timeZoneOffset));
+    TzOffset = timeZoneOffset;    // store into global
+    
+    // figure out if the city is using daylight savings time.
+    let rawOffset = data.rawOffset;
+    if (rawOffset == timeZoneOffset)
+    {
+      IsDst = false;
+    }
+    else
+    {
+      IsDst = true;
+    }
+    
+    // Now that we have the time zone, we can update the global
+    //  latitude and longitude; if done earlier, and there was a call to 
+    //  draw() before the fetch of time zone was complete, we would
+    //  update the clock with the old timezone momentarily, then 
+    //  shortly after, the new tz would come in, and fix things.
+    //  Caused a glitch.  This avoids that.
+    // ASSUMPTION: we assume that if we got here, we have valid values
+    //  of NewLatitude and NewLongitude.  No need to check here to
+    //  ensure we have the new values.
+    Latitude = NewLatitude;
+    Longitude = NewLongitude;
+    
+    // reset the NewLatitude and NewLongitude to illegal values 99999
+    // to allow the redraw
+    NewLatitude = 99999;
+    NewLongitude = 99999;
+
+    // this is kept local
+    var tzString;
+
+    // Create string version of tz. Add a leading plus sign if not negative
+    if (timeZoneOffset > 0)
+    {
+      timeZoneOffset = int(timeZoneOffset); // round downward
+      tzString = "+" + str(timeZoneOffset);
+    }
+    else
+    {
+      timeZoneOffset = -int(-timeZoneOffset); // round upward      
+      tzString = str(timeZoneOffset);
+    }
+    //console.log("tz after possibly adding leading plus sign:" + tzString);
+
+    // Update fields on-screen.
+    TzInput.value(tzString);
+    LatInput.value(str(Latitude));
+    LngInput.value(str(Longitude));
+
+    // Location may have changed, so need to regen spiral point array.
+    // Clear flag that's checked in updateTimeThisDay()
+    IsSunRiseSetObtained = false;
+
+    // Display the information
+    console.log(`City: ${CityName}`);
+    console.log('Location based on OpenStreetMap data:')
+    console.log(`Latitude: ${Latitude}`);
+    console.log(`Longitude: ${Longitude}`);
+    console.log('==tz based on GeoNames data==')
+    console.log(`Time Zone Offset: ${timeZoneOffset} hours`);  
+  } 
+  else 
+  {
+    isError = true;
+    console.log(`No timezone results returned from GeoNames, will use estimate based on longitude.`);
+
+    // Our main way of updating time zone has failed.
+    // This call is a backup method that set tz purely based on longitude.
+    TzOffset = getTimeZoneOffset(Latitude, Longitude);
+    Latitude = NewLatitude;
+    Longitude = NewLongitude;
+    
+    NewLatitude = 99999; // allow draw() to resume
+    NewLongitude = 99999;
+  }  
+}
+
+
+// Instead of using city name, use GeoNames to get the tz and IsDst based on
+// a known lat/long
+// using Nominatim OpenStreetMap API
+// The response to the API call for the city name has arrived.
+function getTzUsingLatLong(lat, lon)
+{
+  console.log("Entering getTzUsingLatLong().");
+  // Check if the response contains any results
+  var isError = false;
+
+  // initialize time zone to estimate based on longitude.
+  let timeZoneOffset = getTimeZoneOffset(lat, lon);
+
+  TzOffset = timeZoneOffset;  // store into global
+
+  // validate the new location
+  if (lat > 90 || lat < -90 || lon < -180 || lon > 180)
+  {
+    isError=true;
+    print("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
+  }
+  else if (timeZoneOffset > 13 || timeZoneOffset < -13) 
+  {
+    isError=true;
+    print("Error, invalid time zone offest=" + str(timeZoneOffset));
+  }
+  else // looks like a valid offset
+  {
+    lat = round(lat, 3); // round to 3 places
+    lon = round(lon, 3); // round to 3 places
+
+    // save into intermediate globals.
+    // We are not yet ready to change the real latitude/longitude
+    // because we don't have the new time zone yet.
+    // We'll get it via the loadJSON() call below, but the new tz
+    // won't show up until a bit later.
+    // In the meantime, the main draw() method will bail out (not draw)
+    // as long as either of these is not equal to 99999. That starts here.
+    NewLatitude = lat;
+    NewLongitude = lon;
+
+    // Now that we have the lat/lon, we need one more API call to geonames
+    // in order to fetch the time zone offset.    
+    // GeoNames API URL for timezone lookup
+    let timezoneUrl = 
+        `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`;
+    console.log('timezoneUrl='+ timezoneUrl);
+
+    // Make a GET request using Geonames to get timezone details.
+    // The gotCityTzData() fcn will run a bit later when the response arrives.
+    // It sets the global time zone offset and also sets IsDst.
+    loadJSON(timezoneUrl, gotCityTzData);
+  }
+  
+}
+
+
+
+// estimate tz offset from longitude/15.  This can be used as a backup
+// when the geoNames call to get the timezone fails.
+function getTimeZoneOffset(lat, lon) 
+{
+  // Create a date object for the current time in the specified city
+
+  let date = new Date();
+  let utc = date.getTime() + date.getTimezoneOffset() * 60000; // Convert to UTC
+  let cityTime = new Date(utc + 3600000 * lon / 15); // Adjust for longitude
+  
+  let timezonesPerDegree = 24/360;
+  let lonTimeZone = lon * timezonesPerDegree;
+  if (lonTimeZone >= 0)
+  {
+    lonTimeZone = int(lonTimeZone);
+  }
+  else
+  {
+    lonTimeZone = -1 * (int(-lonTimeZone));
+  }
+  //lonTimeZone = lonTimeZone * 3600; // convert to seconds
+  console.log("Timezone estimate based on longitude is " + str(lonTimeZone));
+
+  return lonTimeZone;
+}
+
+
+
+// =====================================================================================
 // The main draw routine that is called continuously
+// ==240122a
 // 
 function draw() {
   
     // handle delayed processing of position & gmt offset fields
-    if (tzInputTimestampMs > 0 && millis() - tzInputTimestampMs > 2000)
+    if (TzInputTimestampMs > 0 && millis() - TzInputTimestampMs > InputFieldProcessingTimeout)
     {
       processTzInputEvent();
     }
   
-    if (latInputTimestampMs > 0 && millis() - latInputTimestampMs > 2000)
+    if (LatInputTimestampMs > 0 && millis() - LatInputTimestampMs > InputFieldProcessingTimeout)
     {
       processLatInputEvent();
     }   
   
-    if (longInputTimestampMs > 0 && millis() - longInputTimestampMs > 2000)
+    if (LngInputTimestampMs > 0 && millis() - LngInputTimestampMs > InputFieldProcessingTimeout)
     {
       processLongInputEvent();
     }   
   
+  
+    if (NewLatitude != 99999 || NewLongitude != 99999)
+    {
+      // We are partway through update of location via web service call
+      // caused by the user entering a city name.
+      // The new lat/long have been fetched but we're still waiting 
+      // for the new time zone.
+      // If we draw now, we'll have incorrect draw.
+      return; // bail out
+    }
+  
     // Draw the clock background
-    background(bkColor);
-    fill(80);  // dark gray
+    // we redo this below after successfully getting the lat/long
+    background(BkColor);
+  
+    if (IsDaySpiral)
+    {
+      fill(100);  // gray
+    }
+    else
+    {
+      fill(40);  // dark gray
+    }
+  
     noStroke();
-    ellipse(cx, cy, clockDiameter, clockDiameter);
+    ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
   
     fill(255)
     textFont("Arial");
-    textAlign(LEFT, TOP);
 
-    textSize(refFontSize * 0.45);
+    // Sometimes on phones there's a delay before the clock face is drawn, so...
+    textAlign(CENTER, TOP);
+    text("Browser needs location permission.", CenterX, CenterY-40);  
+    text("Look for the permission popup and accept.", CenterX, CenterY-20);  
 
-    text("Day Spiral Clock", 10, 15);
+    // ON first run of this app, the browser will show a warning
+    // that it will get the user's location.  Kind of scary, so
+    // show this explanation.
+    text("Location permission is needed", CenterX, CenterY);
+    text("only to calculate sunrise/sunset.", CenterX, CenterY+20);
+    text("Location is not stored!", CenterX, CenterY+40);
   
-    textSize(refFontSize*0.28);
-    text("© Charlie Wallace 2022", 10, 50);
-   
-    // Bail out if lat/long not set yet.
-    if (latitude==-1 && longitude==-1)
+    textAlign(LEFT, TOP);
+  
+    // Draw clock title
+    if (IsDesktop)
+    {
+      textSize(CurrentFontSize * 0.8);
+    }
+    else
+    {
+      textSize(CurrentFontSize * 1.4);
+    } 
+  
+    if (IsDaySpiral)
+    {
+      text("Day Spiral Clock", CenterX * 0.02, CenterY* 0.03)
+    }
+    else
+    {
+      text("Week Spiral Clock", CenterX * 0.02, CenterY* 0.03)
+    }
+  
+    // draw description text under clock title
+    if (IsDesktop)
+    {
+      textSize(CurrentFontSize * 0.38);
+    }
+    else
+    {
+      textSize(CurrentFontSize * 0.68);
+    }
+  
+    if (IsDaySpiral)
+    {
+      text("Hour hand tip follows the day spiral,", CenterX * 0.02, CenterY* 0.12)
+      text("making 1 turn for AM and 1 for PM.", CenterX * 0.02, CenterY* 0.17)
+    }
+    else // is week spiral
+    {
+      text("Hour hand tip follows the week spiral,", CenterX * 0.02, CenterY* 0.12)
+      text("making 2 turns per day for AM and PM.", CenterX * 0.02, CenterY* 0.17)
+    }
+  
+    text("Dark part of spiral indicates night.", CenterX * 0.02, CenterY* 0.22)
+    text("(C)2024 by Charlie Wallace", CenterX * 0.02, CenterY* 0.27)
+
+  
+    // Bail out if lat/long is not set yet.
+    if (Latitude==99999 || Longitude==99999)
     {
         return;
     }
+
+    // ==240124a
+    // Redraw the clock background - this hides the "Please Wait" message
+    if (IsDaySpiral)
+    {
+      fill(100);  // med gray
+    }
+    else  // is week spiral
+    {
+      fill(40);  // dark gray    
+    }
+  
+    noStroke();
+    ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
+    fill(255);
   
     textAlign(LEFT, BOTTOM);
-    var tzOffsetString = String(tzOffset);
+    textSize(RefFontSize*0.38);
   
+    //var tzOffsetString = str(TzOffset);
     // Add in a plus sign if not negative
-    if (tzOffset > 0)
-    {
-      tzOffsetString = "+" + String(tzOffset);
-    }
-    
-    //text("GMT offset:", cx * 0.02, cy* 1.8);
-  //  londonButton.position(cx*2 - 115, cy*2 - 110);  //cy* 1.75);  
+    //if (TzOffset > 0)
+    //{
+    //  tzOffsetString = "+" + str(TzOffset);
+    //}
 
-    text("GMT offset:", 10, cy*2 - 80);
+    text("GMT offset:", 10, CenterY*2 - 110);
   
-  	//text("latitude: " + latitude, cx * 0.02, cy* 1.88);
-  	text("latitude:", 10, cy*2 - 50);//cy* 1.88);
+  	text("Latitude:", 10, CenterY*2 - 80);
   
-    //	text("longitude: " + longitude, cx * 0.02, cy* 1.95);
-    text("longitude:", 10, cy*2 - 20);//cy* 1.95);
-
+    text("Longitude:", 10, CenterY*2 - 50);
+  
+    text("City:", 10, CenterY*2 - 20);
+  
     fill(0);  // black
-    
-    // time calcs: sets iHour, iMin, iSec, and iMs
-      // beware, iMs is ms since start of day, not start of last sec.
-    // This also calculates the "dayState" that indicates
-    // if it's (1) before sunrise, (2) during daylight, or (3) after sunset
-    updateTimeThisDay();  // set baseMs to ms since start of this day
   
   
-    var thisMillis = iMs;
-    var msSinceLastDraw = thisMillis - lastMillisec;
-    lastMillisec = thisMillis;
-  
-    // calc the current second including the fraction of upcoming second
-    var theSec = float(iSec)// + float(remainderMs)/1000; 
-    var currentSecDegree = theSec * 6;
-
-    var theMin = float(iMin) + theSec / 60;
-    var currentMinDegree = theMin * 6;
-  
-    var theHour = float(iHour) + theMin / 60;
-    var currentHourDegree = theHour * 30;
-   
-    // Angles for sin() and cos() start at 3 o'clock;
-    // subtract HALF_PI to make them start at the top
-    // These are angles in radians, used for hands
-    var secRads = map(theSec, 0, 60, 0, TWO_PI) - HALF_PI;
-    var minRads = map(theMin, 0, 60, 0, TWO_PI) - HALF_PI;
-    var hourRads = map(theHour, 0, 24, 0, TWO_PI * 2) - HALF_PI;
-  //EEE
-    if (hourRads > TWO_PI)
-    {
-      hourRads -= TWO_PI
-    }
-  
-  
-    // display night or day
-    noStroke();
-
-    // Display the current time
-    fill(255);
-    var amPmString = " PM";
-    if (isAM)
-    {
-      amPmString = " AM";
-    }
-    text("Current time: " + timeString + amPmString, cx*2-194, 32);
-  
-    // If there's no day or night due to high/low latitude, 
-    // don't draw day/night indication code. 
-    // note, -1 means all day, -2 means all night
-    if (sunsetHour >= 0)
-    {  
-      textAlign(RIGHT, TOP);
-      fill(255)     
-      text("Sunrise: " + sunriseHourString + 
-             ":" + sunriseMinString + sunriseAmpmString, 
-             cx*2 - 20, 42);
-             //cx * 1.95, cy* 0.03);
-      text("Sunset: " + sunsetHourString + ":" + 
-             sunsetMinString + sunsetAmpmString, 
-           cx*2 - 20, 70);
-             //cx * 1.95, cy* 0.11);    
+    // Draw outer clock face ================
       
-      var secondsIn6Hours = 60*60*6;
-      var secondsIn18Hours = 60*60*18;
-      var secondsIn12Hours = 60*60*12;
-      var seconds6amToSunrise = secondsToSunrise - secondsIn6Hours;
-      var secondsSunsetTo6pm = secondsIn18Hours - secondsToSunset;
-      var seconds6pmToSunsetYesterday = 
-            secondsToSunsetYesterday - secondsIn18Hours;
-      var secondsSunriseTo6amTomorrow = 
-            secondsIn6Hours - secondsToSunriseTomorrow;
-
-      var dayStartRads = HALF_PI;
-      var dayEndRads = HALF_PI + 2 * PI;
-      var nightStartRads = HALF_PI;
-      var nightEndRads = HALF_PI + 2 * PI;
-
-
-      // FINDME AAA - 
-
-      // Need to find the previous and next rise/set events. 
-      //    If was yesterday, Make neg seconds offset 
-      //    If was tomorrow, mike seconds offset > secondsPerDay
-
-      var previousRiseSetSeconds;
-      var previousRiseSetSecondsRads;
-      var isPreviousRiseSetWithin12Hr = true;
-
-      var nextRiseSetSeconds;
-      var nextRiseSetSecondsRads;
-      var isNextRiseSetWithin12Hr = true;
-      var secondsPerDay = 60*60*24;
-      var fillColor = 0; // black
-      var antiFillColor = 255;
-      if (dayState == 1) // curr time is between start of 24-hr day and sunrise
-      {
-        // All seconds are relative to start of this day, 
-        //   so this will be negative:
-        previousRiseSetSeconds = secondsToSunsetYesterday - secondsPerDay; 
-
-        nextRiseSetSeconds = secondsToSunrise;
-      }
-      else if (dayState == 2) // curr time is between sunrise and sunset
-      {
-        previousRiseSetSeconds = secondsToSunrise;
-
-        nextRiseSetSeconds = secondsToSunset;
-        fillColor = 255; // white
-      }
-      else // curr time is between sunset and end of 24-hr day
-      {
-        previousRiseSetSeconds = secondsToSunset;
-
-        // All seconds are relative to start of this day, 
-        //   so this will be > secondsPerDay:
-        nextRiseSetSeconds = secondsToSunriseTomorrow + secondsPerDay;
-      }      
-//print("ds=" + dayState + " nx=" + nextRiseSetSeconds + " pv=" + previousRiseSetSeconds + " now=" + secondsSoFar)
-      
-      // Check if the previous rise/set is so far back that we can't display it.
-      if (secondsSoFar - previousRiseSetSeconds > secondsIn12Hours)
-      {
-        isPreviousRiseSetWithin12Hr = false;
-      }
-      
-      // Check if the next rise/set is so far ahead that we can't display it.
-      if (nextRiseSetSeconds - secondsSoFar > secondsIn12Hours)
-      {
-        isNextRiseSetWithin12Hr = false;
-      }
-//print("prevWithinRange=" + isPreviousRiseSetWithin12Hr + " nxWithinRange=" + isNextRiseSetWithin12Hr)
-      
-      // Convert seconds into radians.
-      // Might be less than zero, so map onto range -2pi to 2pi
-      previousRiseSetSecondsRads = 
-        map(previousRiseSetSeconds, -secondsPerDay, secondsPerDay, 
-            -TWO_PI * 2, TWO_PI * 2) - HALF_PI;
-
-      // Might be > secondsPerDay, to map onto range 0 to 4 PI
-      nextRiseSetSecondsRads = 
-        map(nextRiseSetSeconds, 0, secondsPerDay, 0, TWO_PI*2) - HALF_PI;
-
-
-      if (fillColor == 255)
-      {
-        antiFillColor = 0;
-      }
-
-      var stripWidth = stripRadius*0.25;
-      var r2 = stripRadius - stripWidth;
-
-      var r5 = stripRadius - stripWidth * 0.75;
-      var c5x = cx - cos(hourRads) * stripWidth * 0.25;
-      var c5y = cy - sin(hourRads) * stripWidth * 0.25 ;
-      var c6x = cx + cos(hourRads) * stripWidth * 0.25 ;
-      var c6y = cy + sin(hourRads) * stripWidth * 0.25 ;
-      var r6 = stripRadius - stripWidth/4;
-
-      stroke(80);  // set gray edge color  
-      strokeWeight(2*fontScaleFactor); 
-
-      fill(0);  // set default fill to black
-
-      //==========================
-      // We need to fill in the past and future parts of the day/night strip with 
-      // light and dark based on the times of sunset and sunrise. 
-      // Must be done in the correct order so the outer arcs are drawn first.
-      // "Now" is secondsSoFar
-      // The outer arcs indicate future time, so draw the following:
-      
-      // === Pseudocode for future 2-pi radians =============:
-      // Let nextRiseSetSeconds be the seconds-to value for the upcoming rise or set.
-      //      (nextRiseSetSeconds starts at the previous midnight)
-      // Let color fillColor be white if isDay, else black.
-      // All future arcs use cx,cy as center.
-      // IF nextRiseSetSeconds falls within the first pi radians following Now:
-      //    Using color opposite of fillColor, draw arc over the first PI radians
-      //      after Now.
-      //    Draw arc from Now to nextRiseSetSeconds, using fillColor.
-      //    Draw arc from Now+PI to Now+TWO_PI using opposite of fillColor.
-      // ELSE (assume nextRiseSetSeconds falls within the second pi radians following Now)
-      //    Using color fillColor, draw arc over the first PI radians
-      //      after Now.
-      //    Draw arc from Now+PI to nextRiseSetSeconds, using fillColor.
-      //    Draw arc from nextRiseSetSeconds to Now+TWO_PI using color opposite of fillColor
-
-      // First half of upcoming 12 hours
-      fill(0)
-      //arc(cx, cy, stripRadius*2, stripRadius*2, hourRads, hourRads+PI);
-
-      // Second half of upcoming 12 hours
-      //arc(cx, cy, stripRadius*2, stripRadius*2, hourRads+PI, hourRads+TWO_PI);
-//EEE
-      //if ((nextRiseSetSeconds > secondsSoFar) && 
-      if (nextRiseSetSeconds <= secondsSoFar + (secondsPerDay/4)) 
-      {
-        fill(antiFillColor); 
-        arc(cx, cy, stripRadius*2, stripRadius*2, hourRads, hourRads+PI);
-        fill(fillColor);
-        arc(cx, cy, stripRadius*2, stripRadius*2, hourRads, nextRiseSetSecondsRads);
-        fill(antiFillColor);
-        arc(cx, cy, stripRadius*2, stripRadius*2, hourRads+PI, hourRads+TWO_PI);
-      }
-      else
-      {
-        fill(fillColor);
-        arc(cx, cy, stripRadius*2, stripRadius*2, hourRads, hourRads+PI);
-        
-        if (isNextRiseSetWithin12Hr)
-        {
-          arc(cx, cy, stripRadius*2, stripRadius*2, hourRads+PI, nextRiseSetSecondsRads);
-          fill(antiFillColor);
-          // only draw the following if "now" does NOT fall within the overlap
-          //   of the ends of the spiral.  Overlap only happens when the day (or night) is
-          //   longer than 12 hours
-          if (secondsSoFar<previousRiseSetSeconds ||
-             secondsSoFar > (nextRiseSetSeconds-(secondsPerDay/2)))
-          {
-            arc(cx, cy, stripRadius*2, stripRadius*2, nextRiseSetSecondsRads, hourRads+TWO_PI);
-          }
-        }
-        else
-        {
-          arc(cx, cy, stripRadius*2, stripRadius*2, hourRads+PI, hourRads+TWO_PI);
-        }
-      }
-
-
-      // === Pseudocode for past 2-pi radians ============
-      // Let T2 be the seconds-to value for the previous rise/set event.
-      // Let color fillColor be white if isDay, else black.
-      // IF T2 falls in range from Now to Now-PI:
-      //    Using center c6x,c6y, shifted from cx,cy by stripWidth/4
-      //      Draw arc from Now to Now-PI using color anti-fillColor
-      //      Draw arc from Now to T2 using fillColor
-      //    Using center c5x,c5y, anti-shifted from cx,cy by stripWidth/4
-      //      Draw arc from Now to Now+PI using color anti-fillColor
-      // ELSE (assume T2 falls before Now-PI)
-      //    Using center c6x,c6y, shifted from cx,cy by stripWidth/4
-      //      Draw arc from Now to Now-PI using color fillColor
-      //    Using center c5x,c5y, anti-shifted from cx,cy by stripWidth/4
-      //      Draw arc from Now-PI to Now-TWO_PI using color anti-fillColor  
-      //      Draw arc from Now-PI to T2 using color fillColor
-
-      // Most recent half of preceding 12 hours
-      fill(0)
-      //arc(c6x, c6y, r6*2, r6*2, hourRads-PI, hourRads);
-
-      // Earlier half of preceding 12 hours
-      fill(0)
-      //arc(c5x, c5y, r5*2, r5*2, hourRads, hourRads+PI);
-      strokeWeight(2*fontScaleFactor);
-
-      //if ((previousRiseSetSeconds < secondsSoFar) && 
-      if (previousRiseSetSeconds >= secondsSoFar - (secondsPerDay/4))//)
-      {
-        fill(antiFillColor); 
-        arc(c6x, c6y, r6*2, r6*2, hourRads-PI, hourRads);
-        fill(fillColor);
-        arc(c6x, c6y, r6*2, r6*2, previousRiseSetSecondsRads, hourRads );
-        fill(antiFillColor);
-        arc(c5x, c5y, r5*2, r5*2, hourRads, hourRads+PI);
-      }
-      else
-      {
-        fill(fillColor);
-        arc(c6x, c6y, r6*2, r6*2, hourRads-PI, hourRads);
-        
-        //EEE
-        //if (previousRiseSetSecondsRads > hourRads)
-        // If arc from pt opposite current hour position to time of 
-        //  the last rise/set covers more than half the circle,
-        //  that means we would draw over the previous arc, 
-        //  we need to avoid that.
-        //if (hourRads+PI - previousRiseSetSecondsRads < PI)
-        if (isPreviousRiseSetWithin12Hr)
-        {
-          // Next sunset/rise falls within the first PI
-          // radians after the point opposite current hour pos.
-          // Thus we do need to pre-fill with opposite color, 
-          // then draw up to the prev rise/set using fill color.
-          
-          //print(previousRiseSetSecondsRads + " " + hourRads)
-          fill(antiFillColor);
-          arc(c5x, c5y, r5*2, r5*2, hourRads, hourRads+PI);
-          fill(fillColor);
-          arc(c5x, c5y, r5*2, r5*2, previousRiseSetSecondsRads, hourRads+PI);
-        } 
-        else           
-        {
-          // the prev rise/set is so far back that it would require
-          // drawing more than half the circle back before the point
-          // opposite the current time.  That farther than needed,
-          // so we just fill in the fill color.
-          arc(c5x, c5y, r5*2, r5*2, hourRads, hourRads+PI);
-          //print("EEE")
-        }
-      }
-    } // end of block that doesn't run when it's all night or all day
+    // draw ellipse to fill entire face, will end up
+    // as background for the hour labels on outside.
   
-    // Finally - draw in the center ellipse in grey fill(80)
-    // BBB
-    fill(80); // normally center is medium gray
-    if (sunsetHour == -1) // all day
-    {
-      textAlign(RIGHT, TOP);
-      fill(255)     
-      text("No Night", cx * 1.96, cy* 0.03);
-    }
-    else if (sunsetHour == -2) // all  night 
-    {
-      textAlign(RIGHT, TOP);
-      fill(255)     
-      text("No Daylight", cx * 1.96, cy* 0.03);
-      fill(0);
-    }
-    ellipse(cx, cy, r2*2 , r2*2);
-      
-    fill(0);
-  
+    strokeWeight(0)
+    fill(255); //60)
+    ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
 
-    // Draw the hands of the clock ===============
-  
-    stroke(180);  // set white color  
-    strokeWeight(5*fontScaleFactor);
-    line(cx, cy, cx + cos(secRads) * secondsRadius, cy + sin(secRads) * secondsRadius);
-    strokeWeight(10*fontScaleFactor);
-    line(cx, cy, cx + cos(minRads) * minutesRadius, cy + sin(minRads) * minutesRadius);
-    strokeWeight(20*fontScaleFactor);
-    line(cx, cy, cx + cos(hourRads) * hoursRadius, cy + sin(hourRads) * hoursRadius);
-
-      
-    // Draw in hour ticks ================
-      
-    stroke(180);
-    strokeWeight(1)
-    noFill();
-    ellipse(cx, cy, hourNumbersRadius*2 * 0.85, hourNumbersRadius*2 * 0.85);
+    fill(120);  // Color of bkgnd behind spiral
+    ellipse(CenterX, CenterY, InnerFaceRadius*2, InnerFaceRadius*2);
+ 
     // Draw the hour ticks
     stroke(255)
-    strokeWeight(8*fontScaleFactor);
+    strokeWeight(8*FontScaleFactor);
     beginShape(POINTS);
-    for (var b = 0; b < 360; b+=30) {
-    var angle = radians(b);
-    var x = cx + cos(angle) * hourNumbersRadius * 0.85;
-    var y = cy + sin(angle) * hourNumbersRadius * 0.85;
-    vertex(x, y);
+    for (var b = 0; b < 360; b+=30) 
+    {
+      var angle = radians(b);
+      var x = CenterX + cos(angle) * (InnerFaceRadius * 0.977);
+      var y = CenterY + sin(angle) * (InnerFaceRadius * 0.977);
+      vertex(x, y);
     }
     endShape();
     
@@ -1687,332 +2164,1131 @@ function draw() {
       
     // Draw hour labels =====================
       
-    currentFontSize = refFontSize * fontScaleFactor;
+    CurrentFontSize = RefFontSize * FontScaleFactor;
   
     // Specify font to be used
-    textSize(currentFontSize * 0.4);
+    textSize(CurrentFontSize * 0.4);
     textFont("Arial");
     textAlign(CENTER, CENTER);
 
-    fill(200);                         // Specify font color
+    fill(HourDigitColor);   // Specify font color
+
+    textSize(CurrentFontSize * 0.98);
   
-    textSize(currentFontSize * 0.8);
+    textStyle(BOLD);
 
     numString = "12";
-    text(numString, theWidth/2, theHeight/2 - hourNumbersRadius); 
+    text(numString, TheWidth/2, TheHeight/2 - HourNumbersRadius); 
   
     numString = "1";
-    var xOffset1 = hourNumbersRadius * cos(2*PI/6);
-    var yOffset1 = hourNumbersRadius * sin(2*PI/6);
-    text(numString, theWidth/2 + xOffset1, theHeight/2 - yOffset1); 
+    var xOffset1 = HourNumbersRadius * cos(2*PI/6);
+    var yOffset1 = HourNumbersRadius * sin(2*PI/6);
+    text(numString, TheWidth/2 + xOffset1, TheHeight/2 - yOffset1); 
   
     numString = "2";
-    var xOffset2 = hourNumbersRadius * cos(PI/6);
-    var yOffset2 = hourNumbersRadius * sin(PI/6);
-    text(numString, theWidth/2 + xOffset2, theHeight/2 - yOffset2); 
+    var xOffset2 = HourNumbersRadius * cos(PI/6);
+    var yOffset2 = HourNumbersRadius * sin(PI/6);
+    text(numString, TheWidth/2 + xOffset2, TheHeight/2 - yOffset2); 
   
     numString = "3";
-    numHeight = currentFontSize;//f.getSize();
-    text(numString, theWidth/2 + hourNumbersRadius, theHeight/2); 
+    numHeight = CurrentFontSize;//f.getSize();
+    text(numString, TheWidth/2 + HourNumbersRadius, TheHeight/2); 
    
     numString = "4";
-    text(numString, theWidth/2 + xOffset2, theHeight/2 + yOffset2); 
+    text(numString, TheWidth/2 + xOffset2, TheHeight/2 + yOffset2); 
    
     numString = "5";
-    text(numString, theWidth/2 + xOffset1, theHeight/2 + yOffset1); 
+    text(numString, TheWidth/2 + xOffset1, TheHeight/2 + yOffset1); 
  
     numString = "6";
-
-    text(numString, theWidth/2, theHeight/2 + hourNumbersRadius); 
+    text(numString, TheWidth/2, TheHeight/2 + HourNumbersRadius); 
    
     numString = "7";
-    text(numString, theWidth/2 - xOffset1, theHeight/2 + yOffset1); 
+    text(numString, TheWidth/2 - xOffset1, TheHeight/2 + yOffset1); 
     
     numString = "8";
-    text(numString, theWidth/2 - xOffset2, theHeight/2 + yOffset2); 
+    text(numString, TheWidth/2 - xOffset2, TheHeight/2 + yOffset2); 
    
     numString = "9";
-    text(numString, theWidth/2 - hourNumbersRadius, theHeight/2); 
+    text(numString, TheWidth/2 - HourNumbersRadius, TheHeight/2); 
 
     numString = "10";
-    text(numString, theWidth/2 - xOffset2, theHeight/2 - yOffset2); 
+    text(numString, TheWidth/2 - xOffset2, TheHeight/2 - yOffset2); 
 
     numString = "11";
-    text(numString, theWidth/2 - xOffset1, theHeight/2 - yOffset1); 
+    text(numString, TheWidth/2 - xOffset1, TheHeight/2 - yOffset1); 
+
+    // restore text style
+    textStyle(NORMAL);
+
+    
+    //==========================================
+    // time calcs: sets IHour, IMin, ISec, and IMsSinceDayStart
+    //   <<< beware, IMsSinceDayStart is ms since start of day, not start of last sec!
+    // This also calculates the "DayState" that indicates
+    // if it's (1) before sunrise, (2) during daylight, or (3) after sunset
+    updateTimeThisDay();  // set baseMs to ms since start of this day  
+  
+    var thisMillis = IMsSinceDayStart;
+    var msSinceLastDraw = thisMillis - LastMillisec;
+    LastMillisec = thisMillis;
+  
+    // calc the current second including the fraction of upcoming second
+    var theSec = float(ISec)// + float(remainderMs)/1000; 
+    var currentSecDegree = theSec * 6;
+
+    var theMin = float(IMin) + theSec / 60;
+    var currentMinDegree = theMin * 6;
+  
+    var theHour = float(IHour) + theMin / 60;
+    var currentHourDegree = theHour * 30;
+   
+    // Angles for sin() and cos() start at 3 o'clock;
+    // subtract HALF_PI to make them start at the top
+    // These are angles in radians, used for hands
+    var secRads = map(theSec, 0, 60, 0, TWO_PI) - HALF_PI;
+    var minRads = map(theMin, 0, 60, 0, TWO_PI) - HALF_PI;
+  
+    var hourRads = map(theHour, 0, 24, 0, TWO_PI * 2) - HALF_PI;
+  
+    if (hourRads > TWO_PI)
+    {
+      hourRads -= TWO_PI
+    }
+  
+    //-------------------------------------------------------
+    // Set length of hour hand to fall on the week spiral
+    // appropriately for the current day and am/pm.
+    // note that there are 2 turns per day
+    var iiSpiral = 0;
+  
+    // Calc index into radius array for the current time.
+    //  taking into acct that there are two turns per day for each AM/PM.
+    if (IsDaySpiral)
+    {
+      iiSpiral = int((theHour/24)*NumSpiralPointsPerTurn * 2);
+    }
+    else // is week spiral
+    {
+      iiSpiral = int(IDow * NumSpiralPointsPerTurn * 2) +
+        int((theHour/24)*NumSpiralPointsPerTurn * 2);        
+    }
+  
+    if (iiSpiral < NumSpiralPointsPerTurn*NumSpiralTurns) // if index is valid
+    {
+      HoursRadius = RadiusSpiralArray[iiSpiral];  //wc5
+    }
+    else
+    {
+      print("ERROR: Illegal index into the RadiusSpiralArray=" + str(iiSpiral) + " for IDow=" + str(IDow));
+      print("theHour=" + str(theHour) + " NumSpiralPointsPerTurn=" + str(NumSpiralPointsPerTurn));
+      print("IHour=" + str(IHour));
+      print("NumSpiralTurns=" + str(NumSpiralTurns));
+      
+      HoursRadius = ClockDiameter/4; // fallback in case iiSpiral was not valid
+    }
+
+  
+    noStroke();
+
+    //===============================================================
+    // Display info for the selected location in upper rt corner of window.
+    // This is NOT necessarily the browser's location.
+    // Includes  time, date, day, dst status, sunrise and sunset.
+  
+    fill(255);    
+    if (IsDesktop)
+    {
+      textSize(CurrentFontSize * 0.8);
+    }
+    else
+    {
+      textSize(CurrentFontSize * 1.4);
+    } 
+    textAlign(RIGHT, TOP);
+    text(LocaleTitle, CenterX*2-19, 12);  
+
+    if (IsDesktop)
+    {
+      textSize(CurrentFontSize * 0.38);
+    }
+    else
+    {
+      textSize(CurrentFontSize * 0.68);
+    }  
+
+
+    var amPmString = " PM";
+    if (IsAM)
+    {
+      amPmString = " AM";
+    }
+  
+    textAlign(RIGHT, TOP);
+    text(TimeString + amPmString, CenterX*2-19, CenterY* 0.12); // 53);
+    text(DateString, CenterX*2-19, CenterY* 0.17); // 75);
+    text(getDayStringLong(IDow), CenterX*2-19, CenterY* 0.22); // 98);
+    text("Daylight Savings: " + IsDst, CenterX*2-19, CenterY* 0.27); // 121);
+  
+    if (SunriseHour >=0)
+    {
+      text("Sunrise: " + SunriseHourString + ":" + SunriseMinString 
+        + SunriseAmpmString, CenterX*2-19, CenterY* 0.32);
+      text("Sunset: " + SunsetHourString + ":" + SunsetMinString 
+        + SunsetAmpmString, CenterX*2-19, CenterY* 0.37);
+    }
+    else if (SunriseHour==-2)
+    {
+      text("Light All Day", CenterX*2-19, CenterY* 0.32);
+    }
+    else if (SunriseHour==-1)
+    {
+      text("Dark All Day", CenterX*2-19, CenterY* 0.32);
+    }  
+  
+    /*** Old formatting  *******************
+    
+    text(TimeString + amPmString, CenterX*2-19, 12);
+    text(DateString, CenterX*2-19, 35);
+    text(getDayStringLong(IDow), CenterX*2-19, 58);
+    text("Daylight Savings: " + IsDst, CenterX*2-19, 81);
+  
+    if (SunriseHour >=0)
+    {
+      text("Sunrise: " + SunriseHourString + ":" + SunriseMinString 
+        + SunriseAmpmString, CenterX*2-19, 104);
+      text("Sunset: " + SunsetHourString + ":" + SunsetMinString 
+        + SunsetAmpmString, CenterX*2-19, 127);
+    }
+    else if (SunriseHour==-2)
+    {
+      text("Light All Day", CenterX*2-19, 104);
+    }
+    else if (SunriseHour==-1)
+    {
+      text("Dark All Day", CenterX*2-19, 104);
+    }  
+    ***********************/
+  
+    textAlign(LEFT, TOP);
+    stroke(255);
+    strokeCap(SQUARE);
+    noFill();
+  
+    // set font size of day-of-week labels
+    var dowLabelSizeDsktp = 0.;
+    var dowLabelSizeMobl = 0.3;
+    var dowLabelSizeDsktpBoost = 0.57;
+    var dowLabelSizeMoblBoost = 0.4;
+    if (IsDesktop)
+    {
+      textSize(RefFontSize*dowLabelSizeDsktp);
+    }
+    else 
+    {
+      textSize(RefFontSize*dowLabelSizeMobl);        
+    }
+  
+    // Draw the spiral ================
+  
+    var vv;
+    var vvBase;
+    var vvRise;
+    var secToRise;
+    var vvSet;
+    var secToSet;
+  
+    var dw = IDow;
+    var dayColor = getDayColor(dw);
+    var nightColor = getNightColor(dw);
+    var dayString = getDayStringShort(dw);
+    var nextDayString = getDayStringShort(dw+1);
+  
+    // set weight differently when running on phone.  
+    //   Should be reduced by about half.
+    strokeWeight(6); //Note, 6/12 is max on phone/desktop
+    if (IsDesktop)
+    {
+        strokeWeight(10);
+    }  
+  
+    // Draw logic for the simple 2-turn case, DaySpiral.  See below for 
+    // more complex week spiral code...
+    if (IsDaySpiral)
+    {
+      // Draw the day spiral for the current day.
+      // Use broader stroke for the day spiral, since it's only 2 turns long
+      strokeWeight(14); // for phone
+      if (IsDesktop)
+      {
+          strokeWeight(30);
+      } 
+      
+      // ==240125a
+      dayColor = getDayColor(dw);
+      nightColor = getNightColor(dw);
+
+      dowLabelSizeDsktpBoost = 0.5;
+      dowLabelSizeMoblBoost = 0.4;
+      
+      stroke(dayColor);
+      vvBase = 0;
+      
+      if (SunriseHour !=-1) // if not dark-all-day
+      {
+        // use daytime color, but draw the entire 24hrs for this day.
+        // If it's light all day (midnight sun) then this is all we need.
+        // Otherwise, we'll draw the night-time part over this.
+        beginShape();
+        for (vv=0; vv<=2*NumSpiralPointsPerTurn; vv++)
+        {
+          //print("for day=" + dw +" color="+ dayColor);
+          vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+        }
+        endShape();     
+
+        if (SunriseHour !=-2) // if not all-day-sun
+        {               
+          // now draw in the night portion for this day-of-week.
+          stroke(nightColor); // set black color
+
+
+          // first the part from midnight to sunrise ----------------
+          secToRise = SunriseMin*60 + SunriseHour*3600;
+
+          // convert seconds to vv offset from start
+          vvRise = int((secToRise/(60*60*24)) * NumSpiralPointsPerTurn*2);
+
+          beginShape();
+          for (vv=0; vv<vvRise; vv++)
+          {
+            vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+          }
+          endShape();     
+
+          // Next draw the part from sunset to midnight ----
+          // vv at sunset is vvSet, 
+          // vv at midnight is NumSpiralPointsPerTurn
+
+          // seconds from midnight to sunset
+          secToSet = SunsetMin*60 + SunsetHour*3600;
+          // convert seconds to vv offset
+          vvSet = int((secToSet/(60*60*24)) * NumSpiralPointsPerTurn*2);
+          beginShape();
+
+          // NOTE use of <= below, this ensures that the last vertex hooks up with first.
+          for (vv=vvSet; vv<=2*NumSpiralPointsPerTurn; vv++)
+          {
+            vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+          }
+
+          endShape();  
+        }        
+
+      }
+      else // is 24hr night
+      {
+        // use night-time color, but draw the entire 24hrs for this day.
+        stroke(nightColor);
+        console.log("midnight sun")
+
+        beginShape();
+        for (vv=0; vv<=2*NumSpiralPointsPerTurn; vv++)
+        {
+          //print("for day=" + dw +" color="+ dayColor);
+          vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+        }
+        endShape(); 
+      }    
+      
+      textStyle(BOLD);
+      
+      //------------------------
+      // Show day of week label next to start of spiral
+      // boost text size for emphasis, same for dsktop and mobile
+      
+      strokeWeight(0);
+      //fill(color(251, 246, 71));  // yellow
+      fill(color(255, 245, 0));  // yellow
+      let vvEnd = 2*NumSpiralPointsPerTurn-1;
+      //textAlign(RIGHT, TOP);
+      textAlign(LEFT, TOP);
+      
+      // Supress the day labels when gmt display is on
+      if (!IsGmtShown)
+      {   
+        if (IsDesktop)
+        {
+            textSize(RefFontSize*dowLabelSizeDsktpBoost); // boosted text scale for desktop
+            text(dayString, CenterX+XSpiralArray[vvBase]+3, CenterY+YSpiralArray[vvBase]-9); 
+
+            textAlign(LEFT, TOP);
+            text(nextDayString, CenterX+XSpiralArray[vvEnd]+5, CenterY+YSpiralArray[vvEnd]-11); 
+            textSize(RefFontSize*dowLabelSizeDsktp); // Restore text size
+
+        }
+        else // on phone
+        {
+          textSize(RefFontSize*dowLabelSizeMoblBoost);  // boosted text scale for mobile  
+          text(dayString, 
+            CenterX+XSpiralArray[vvBase]+1, 
+            CenterY+YSpiralArray[vvBase]-7); 
+
+          textAlign(LEFT, TOP);
+          text(nextDayString, CenterX+XSpiralArray[vvEnd]+5, CenterY+YSpiralArray[vvEnd]-9); 
+          textSize(RefFontSize*dowLabelSizeMobl); // Restore text size        
+        }
+      }
+      
+      // If display of GMT is enabled, we show on the spiral
+      if (IsGmtShown)
+      {
+        let gmtHour = 0; 
+        let theLocalHour = 0;
+        let gmtHourIndex = 0;
+        let gmtLabelX = 0;
+        let gmtLabelY = 0;         
+        
+        textAlign(CENTER, CENTER);
+        if (IsDesktop)
+        {
+          textSize(RefFontSize*dowLabelSizeDsktpBoost); // boosted text scale for desktop
+        }
+        else
+        {
+          textSize(RefFontSize*dowLabelSizeMoblBoost);  // boosted text scale for mobile      
+        }
+
+        // FINDME
+
+        for (theLocalHour=0; theLocalHour<24; theLocalHour++) // step thru the gmt hours
+        {
+          // calculate the gmt equivalent of theLocalHour
+          gmtHour = theLocalHour - TzOffset;
+          if (gmtHour > 23)
+          {
+            gmtHour = gmtHour - 24;
+          }
+          else if (gmtHour < 0)
+          {
+            gmtHour = gmtHour + 24;
+          }
+
+          // get the location to place the gmtHour from the spiral arrays
+          gmtHourIndex = int((theLocalHour/24)*NumSpiralPointsPerTurn * 2);
+          gmtLabelX = CenterX+XSpiralArray[gmtHourIndex];
+          gmtLabelY = CenterY+YSpiralArray[gmtHourIndex];
+
+          text(str(gmtHour), gmtLabelX, gmtLabelY); 
+          
+          if (theLocalHour == 0)
+          {
+            textAlign(RIGHT, CENTER);
+
+            text("GMT", gmtLabelX-20, gmtLabelY); 
+            textAlign(CENTER, CENTER);
+            
+            // The gmt label for the start of the day is the same as the end
+            gmtHourIndex = NumSpiralPointsPerTurn * 2;
+            gmtLabelX = CenterX+XSpiralArray[gmtHourIndex];
+            gmtLabelY = CenterY+YSpiralArray[gmtHourIndex];
+
+            text(str(gmtHour), gmtLabelX, gmtLabelY); 
+            
+
+
+          }
+        }
+
+      }
+      
+      
+      textAlign(LEFT, TOP); // restore alignment
+      
+      // END of spiral draw for day spiral
+    }
+    else  // Draw logic for 14-turn week spiral ============================
+    {
+
+      for (dw=0; dw<7; dw++) // step thru the days of the week
+      {
+        dayColor = getDayColor(dw);
+        nightColor = getNightColor(dw);
+        dayString = getDayStringShort(dw);
+
+        stroke(dayColor);
+
+        vvBase = dw*NumSpiralPointsPerTurn*2;
+
+        if (SunriseWeekHourArray[dw] !=-1) // if not dark-all-day
+        {
+          // use daytime color, but draw the entire 24hrs for this day.
+          // If it's light all day (midnight sun) then this is all we need.
+          // Otherwise, we'll draw the night-time part over this.
+          beginShape();
+          for (vv=vvBase; vv<=vvBase+2*NumSpiralPointsPerTurn; vv++)
+          {
+            //print("for day=" + dw +" color="+ dayColor);
+            vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+          }
+          endShape(); 
+
+          if (SunriseWeekHourArray[dw] !=-2) // if not all-day-sun
+          {               
+            // now draw in the night portion for this day-of-week.
+            stroke(nightColor); // set black color
+
+            // first the part from midnight to sunrise ----------------
+            // vv at midnight is vvBase; vv at sunrise is needed = vvRise.
+
+            // seconds from midnight on day dw to sunrise that day
+            secToRise = SunriseWeekSecFromSunArray[dw] - 
+                (60*60*24 * dw);
+            // convert seconds to vv offset from start of day dw
+            vvRise = int((secToRise/(60*60*24)) * NumSpiralPointsPerTurn*2);
+
+            beginShape();
+            for (vv=vvBase; vv<vvBase + vvRise; vv++)
+            {
+              vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+            }
+            endShape();  
+
+            // Next draw the part from sunset to midnight ----
+            // vv at sunset is vvSet, 
+            // vv at midnight is vvBase+NumSpiralPointsPerTurn
+
+            // seconds from midnight on day dw to sunset that day
+            secToSet = SunsetWeekSecFromSunArray[dw] - 
+                (60*60*24 * dw);
+            // convert seconds to vv offset
+            vvSet = int((secToSet/(60*60*24)) * NumSpiralPointsPerTurn*2);
+            beginShape();
+
+            // NOTE use of <= below, this ensures that the last vertex hooks up with first.
+            for (vv=vvBase+vvSet; vv<=vvBase+2*NumSpiralPointsPerTurn; vv++)
+            {
+              vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+            }
+
+            endShape();  
+          }
+        }
+        else // midnight sun
+        {
+          // use night-time color, but draw the entire 24hrs for this day.
+          stroke(nightColor);
+
+          beginShape();
+          for (vv=vvBase; vv<=vvBase+2*NumSpiralPointsPerTurn; vv++)
+          {
+            vertex(CenterX+XSpiralArray[vv], CenterY+YSpiralArray[vv]);  
+          }
+          endShape(); 
+        }
+
+        // Add day-of-week label just after midnight 
+        fill(255);
+        noStroke();
+
+        // Draw in the day-of-week label, in a column under the 12. Make the current day bold/larger.
+        if (dw==IDow)
+        {
+          textStyle(BOLD);
+          fill(color(251, 246, 71));  // yellow
+          
+           // boost text size for emphasis, same for dsktop and mobile
+          if (IsDesktop)
+          {
+            textSize(RefFontSize*dowLabelSizeDsktpBoost); // boosted text scale for desktop
+            text(dayString, 
+             CenterX+XSpiralArray[vvBase]+3, 
+             CenterY+YSpiralArray[vvBase]-11); 
+          }
+          else
+          {
+            textSize(RefFontSize*dowLabelSizeMoblBoost);  // boosted text scale for mobile  
+            text(dayString, 
+             CenterX+XSpiralArray[vvBase]+3, 
+             CenterY+YSpiralArray[vvBase]-8); 
+          }
+        }
+        else  // is NOT the current day of the week.
+        {
+          textStyle(NORMAL);
+          if (IsDesktop)
+          {
+            text(dayString, 
+               CenterX+XSpiralArray[vvBase]+3, 
+               CenterY+YSpiralArray[vvBase]-5); 
+          }
+          else
+          {
+            text(dayString, 
+               CenterX+XSpiralArray[vvBase]+3, 
+               CenterY+YSpiralArray[vvBase]-5);             
+          }
+        }
+        
+        // Restore text size
+        if (IsDesktop)
+        {
+          textSize(RefFontSize*dowLabelSizeDsktp); 
+        }
+        else
+        {
+          textSize(RefFontSize*dowLabelSizeMobl);        
+        }
+
+        textStyle(NORMAL);
+
+        noFill();
+      }
+    }
+
+    strokeCap(ROUND);
+    fill(0);
+  
+
+    // Draw the hands of the clock ===============
+  
+    stroke(255);  // set hand color
+  
+    // Draw second hand
+    strokeWeight(5*FontScaleFactor);
+    line(CenterX, CenterY, CenterX + cos(secRads) * SecondsRadius, CenterY + sin(secRads) * SecondsRadius);
+  
+    // draw minute hand
+    strokeWeight(10*FontScaleFactor);
+    line(CenterX, CenterY, CenterX + cos(minRads) * MinutesRadius, CenterY + sin(minRads) * MinutesRadius);
+  
+    // draw hour hand
+    strokeWeight(17*FontScaleFactor);
+
+    // Draw hour hand with square cap so it clearly shows where it's tracking on the
+    // week spiral.  
+    strokeCap(SQUARE);
+    let adjustedHourRadius = HoursRadius;
+    if (IsGmtShown && IsDaySpiral)
+    {
+      adjustedHourRadius = RadiusSpiralArray[iiSpiral] - ClockDiameter* 0.017;  //wc5
+    }
+  
+    line(CenterX, CenterY, CenterX + cos(hourRads) * adjustedHourRadius, 
+         CenterY + sin(hourRads) * adjustedHourRadius);
+  
+    // Redraw the hour hand at half length to avoid having a square end cap in the center
+    //  of the clock
+    strokeCap(ROUND); // restore round ends    
+    line(CenterX, CenterY, CenterX + cos(hourRads) * HoursRadius/2, CenterY + sin(hourRads) * HoursRadius/2);
+  
+    // Draw a little circle around the tip of the hour hand to emphasize that it's following
+    //   the week spiral
+    noFill();
+    strokeWeight(3)
+
+    stroke(255); // white
+
+  
+    if (IsDaySpiral)
+    {
+      ellipse(CenterX + cos(hourRads) * HoursRadius, 
+              CenterY + sin(hourRads) * HoursRadius,
+              32*FontScaleFactor, 
+              32*FontScaleFactor);
+    }
+    else // for week spiral use smaller diameter circle
+    {
+      ellipse(CenterX + cos(hourRads) * HoursRadius, 
+              CenterY + sin(hourRads) * HoursRadius,
+              27*FontScaleFactor, 
+              27*FontScaleFactor);
+    }
+  
+    // restore text style
+    textStyle(NORMAL);
 }
+
 
 
 // ===============================================
 // Calculate the time of sunset or sunrise.
-// Results are returned in globalse sunsetHour, sunsetMin;
-// Returns sunsetHour = -1 if it's always dark, = -2 if always light
+// Results are returned in globals OutputHour, OutputMin;
+// Returns OutputHour = -1 if it's always dark, = -2 if always light
+// The result applies to the current time zone.
 
 function calcRiseSetTime(
 				isCalculatingSunrise,  // true = sunrise, false = sunset
-				latitude, 
-				longitude, 
+				passedLatitude, 
+				Longitude, 
 				gmto,     // GMT offset (not the same as time zone)
-				isDaylightSavings)      // daylight savings flag
-		{                                     			
-			var fLati = radians(latitude);    // convert to radians
-			var fLongi = radians(longitude);  // convert to radians
-          
-			var fGmto;  // GMT Offset in radians
-			// convert the offset from GMT time (in hours) to radians:
-			if (isDaylightSavings)
-			{	// compensate for daylight savings time
-    			fGmto = (-gmto-1) * 2*PI/24;  // convert to radians
-			}
-			else
-			{
-    			fGmto = -gmto * 2*PI/24;  // convert to radians
-			}
-		    
-			var 
-    			daynum,	// day number
-    			mm,	// solar true longitude
-    			tmp,	// temp          
-    			jj,
-    			kk,
-    			ll,
-    			pp,
-    			qq,
-    			ss,
-    			tt,
-    			vv,
-    			ww,
-    			xx,
-    			yy,
-    			zz;
-		    	
-			var mo, da, yr;
-		                    
-			outputHour = 0;
-			outputMin = 0;
-		   
-			// Calculate the current values of the hour, min, and second members of the
-			//  CClockView class. A clock class can get at these via its pView_ pointer.
-			//
-			da = day();
+				passedDST)      // daylight savings flag
+{                                     			
+    var fLati = radians(passedLatitude);    // convert to radians
+    var fLongi = radians(Longitude);  // convert to radians
 
-			mo = month();
+    var fGmto;  // GMT Offset in radians
+    // convert the offset from GMT time (in hours) to radians:
+    if (passedDST)
+    {	// compensate for daylight savings time
+        fGmto = (-gmto-1) * 2*PI/24;  // convert to radians
+    }
+    else
+    {
+        fGmto = -gmto * 2*PI/24;  // convert to radians
+    }
 
-			yr = year();
-		           
-			// calcs from astronomy mag 1984 article
-			tmp = int((mo+9)/12);
-			if ((yr/4) - int(yr/4) != 0)
-			{
-				tmp *= 2;
-			}
-			
-			daynum = int(275*mo/9) + da - tmp - 30;
+    var 
+        daynum,	// day number
+        mm,	// solar true longitude
+        tmp,	// temp          
+        jj,
+        kk,
+        ll,
+        pp,
+        qq,
+        ss,
+        tt,
+        vv,
+        ww,
+        xx,
+        yy,
+        zz;
 
-			if (isCalculatingSunrise)   // if sunrise
-			{
-				jj = PI/2;
-			}
-			else
-			{
-				jj = PI*2;
-			}
-		    
-			kk = daynum + ((jj+fLongi)/(2*PI));
-			ll = kk * 0.017202 - 0.0574039;
-			mm = ll + 0.0334405*sin(ll) + 0.000349066*sin(2*ll) + 4.93289;
-		    
-			// normalize mm
-			while (mm < 0)
-			{
-    			mm += 2*PI;
-			}
-			while (mm >= 2*PI)
-			{
-    			mm -= 2*PI;
-			}
+    var mo, da, yr;
 
-			if (2 * mm / PI - int(2 * mm / PI) == 0)
-    		{
-				mm += 4.84814E-06; //0.00000484814
-			}
-		    
-			pp = atan(0.91746 * (sin(mm)/cos(mm)));   
-		    
-			if (mm > PI/2)
-			{
-    			if (mm > 3*PI/2)
-    			{
-    				pp += 2*PI;
-    			}
-    			else
-    			{
-    				pp += PI;
-    			}
-			}
-		    
-			qq = 0.39782 * sin(mm);
-			qq = atan(qq /sqrt(1 - (qq * qq)));
-		    
-			ss = (-0.014539 - (sin(qq) * sin(fLati)))/(cos(qq) * cos(fLati));
+    OutputHour = 0;
+    OutputMin = 0;
 
-			// DEBUG PRINTOUT //////////////////////////////////////
-			//	char tbuf[80];
-			//	_snprintf(tbuf, 79, "ss = %12.8f", ss );
-			//	AfxMessageBox(tbuf);   
+    // Calculate the current values of the hour, min, and second members of the
+    //  CClockView class. A clock class can get at these via its pView_ pointer.
+    //
+    da = day();
 
-			if (ss > 1)  
-			{   
-				// There is no sunset/sunrise, it is always dark
-    			outputMin = 0;
-   				outputHour = -1;
-    			return;	 
-			}
-			else if (ss < -1)  
-			{
-				// There is no sunset/sunrise, it is always light
-    			outputMin = 0;
-   				outputHour = -2;
-    			return;	 
-			}
+    mo = month();
 
-			ss = -atan(ss / sqrt(1 - ss * ss)) + PI / 2;
+    yr = year();
 
-			if (isCalculatingSunrise)
-			{
-    			ss = 2*PI - ss;
-			}
-		    
-			// tt is local apparent time
-			tt = ss + pp - 0.0172028*kk - 1.73364;
-		    
-			// vv is wall clock time in radians unrounded
-			vv = tt + fLongi - fGmto;
-		    
-			zz = vv;
-		    
-			// normalize zz
-			while (zz < 0)
-			{
-    			zz += 2*PI;
-			}
-			while (zz >= 2*PI)
-			{
-    			zz -= 2*PI;
-			}
+    // calcs from astronomy mag 1984 article
+    tmp = int((mo+9)/12);
+    if ((yr/4) - int(yr/4) != 0)
+    {
+        tmp *= 2;
+    }
 
-			zz  *= 24/(2*PI);  // convert from radians to hours
-			vv = int(zz);		// vv = hours
-			
-			ww = (zz-vv) * 60;	// ww = minutes unrounded
-			
-			xx = int(ww);
-			yy = ww-xx; // yy is the frction of a minute
-			              
-			// round minute up if needed
-			if (yy >= 0.5)
-			{
-				xx += 1;
-			}
+    daynum = int(275*mo/9) + da - tmp - 30;
 
-			// if rounding up the minute caused the hour bound to be passed, fix hour
-			if (xx >= 60)
-			{
-				vv += 1;
-				xx = 0;
-			}
+    if (isCalculatingSunrise)   // if sunrise
+    {
+        jj = PI/2;
+    }
+    else
+    {
+        jj = PI*2;
+    }
 
-			// Set output variables
-			outputHour = int(vv);
-			outputMin = int(xx);
-		}
+    kk = daynum + ((jj+fLongi)/(2*PI));
+    ll = kk * 0.017202 - 0.0574039;
+    mm = ll + 0.0334405*sin(ll) + 0.000349066*sin(2*ll) + 4.93289;
 
-function initializeFields() {
-    cx = 0;
-    cy = 0;
-    secondsRadius = 0;
-    minutesRadius = 0;
-    hoursRadius = 0;
-    hourNumbersRadius = 0;
-    minuteNumbersRadius = 0;
-    clockDiameter = 0;
-    bkColor = 0;
-    myFont = null;
-    fNarrow = null;
-    fontScaleFactor = 0;
-    refFontSize = 0;
-    currentFontSize = 0;
-    lastMillisec = 0;
-    lastSec = 0;
-    doColorCycling = null;
-    hourDigitColor = color(0xe8, 0xe0, 0x22);
-    mywidth = 0;
-    myheight = 0;
-    theWidth = 0;
-    theHeight = 0;  
+    // normalize mm
+    while (mm < 0)
+    {
+        mm += 2*PI;
+    }
+    while (mm >= 2*PI)
+    {
+        mm -= 2*PI;
+    }
 
-  speedIncrement = 0.2;
-  msSoFar = 0;
+    if (2 * mm / PI - int(2 * mm / PI) == 0)
+    {
+        mm += 4.84814E-06; //0.00000484814
+    }
 
-  
-  secondsSoFar = 0;
-  msFromStartToResetTime = 0;
-  
-  // init to unique value to allow detection when set properly
-  latitude = -1;
-  longitude = -1;
-  lastLat = -1;
-  lastLong = -1;
-  latLocal = -1;
-  longLocal = -1;
-  tzOffset = 0;
-  tzOffsetLocal = 0;
-  lastTz = 0;
-  isSunRiseSetObtained=false;
-  
-  // Default position is san diego
-  //latitude = 33.1;
-  //longitude = -117.1;
-  //tzOffset = -7;
-  
-  outputHour = 0;
-  outputMin = 0;
-  sunriseHour = 0;
-  sunriseMin = 0;
-  secondsToSunrise = 0;
-  baseMsSunrise = 0;
-  secondsToSunsetYesterday = 0;
-  
-  sunsetHour = 0;
-  sunsetMin = 0;
-  secondsToSunset = 0;
-  baseMsSunset = 0;
-  secondsToSunriseTomorrow = 0;
-  
-  sunriseMinString = "";  
-  sunriseAmpmString = "";
-  sunriseHourString = "";
-  sunsetMinString = "";  
-  sunsetAmpmString = "";
-  sunsetHourString = "";
-  
-  sunsetHourYesterday = 0;
-  sunsetMinYesterday = 0;
-  sunriseHourTomorrow = 0;
-  sunriseMinTomorrow = 0;
-  isDaylightSavings = false;
-  isDay = false;
-  dayState = 1;
-  
-  tzInput = createInput('');
-  tzInputTimestampMs = -1;
-  
-  latInput = createInput('');
-  latInputTimestampMs = -1;  // ms since pgm start when input happened
+    pp = atan(0.91746 * (sin(mm)/cos(mm)));   
 
-  longInput = createInput('');
-  longInputTimestampMs = -1;  // ms since pgm start when input happened
-  
-  isDst = false;
-  isDstAu = false;
+    if (mm > PI/2)
+    {
+        if (mm > 3*PI/2)
+        {
+            pp += 2*PI;
+        }
+        else
+        {
+            pp += PI;
+        }
+    }
+
+    qq = 0.39782 * sin(mm);
+    qq = atan(qq /sqrt(1 - (qq * qq)));
+
+    ss = (-0.014539 - (sin(qq) * sin(fLati)))/(cos(qq) * cos(fLati));
+
+    // DEBUG PRINTOUT //////////////////////////////////////
+    //	char tbuf[80];
+    //	_snprintf(tbuf, 79, "ss = %12.8f", ss );
+    //	AfxMessageBox(tbuf);   
+
+    if (ss > 1)  
+    {   
+        // There is no sunset/sunrise, it is always dark
+        OutputMin = 0;
+        OutputHour = -1;
+        return;	 
+    }
+    else if (ss < -1)  
+    {
+        // There is no sunset/sunrise, it is always light
+        OutputMin = 0;
+        OutputHour = -2;
+        return;	 
+    }
+
+    ss = -atan(ss / sqrt(1 - ss * ss)) + PI / 2;
+
+    if (isCalculatingSunrise)
+    {
+        ss = 2*PI - ss;
+    }
+
+    // tt is local apparent time
+    tt = ss + pp - 0.0172028*kk - 1.73364;
+
+    // vv is wall clock time in radians unrounded
+    vv = tt + fLongi - fGmto;
+
+    zz = vv;
+
+    // normalize zz
+    while (zz < 0)
+    {
+        zz += 2*PI;
+    }
+    while (zz >= 2*PI)
+    {
+        zz -= 2*PI;
+    }
+
+    zz  *= 24/(2*PI);  // convert from radians to hours
+    vv = int(zz);		// vv = hours
+
+    ww = (zz-vv) * 60;	// ww = minutes unrounded
+
+    xx = int(ww);
+    yy = ww-xx; // yy is the frction of a minute
+
+    // round minute up if needed
+    if (yy >= 0.5)
+    {
+        xx += 1;
+    }
+
+    // if rounding up the minute caused the hour bound to be passed, fix hour
+    if (xx >= 60)
+    {
+        vv += 1;
+        xx = 0;
+    }
+
+    // Set output variables
+    OutputHour = int(vv);
+    OutputMin = int(xx);
 }
+
+
+
+//============================================
+// Calculate the time of sunset or sunrise with timezone offset.
+// Results are returned in globals OutputHour, OutputMin;
+// Returns OutputHour = -1 if it's always dark, = -2 if always light
+
+function calcRiseSetTimeWithOffset(
+				isCalculatingSunrise,  // true = sunrise, false = sunset
+                dayOffset,  
+				passedLatitude, 
+				passedLongitude, 
+				gmto,     // GMT offset (not the same as time zone)
+				passedDST)      // daylight savings flag
+{                                     			
+    var fLati = radians(passedLatitude);    // convert to radians
+    //print("latitude="+passedLatitude+" fLati="+fLati);
+    var fLongi = radians(passedLongitude);  // convert to radians
+    //print("longitude="+passedLongitude+" fLongi="+fLongi);
+
+    var fGmto;  // GMT Offset in radians
+    // convert the offset from GMT time (in hours) to radians:
+    if (passedDST)
+    {	// compensate for daylight savings time
+        fGmto = (-gmto-1) * 2*PI/24;  // convert to radians
+    }
+    else
+    {
+        fGmto = -gmto * 2*PI/24;  // convert to radians
+    }
+
+    var 
+        daynum,	// day number
+        mm,	// solar true longitude
+        tmp,	// temp          
+        jj,
+        kk,
+        ll,
+        pp,
+        qq,
+        ss,
+        tt,
+        vv,
+        ww,
+        xx,
+        yy,
+        zz;
+
+    var mo, da, yr;
+
+    OutputHour = 0;
+    OutputMin = 0;
+
+ 
+    var todayDate = new Date();
+    var dateMs = todayDate.getTime() + dayOffset*86400000;
+    var shiftedDate = new Date(dateMs);
+  
+    da = shiftedDate.getDate(); // note, getDay fetches doy
+    mo = shiftedDate.getMonth()+1; // note, getMonth is zero-based
+    yr = shiftedDate.getFullYear();
+  
+
+    // If dayOffset is not 0, adjust to yesterday or tomorrow.
+    // Tricky cuz could cross month and year boundaries.
+    if (dayOffset < 0)  // ===== yesterday
+    {
+      if (da > 1)
+      {
+        da = da - 1;
+      }
+      else // must back into previous month
+      {
+        if (mo > 1)  // NOT January
+        {
+          mo = mo - 1;
+          if (mo == 1 || mo==3 || mo==5 || mo==7 || 
+              mo==8 || mo == 10)
+          {
+            da = 31;
+          }
+          else 
+          {
+            da = 30;
+            if (mo == 2)
+            {
+              da = 28;
+              if (yr%4 == 0)
+              {
+                // leap year. Ignore century years.
+                da = 29;
+              }
+            }
+          }
+        }
+        else // backing into previous year
+        {
+          mo = 1; 
+          yr = yr - 1;
+          da = 31;
+        }
+      }
+    }
+    else if (dayOffset > 0) // ====== tomorrow
+    {
+      if (mo < 12)  // NOT Dec
+      {
+        // if it's a long month
+        if (mo == 1 || mo==3 || mo==5 || mo==7 || 
+              mo==8 || mo == 10)
+        {
+          if (da == 31)
+          {
+            mo = mo + 1;
+            da = 1;
+          }
+          else 
+          {
+            da = da + 1;
+          }
+        }
+        else // it's  a short month
+        { 
+          if (mo == 2 )  // Feb
+          {
+            var febLen = 28;
+            if (yr%4 == 0) // if leap year
+            {
+              // leap year. Ignore century years.
+              febLen = 29;
+            }  
+            
+            if (da >= febLen)
+            {                      
+              // ignore leap years; jumps over feb 29th
+              mo = mo + 1;
+              da = 1;
+            }
+            else 
+            {
+              da = da + 1;
+            }
+          }
+          else // short month other than feb
+          {
+            if (da == 30)  // if last day
+            {
+              mo = mo + 1;
+              da = 1;
+            }
+            else
+            {
+              da = da + 1;
+            }
+          }
+        } // end of short month block
+
+      }  // === end of not-dec block
+      else // it's dec
+      {
+        if (da == 31) // last day
+        {
+          // roll into next year
+          mo = 1;
+          da = 1;
+          yr = yr + 1;
+        }
+        else
+        {
+          da = da + 1;
+        }
+      }
+    } // end of tomorrow block =================
+
+    // calcs from astronomy mag 1984 article
+    tmp = int((mo+9)/12);
+
+    daynum = int(275*mo/9) + da - tmp - 30; 
+
+    if (isCalculatingSunrise)   // if sunrise
+    {
+        jj = PI/2;
+    }
+    else
+    {
+        jj = PI*2;
+    }
+
+    kk = daynum + ((jj+fLongi)/(2*PI));
+    ll = kk * 0.017202 - 0.0574039;
+    mm = ll + 0.0334405*sin(ll) + 0.000349066*sin(2*ll) + 4.93289;
+
+    // normalize mm
+    while (mm < 0)
+    {
+        mm += 2*PI;
+    }
+    while (mm >= 2*PI)
+    {
+        mm -= 2*PI;
+    }
+    if (2 * mm / PI - int(2 * mm / PI) == 0)
+    {
+        mm += 4.84814E-06; //0.00000484814
+    }
+    pp = atan(0.91746 * (sin(mm)/cos(mm)));   
+
+    if (mm > PI/2)
+    {
+        if (mm > 3*PI/2)
+        {
+            pp += 2*PI;
+        }
+        else
+        {
+            pp += PI;
+        }
+    }
+
+    qq = 0.39782 * sin(mm);
+    qq = atan(qq /sqrt(1 - (qq * qq)));
+
+    ss = (-0.014539 - (sin(qq) * sin(fLati)))/(cos(qq) * cos(fLati));
+
+    // DEBUG PRINTOUT //////////////////////////////////////
+    //	char tbuf[80];
+    //	_snprintf(tbuf, 79, "ss = %12.8f", ss );
+    //	AfxMessageBox(tbuf);   
+
+    if (ss > 1)  
+    {   
+        // There is no sunset/sunrise, it is always dark
+        OutputMin = 0;
+        OutputHour = -1;
+        return;	 
+    }
+    else if (ss < -1)  
+    {
+        // There is no sunset/sunrise, it is always light
+        OutputMin = 0;
+        OutputHour = -2;
+        return;	 
+    }
+
+    ss = -atan(ss / sqrt(1 - ss * ss)) + PI / 2;
+
+    if (isCalculatingSunrise)
+    {
+        ss = 2*PI - ss;
+    }
+
+    // tt is local apparent time
+    tt = ss + pp - 0.0172028*kk - 1.73364;
+
+    // vv is wall clock time in radians unrounded
+    vv = tt + fLongi - fGmto;
+
+    zz = vv;
+
+    // normalize zz
+    while (zz < 0)
+    {
+        zz += 2*PI;
+    }
+    while (zz >= 2*PI)
+    {
+        zz -= 2*PI;
+    }
+
+    zz  *= 24/(2*PI);  // convert from radians to hours
+    vv = int(zz);		// vv = hours
+
+    ww = (zz-vv) * 60;	// ww = minutes unrounded
+
+    xx = int(ww);
+    yy = ww-xx; // yy is the frction of a minute
+
+    // round minute up if needed
+    if (yy >= 0.5)
+    {
+        xx += 1;
+    }
+
+    // if rounding up the minute caused the hour bound to be passed, fix hour
+    if (xx >= 60)
+    {
+        vv += 1;
+        xx = 0;
+    }
+
+    // Set output variables
+    OutputHour = int(vv);
+    OutputMin = int(xx);
+}
+
 
