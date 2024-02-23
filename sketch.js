@@ -202,6 +202,16 @@ function oneTimeInit()
   {
     window.alert('Windows not detected.');
   }
+	
+  if (window.navigator.platform.indexOf("Mac") === 0)
+  {
+    window.alert('Mac detected.');
+  }
+  else
+  {
+    window.alert('Mac not detected.');
+  }	
+	
   IsDesktop = IsWindows ||
       (window.navigator.platform.indexOf("Mac") === 0)
   console.log("IsWindows="+ IsWindows)
