@@ -194,6 +194,7 @@ function oneTimeInit()
     
   // Use this to allow customizing layout for windows vs mobile
   IsWindows = (window.navigator.platform == "Win32");
+/******************************	
   if (IsWindows)
   {
     window.alert('Windows detected.');
@@ -211,6 +212,7 @@ function oneTimeInit()
   {
     window.alert('Mac not detected.');
   }	
+************************/
 	
   IsDesktop = IsWindows ||
       (window.navigator.platform.indexOf("Mac") === 0)
