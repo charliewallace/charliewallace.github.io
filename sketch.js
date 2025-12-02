@@ -1219,6 +1219,7 @@ function setGmtDisplay()  // Toggling mode button
 // Requests browser GPS coordinates (will show permission prompt)
 function usePreciseLocation() {
   console.log("Requesting precise GPS location...");
+  IsTimezoneMismatch = false; // User intentionally requesting location
 
   navigator.geolocation.getCurrentPosition(
     // Success callback
@@ -1283,12 +1284,11 @@ function usePreciseLocation() {
 }
 
 
-
-
 //=======================
 // Set location and timezone to Silverado
 //  
 function setSilverado() {
+  IsTimezoneMismatch = false; // User manually selected location
   CityNameInput.value("Silverado, CA, USA");
   LocaleTitle = "Silverado";
   getLocationUsingCityName("Silverado, CA, USA");
@@ -1323,6 +1323,7 @@ function setSilverado() {
 // Set location and timezone to London England
 //  
 function setLondon() {
+  IsTimezoneMismatch = false; // User manually selected location
   CityNameInput.value("London, UK");
   LocaleTitle = "London";
   getLocationUsingCityName("London, UK");
@@ -1357,6 +1358,7 @@ function setLondon() {
 // Set location and timezone to Berkeley
 //  
 function setBerkeley() {
+  IsTimezoneMismatch = false; // User manually selected location
   CityNameInput.value("Berkeley, CA, USA");
   LocaleTitle = "Berkeley";
   getLocationUsingCityName("Berkeley, CA, USA");
@@ -1391,6 +1393,7 @@ function setBerkeley() {
 // Set location and timezone to Kansas City, MO
 //  
 function setKansasCity() {
+  IsTimezoneMismatch = false; // User manually selected location
   CityNameInput.value("Kansas City, MO, USA");
   LocaleTitle = "Kansas City";
   getLocationUsingCityName("Kansas City, MO, USA");
@@ -1427,6 +1430,7 @@ function setKansasCity() {
 // Set location and timezone to Melbourne
 //  
 function setMelbourne() {
+  IsTimezoneMismatch = false; // User manually selected location
   CityNameInput.value("Melbourne, AU");
   LocaleTitle = "Melbourne";
   getLocationUsingCityName("Melbourne, AU");
@@ -1459,6 +1463,7 @@ function setMelbourne() {
 // ========================================
 // Set location and timezone to San Diego
 function setSanDiego() {
+  IsTimezoneMismatch = false; // User manually selected location
   CityNameInput.value("San Diego, CA, USA");
   LocaleTitle = "San Diego";
   getLocationUsingCityName("San Diego, CA, USA");
@@ -1517,6 +1522,7 @@ function processTzInputEvent() {
   else {
     LastTz = TzOffset;
 
+    IsTimezoneMismatch = false; // User manually entered location
     CityNameInput.value("");
     LocaleTitle = "Entered Location";
 
@@ -1555,6 +1561,7 @@ function processLatInputEvent() {
   else {
     LastLat = Latitude;
 
+    IsTimezoneMismatch = false; // User manually entered location
     CityNameInput.value("");
     LocaleTitle = "Entered Location";
 
@@ -1590,6 +1597,7 @@ function processLongInputEvent() {
   else {
     LastLong = Longitude;
 
+    IsTimezoneMismatch = false; // User manually entered location
     CityNameInput.value("");
     LocaleTitle = "Entered Location";
 
