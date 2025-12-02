@@ -99,6 +99,7 @@ var LatLocal, LngLocal;
 var TzOffset, TzOffsetLocal;
 var LastTz;
 var IsSunRiseSetObtained;
+var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset, BaseMsSunset;
@@ -238,6 +239,20 @@ function oneTimeInit() {
 
       console.log("latitude: " + Latitude);
       console.log("longitude: " + Longitude);
+
+      // Check for timezone mismatch (VPN detection)
+      var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      var ipTimezone = data.timezone; // from ipapi.co
+
+      console.log("Browser timezone:", browserTimezone);
+      console.log("IP location timezone:", ipTimezone);
+
+      // Compare timezones - if different, might be using VPN
+      IsTimezoneMismatch = (browserTimezone !== ipTimezone);
+
+      if (IsTimezoneMismatch) {
+        console.log("⚠️ Timezone mismatch detected - possible VPN/proxy usage");
+      }
 
       // Update UI fields
       var latString = str(Latitude);
@@ -400,6 +415,8 @@ function oneTimeInit() {
   LastLong = 99999;
   LatLocal = 99999;
   LngLocal = 99999;
+
+  IsTimezoneMismatch = false; // will be set to true if VPN/proxy detected
 
   stroke(255);  // set white stroke color for lines and fonts
 
@@ -2265,6 +2282,22 @@ function draw() {
   }
   else if (SunriseHour == -1) {
     text("Dark All Day", CenterX * 2 - 19, CenterY * 0.32);
+  }
+
+  // Show VPN warning if timezone mismatch detected
+  if (IsTimezoneMismatch) {
+    fill(255, 200, 0); // Orange/yellow warning color
+    textAlign(RIGHT, TOP);
+    if (IsDesktop) {
+      textSize(CurrentFontSize * 0.35);
+    }
+    else {
+      textSize(CurrentFontSize * 0.6);
+    }
+    text("⚠️ Using VPN/Proxy?", CenterX * 2 - 19, CenterY * 0.44);
+    text("Click 'Use Precise Location'", CenterX * 2 - 19, CenterY * 0.49);
+    text("for accurate times", CenterX * 2 - 19, CenterY * 0.54);
+    fill(255); // Restore white color
   }
 
   /*** Old formatting  *******************
