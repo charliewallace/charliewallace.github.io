@@ -291,8 +291,8 @@ function oneTimeInit() {
   //
 
   //     misc buttons
-  ResetToLocalButton = createButton('Reset to local');
-  ResetToLocalButton.mousePressed(resetToLocal);
+  ResetToLocalButton = createButton('Use Precise Location');
+  ResetToLocalButton.mousePressed(usePreciseLocation);
 
   //     mode buttons  
   DaySpiralButtonLabel = "Week Spiral";
@@ -1198,37 +1198,71 @@ function setGmtDisplay()  // Toggling mode button
 
 
 //-----------------------------------------------------------------
-// Handler for the ResetToLocal button
-function resetToLocal() {
+// Handler for the Use Precise Location button
+// Requests browser GPS coordinates (will show permission prompt)
+function usePreciseLocation() {
+  console.log("Requesting precise GPS location...");
 
-  TzOffset = TzOffsetLocal;
-  var tzString = str(TzOffset);
-  // Add in a plus sign if not negative
-  if (TzOffset > 0) {
-    tzString = "+" + str(TzOffset);
-  }
-  // init the UI field
-  TzInput.value(tzString);
-  LastTz = TzOffset;
+  navigator.geolocation.getCurrentPosition(
+    // Success callback
+    function (position) {
+      console.log("GPS location obtained:", position.coords);
 
-  Latitude = LatLocal;
-  var latString = str(Latitude);
-  LatInput.value(latString);
-  LastLat = LatLocal;
+      // Get precise coordinates
+      Latitude = position.coords.latitude;
+      Longitude = position.coords.longitude;
 
-  Longitude = LngLocal;
-  var longString = str(Longitude);
-  LngInput.value(longString);
-  LastLong = LngLocal;
+      // Round to 3 places after decimal
+      Latitude = round(Latitude, 3);
+      Longitude = round(Longitude, 3);
 
-  CityNameInput.value("Current Location");
-  LocaleTitle = "Local Time";
+      console.log("Precise latitude: " + Latitude);
+      console.log("Precise longitude: " + Longitude);
 
-  // Location may have changed, so need to regen spiral point array.
-  // Clear flag that's checked in updateTimeThisDay()
-  IsSunRiseSetObtained = false;
+      // Update UI fields
+      var latString = str(Latitude);
+      LatInput.value(latString);
+      LastLat = Latitude;
 
-  updateTimeThisDay();
+      var longString = str(Longitude);
+      LngInput.value(longString);
+      LastLong = Longitude;
+
+      CityNameInput.value("Precise Location");
+      LocaleTitle = "Precise Location";
+
+      // Get timezone using existing GeoNames function
+      getTzUsingLatLong(Latitude, Longitude);
+
+      // Location changed, recalculate sunrise/sunset
+      IsSunRiseSetObtained = false;
+      updateTimeThisDay();
+    },
+
+    // Error callback
+    function (error) {
+      console.log("GPS location error:", error.message);
+
+      // Show user-friendly message based on error type
+      var errorMsg = "";
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMsg = "Location permission denied";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMsg = "Location unavailable";
+          break;
+        case error.TIMEOUT:
+          errorMsg = "Location request timed out";
+          break;
+        default:
+          errorMsg = "Location error occurred";
+      }
+
+      console.log(errorMsg);
+      CityNameInput.value(errorMsg);
+    }
+  );
 }
 
 
