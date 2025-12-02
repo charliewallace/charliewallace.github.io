@@ -221,54 +221,49 @@ function oneTimeInit() {
   createCanvas(window.innerWidth, window.innerHeight);
 
 
-  //========= get gps position ==========	
-  navigator.geolocation.getCurrentPosition(
-    // Success callback.  This runs later, after setup()
-    function (position) {
-      //console.log(position);
-      // ATTN this runs a bit later when the gps comes in...
-      background(220);
-      textSize(32);
-      print("latitude: " + position.coords.latitude);
-      Latitude = position.coords.latitude;
-      // Round to 3 places after decimal
-      // findme
+  //========= Get approximate location from IP geolocation API ==========
+  // Using ipapi.co (free, no API key required)
+  fetch('https://ipapi.co/json/')
+    .then(response => response.json())
+    .then(data => {
+      console.log("IP Geolocation data:", data);
+
+      // Extract and validate coordinates
+      Latitude = parseFloat(data.latitude);
+      Longitude = parseFloat(data.longitude);
+
+      // Round to 3 places after decimal (city-level accuracy)
       Latitude = round(Latitude, 3);
+      Longitude = round(Longitude, 3);
+
+      console.log("latitude: " + Latitude);
+      console.log("longitude: " + Longitude);
+
+      // Update UI fields
       var latString = str(Latitude);
       LatInput.value(latString);
       LatLocal = Latitude;
       LastLat = Latitude;
 
-      print("longitude: " + position.coords.longitude);
-      Longitude = position.coords.longitude;
-      // Round to 3 places after decimal
-      Longitude = round(Longitude, 3);
       var longString = str(Longitude);
       LngInput.value(longString);
       LngLocal = Longitude;
       LastLong = Longitude;
-    },
 
-    // Optional error callback
-    function (error) {
-      //In the error object is stored the reason for the failed attempt:
-      //error = {
-      //    code - Error code representing the type of error 
-      //            1 - PERMISSION_DENIED
-      //            2 - POSITION_UNAVAILABLE
-      //            3 - TIMEOUT
-      //    message - Details about the error in human-readable format.
-      //}
+      // Get timezone using existing GeoNames function
+      getTzUsingLatLong(Latitude, Longitude);
+    })
+    .catch(error => {
+      console.log("IP geolocation failed:", error);
+      console.log("Using fallback location (Melbourne)");
 
-      print("Gps error happened, code=" + error.code + " " + error.code);
-
-      // HACK: default to Melbourne.   
+      // Fallback to Melbourne
       Latitude = -37.8;
       Longitude = 144.96;
       TzOffset = 10; // assume DST
 
-      latitudeLocal = Latitude;
-      longitudeLocal = Longitude;
+      LatLocal = Latitude;
+      LngLocal = Longitude;
       TzOffsetLocal = TzOffset;
 
       var tzString = str(TzOffset);
@@ -287,13 +282,8 @@ function oneTimeInit() {
       var longString = str(Longitude);
       LngInput.value(longString);
       LastLong = Longitude;
-
-      //  san diego TzOffset -7 DST, -8 STD
-      //Latitude = 33.1;
-      //longitude = -117.1;
-    }
-  );  // end of error function
-  //============= end of deferred position fetch =========================
+    });
+  //============= end of IP geolocation =========================
 
 
   // ==== button and field creation and setup done here only once; ======
@@ -1958,16 +1948,10 @@ function draw() {
   fill(255)
   textFont("Arial");
 
-  // Sometimes on phones there's a delay before the clock face is drawn, so...
+  // Sometimes there's a delay before the location is fetched, so show a loading message
   textAlign(CENTER, TOP);
-  text("Browser needs location permission.", CenterX, CenterY - 40);
-  text("Look for the permission popup and accept.", CenterX, CenterY - 20);
-
-  // ON first run of this app, the browser will show a warning
-  // that it will get the user's location.  Kind of scary, so
-  // show this explanation.
-  text("Location permission is needed", CenterX, CenterY);
-  text("only to calculate sunrise/sunset.", CenterX, CenterY + 20);
+  text("Loading your approximate location...", CenterX, CenterY - 20);
+  text("(Based on your IP address)", CenterX, CenterY);
   text("Location is not stored!", CenterX, CenterY + 40);
 
   textAlign(LEFT, TOP);
