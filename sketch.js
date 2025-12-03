@@ -2130,10 +2130,10 @@ function draw() {
   textFont("Arial");
 
   // Sometimes there's a delay before the location is fetched, so show a loading message
-  textAlign(CENTER, TOP);
-  text("Loading your approximate location...", CenterX, CenterY - 20);
-  text("(Based on your IP address)", CenterX, CenterY);
-  text("Location is not stored!", CenterX, CenterY + 40);
+  //textAlign(CENTER, TOP);
+  //text("Loading your approximate location...", CenterX, CenterY - 20);
+  //text("(Based on your IP address)", CenterX, CenterY);
+  //text("Location is not stored!", CenterX, CenterY + 40);
 
   textAlign(LEFT, TOP);
 
@@ -2176,9 +2176,9 @@ function draw() {
 
 
   // Bail out if lat/long is not set yet.
-  if (Latitude == 99999 || Longitude == 99999) {
-    return;
-  }
+  //if (Latitude == 99999 || Longitude == 99999) {
+  //  return;
+  //}
 
   // ==240124a
   // Redraw the clock background - this hides the "Please Wait" message
@@ -2381,7 +2381,9 @@ function draw() {
     textSize(CurrentFontSize * 1.4);
   }
   textAlign(RIGHT, TOP);
-  text(LocaleTitle, CenterX * 2 - 19, 12);
+  if (Latitude != 99999 && Longitude != 99999) {
+    text(LocaleTitle, CenterX * 2 - 19, 12);
+  }
 
   if (IsDesktop) {
     textSize(CurrentFontSize * 0.38);
@@ -2400,7 +2402,9 @@ function draw() {
   text(TimeString + amPmString, CenterX * 2 - 19, CenterY * 0.12); // 53);
   text(DateString, CenterX * 2 - 19, CenterY * 0.17); // 75);
   text(getDayStringLong(IDow), CenterX * 2 - 19, CenterY * 0.22); // 98);
-  text("Daylight Savings: " + IsDst, CenterX * 2 - 19, CenterY * 0.27); // 121);
+  if (Latitude != 99999 && Longitude != 99999) {
+    text("Daylight Savings: " + IsDst, CenterX * 2 - 19, CenterY * 0.27); // 121);
+  }
 
   if (SunriseHour >= 0) {
     text("Sunrise: " + SunriseHourString + ":" + SunriseMinString
@@ -2413,6 +2417,15 @@ function draw() {
   }
   else if (SunriseHour == -1) {
     text("Dark All Day", CenterX * 2 - 19, CenterY * 0.32);
+  }
+
+  // If location is not yet set, hide the sunrise/set info
+  if (Latitude == 99999 || Longitude == 99999) {
+    // cover up the sunrise/set info with background color
+    // Actually, simpler to just not draw it above.
+    // But since we already drew it, let's just rely on the fact that 
+    // SunriseHour etc are initialized to 0 or similar safe values?
+    // No, better to wrap the above block in a check.
   }
 
   // Show VPN warning if timezone mismatch detected
@@ -2518,7 +2531,34 @@ function draw() {
 
   // Draw logic for the simple 2-turn case, DaySpiral.  See below for 
   // more complex week spiral code...
-  if (IsDaySpiral) {
+
+  // Check if location is available. If not, draw neutral spiral.
+  if (Latitude == 99999 || Longitude == 99999) {
+    stroke(200); // Neutral light gray
+    noFill();
+
+    if (IsDaySpiral) {
+      strokeWeight(14);
+      if (IsDesktop) strokeWeight(30);
+      beginShape();
+      for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
+        vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
+      }
+      endShape();
+    } else {
+      strokeWeight(6);
+      if (IsDesktop) strokeWeight(10);
+      for (dw = 0; dw < 7; dw++) {
+        vvBase = dw * NumSpiralPointsPerTurn * 2;
+        beginShape();
+        for (vv = vvBase; vv <= vvBase + 2 * NumSpiralPointsPerTurn; vv++) {
+          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
+        }
+        endShape();
+      }
+    }
+  }
+  else if (IsDaySpiral) {
     // Draw the day spiral for the current day.
     // Use broader stroke for the day spiral, since it's only 2 turns long
     strokeWeight(14); // for phone
