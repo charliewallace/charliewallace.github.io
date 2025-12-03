@@ -66,6 +66,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
+console.log("📦 Day Spiral Clock loaded - Version: 2024-12-02-21:57 (VPN test enabled)");
 var CityNameInput;
 
 var CenterX, CenterY;
@@ -184,6 +185,10 @@ var PrevLocaleTitle;
 
 // This only runs at startup, see Init() below
 function oneTimeInit() {
+  // Debug: Check URL hash early
+  console.log("🔍 Current URL:", window.location.href);
+  console.log("🔍 URL Hash:", window.location.hash);
+
   // state vars.  Preserve these thru window resize.
   IsOnlyTodayInColor = true; // false; //
   IsDaySpiral = true;
@@ -249,6 +254,14 @@ function oneTimeInit() {
 
       // Compare timezones - if different, might be using VPN
       IsTimezoneMismatch = (browserTimezone !== ipTimezone);
+
+      // Allow testing VPN warning via URL hash parameter
+      // TODO: REMOVE THIS TEST CODE
+      var urlHash = window.location.hash.toLowerCase();
+      if (urlHash === '#testvpn' || urlHash === '#simulatevpn') {
+        IsTimezoneMismatch = true;
+        console.log("🧪 TEST MODE: VPN simulation enabled via URL hash");
+      }
 
       if (IsTimezoneMismatch) {
         console.log("⚠️ Timezone mismatch detected - possible VPN/proxy usage");
