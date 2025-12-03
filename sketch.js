@@ -2308,16 +2308,23 @@ function draw() {
   // Show VPN warning if timezone mismatch detected
   if (IsTimezoneMismatch) {
     fill(255, 200, 0); // Orange/yellow warning color
-    textAlign(RIGHT, TOP);
+    textAlign(LEFT, BOTTOM); // Align to bottom left, above the button
     if (IsDesktop) {
       textSize(CurrentFontSize * 0.35);
     }
     else {
       textSize(CurrentFontSize * 0.6);
     }
-    text("⚠️ Using VPN/Proxy?", CenterX * 2 - 19, CenterY * 0.44);
-    text("Click 'Use Precise Location'", CenterX * 2 - 19, CenterY * 0.49);
-    text("for accurate times", CenterX * 2 - 19, CenterY * 0.54);
+
+    // Position above the "Use Precise Location" button (approx CenterY * 2 - 160)
+    var warningX = 10;
+    var warningY = CenterY * 2 - 165;
+
+    text("for accurate local times.", warningX, warningY);
+    text("If using VPN, click the button below", warningX, warningY - (CurrentFontSize * 0.45));
+    text("Your IP location doesn't match your browser time.", warningX, warningY - (CurrentFontSize * 0.9));
+    text("⚠️ Timezone mismatch:", warningX, warningY - (CurrentFontSize * 1.35));
+
     fill(255); // Restore white color
   }
 
