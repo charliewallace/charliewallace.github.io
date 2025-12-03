@@ -1,6 +1,8 @@
 # Day Spiral Clock
 
-A unique visualization of time using a spiral clock face that shows both the current time and sunrise/sunset information.
+A unique visualization of time using a spiral clock face that shows the full 24 hour day
+coiled into a 12-hour clock face.  The spiral is color-coded to show the day and night
+segments based on your location, thus indicating sunrise and sunset times.  
 
 ## Features
 
@@ -8,15 +10,16 @@ A unique visualization of time using a spiral clock face that shows both the cur
 - **Day/Week Modes**: Toggle between single-day spiral and week-long spiral views
 - **Sunrise/Sunset Visualization**: Color-coded day and night segments based on your location
 - **Automatic Location**: Uses IP geolocation for seamless startup (no permission prompt)
-- **VPN Detection**: Warns when timezone mismatch is detected
+- **VPN Detection**: Detects when timezone doesn't match browser timezone and prompts user to
+      grant browser permission to access location. 
 - **Precise Location Option**: Optional GPS coordinates for exact sunrise/sunset times
 - **Multiple Locations**: Quick-select buttons for major cities
-- **Manual Entry**: Enter custom lat/long and timezone
+- **Manual Entry**: Enter custom lat/long or city name
 - **GMT Time Display**: Optional GMT hour labels on day spiral
 
-## Live Demo
+## Available online
 
-Visit [https://charliewallace.github.io](https://coolweird.net)
+Visit [https://charliewallace.github.io](https://www.dayspiral.com)
 
 ## Running Locally
 
@@ -34,9 +37,6 @@ Visit [https://charliewallace.github.io](https://coolweird.net)
 - **Location Services**: OpenStreetMap (Nominatim) for city lookup
 - **Timezone Data**: GeoNames for accurate timezone information
 
-## License
-
-[Add your license here]
 
 ## Credits
 
