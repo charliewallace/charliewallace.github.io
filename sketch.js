@@ -184,51 +184,10 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 //var tempTest = true;  // used only for testing
 
 
-// This only runs at startup, see Init() below
-function oneTimeInit() {
-  // Debug: Check URL hash early
-  console.log("🔍 Current URL:", window.location.href);
-  console.log("🔍 URL Hash:", window.location.hash);
-
-  // state vars.  Preserve these thru window resize.
-  IsOnlyTodayInColor = true; // false; //
-  IsDaySpiral = true;
-  IsGmtShown = false; //true; // false; //
-
-  ClockMode = 0;
-
-
-  // Use this to allow customizing layout for windows vs mobile
-  IsWindows = (window.navigator.platform == "Win32");
-  /******************************	
-    if (IsWindows)
-    {
-      window.alert('Windows detected.');
-    }
-    else
-    {
-      window.alert('Windows not detected.');
-    }
-  	
-    if (window.navigator.platform.indexOf("Mac") === 0)
-    {
-      window.alert('Mac detected.');
-    }
-    else
-    {
-      window.alert('Mac not detected.');
-    }	
-  ************************/
-
-  IsDesktop = IsWindows ||
-    (window.navigator.platform.indexOf("Mac") === 0)
-  console.log("IsWindows=" + IsWindows)
-
-  //fullscreen(); 
-  createCanvas(window.innerWidth, window.innerHeight);
-
-
-  //========= Get approximate location from IP geolocation API ==========
+//================================================================
+// Fetch approximate location from IP geolocation API
+function fetchIpLocation() {
+  console.log("Fetching approximate location from IP...");
   // Using ipapi.co (free, no API key required)
   fetch('https://ipapi.co/json/')
     .then(response => response.json())
@@ -330,7 +289,68 @@ function oneTimeInit() {
       LngInput.value(longString);
       LastLong = Longitude;
     });
-  //============= end of IP geolocation =========================
+}
+
+// This only runs at startup, see Init() below
+function oneTimeInit() {
+  // Debug: Check URL hash early
+  console.log("🔍 Current URL:", window.location.href);
+  console.log("🔍 URL Hash:", window.location.hash);
+
+  // state vars.  Preserve these thru window resize.
+  IsOnlyTodayInColor = true; // false; //
+  IsDaySpiral = true;
+  IsGmtShown = false; //true; // false; //
+
+  ClockMode = 0;
+
+
+  // Use this to allow customizing layout for windows vs mobile
+  IsWindows = (window.navigator.platform == "Win32");
+  /******************************	
+    if (IsWindows)
+    {
+      window.alert('Windows detected.');
+    }
+    else
+    {
+      window.alert('Windows not detected.');
+    }
+  	
+    if (window.navigator.platform.indexOf("Mac") === 0)
+    {
+      window.alert('Mac detected.');
+    }
+    else
+    {
+      window.alert('Mac not detected.');
+    }	
+  ************************/
+
+  IsDesktop = IsWindows ||
+    (window.navigator.platform.indexOf("Mac") === 0)
+  console.log("IsWindows=" + IsWindows)
+
+  //fullscreen(); 
+  createCanvas(window.innerWidth, window.innerHeight);
+
+
+  //========= Get location ==========
+  // Check if location permission is already granted
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
+      if (result.state === 'granted') {
+        console.log("Location permission already granted. Using precise location.");
+        usePreciseLocation();
+      } else {
+        // Permission not granted (prompt or denied), fallback to IP geolocation
+        fetchIpLocation();
+      }
+    });
+  } else {
+    // Browser doesn't support permissions API, fallback to IP geolocation
+    fetchIpLocation();
+  }
 
 
   // ==== button and field creation and setup done here only once; ======
@@ -1296,6 +1316,10 @@ function handleLocationError(error) {
     // However, getTzUsingLatLong might not re-check mismatch.
     // Let's just leave IsTimezoneMismatch as is, or maybe re-run the check?
     // Simpler to just restore the values.
+  } else {
+    // No fallback location available (e.g. failed on startup), try IP location
+    console.log("No fallback location available. Trying IP location.");
+    fetchIpLocation();
   }
 }
 
