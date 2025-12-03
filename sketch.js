@@ -245,6 +245,22 @@ function oneTimeInit() {
       console.log("latitude: " + Latitude);
       console.log("longitude: " + Longitude);
 
+      // Extract city and region if available
+      var city = data.city;
+      var region = data.region;
+      var locationString = "Approximate Location";
+
+      if (city) {
+        locationString = "Near " + city;
+        if (region) {
+          // Optional: could add region too, but keeping it short for now
+          // locationString += ", " + region;
+        }
+      }
+
+      CityNameInput.value(locationString);
+      LocaleTitle = locationString;
+
       // Check for timezone mismatch (VPN detection)
       var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       var ipTimezone = data.timezone; // from ipapi.co
