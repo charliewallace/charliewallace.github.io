@@ -66,7 +66,9 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-console.log("📦 Day Spiral Clock loaded - Version: 2024-12-02-21:57 (VPN test enabled)");
+console.log("📦 Day Spiral Clock loaded");
+var Version = "0.1.0";
+var WebsiteLink;
 var CityNameInput;
 
 var CenterX, CenterY;
@@ -480,6 +482,12 @@ function oneTimeInit() {
   // (actually since setup was called, so should be 0 ish)
   LastMillisec = millis();
 
+  // Create the website link
+  WebsiteLink = createA('http://coolweird.com', 'Coolweird.com', '_blank');
+  WebsiteLink.style('color', '#ADFF2F'); // GreenYellow
+  WebsiteLink.style('font-weight', 'bold');
+  WebsiteLink.style('text-decoration', 'none');
+
 }  // end of oneTimeInit()  ====================
 
 
@@ -541,9 +549,11 @@ function reInit() {
   ResetToLocalButton.position(10, CenterY * 2 - 160);
 
   //    mode buttons
-  DaySpiralButton.position(CenterX * 0.02, CenterY * 0.33);
-  ColorfulModeButton.position(CenterX * 0.02, CenterY * 0.395);
-  GmtDisplayButton.position(CenterX * 0.02, CenterY * 0.395);
+  // Shifted down to make room for website link
+  WebsiteLink.position(CenterX * 0.02, CenterY * 0.32);
+  DaySpiralButton.position(CenterX * 0.02, CenterY * 0.38);
+  ColorfulModeButton.position(CenterX * 0.02, CenterY * 0.445);
+  GmtDisplayButton.position(CenterX * 0.02, CenterY * 0.445);
 
   //    Location buttons
   SilveradoButton.position(CenterX * 2 - 115, CenterY * 2 - 160);
@@ -2161,7 +2171,8 @@ function draw() {
   }
 
   text("Dark part of spiral indicates night.", CenterX * 0.02, CenterY * 0.22)
-  text("(C)2025 by Charlie Wallace", CenterX * 0.02, CenterY * 0.27)
+  text("Dark part of spiral indicates night.", CenterX * 0.02, CenterY * 0.22)
+  text("v" + Version + " (C)2025 by Charlie Wallace", CenterX * 0.02, CenterY * 0.27)
 
 
   // Bail out if lat/long is not set yet.
