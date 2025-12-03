@@ -100,7 +100,9 @@ var LatLocal, LngLocal;
 var TzOffset, TzOffsetLocal;
 var LastTz;
 var IsSunRiseSetObtained;
+var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
+var IsPreciseLocation = false; // true if using GPS location
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset, BaseMsSunset;
@@ -188,6 +190,7 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 // Fetch approximate location from IP geolocation API
 function fetchIpLocation() {
   console.log("Fetching approximate location from IP...");
+  IsPreciseLocation = false;
   // Using ipapi.co (free, no API key required)
   fetch('https://ipapi.co/json/')
     .then(response => response.json())
@@ -1320,6 +1323,7 @@ function handleLocationError(error) {
     // No fallback location available (e.g. failed on startup), try IP location
     console.log("No fallback location available. Trying IP location.");
     fetchIpLocation();
+    IsPreciseLocation = false;
   }
 }
 
@@ -1353,6 +1357,7 @@ function usePreciseLocation() {
     // Success callback
     function (position) {
       console.log("GPS location obtained:", position.coords);
+      IsPreciseLocation = true;
 
       // Get precise coordinates
       Latitude = position.coords.latitude;
@@ -2156,7 +2161,7 @@ function draw() {
   }
 
   text("Dark part of spiral indicates night.", CenterX * 0.02, CenterY * 0.22)
-  text("(C)2024 by Charlie Wallace", CenterX * 0.02, CenterY * 0.27)
+  text("(C)2025 by Charlie Wallace", CenterX * 0.02, CenterY * 0.27)
 
 
   // Bail out if lat/long is not set yet.
@@ -2420,6 +2425,21 @@ function draw() {
     text("⚠️ Timezone mismatch:", warningX, warningY - (CurrentFontSize * 1.35));
 
     fill(255); // Restore white color
+  } else if (!IsPreciseLocation) {
+    // Show hint for precise location if not using GPS and no VPN warning
+    textAlign(LEFT, BOTTOM);
+    if (IsDesktop) {
+      textSize(CurrentFontSize * 0.35);
+    }
+    else {
+      textSize(CurrentFontSize * 0.6);
+    }
+
+    // Position above the "Use Precise Location" button
+    var hintX = 10;
+    var hintY = CenterY * 2 - 165;
+
+    text("↓ For more precise location", hintX, hintY);
   }
 
   /*** Old formatting  *******************
