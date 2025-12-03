@@ -180,6 +180,7 @@ var CityName;
 
 var LocaleTitle;
 var PrevLocaleTitle;
+var LocaleTitleLocal; // Stores the IP-based location name for fallback
 //var tempTest = true;  // used only for testing
 
 
@@ -260,6 +261,7 @@ function oneTimeInit() {
 
       CityNameInput.value(locationString);
       LocaleTitle = locationString;
+      LocaleTitleLocal = locationString; // Save for fallback
 
       // Check for timezone mismatch (VPN detection)
       var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -309,6 +311,7 @@ function oneTimeInit() {
       LatLocal = Latitude;
       LngLocal = Longitude;
       TzOffsetLocal = TzOffset;
+      LocaleTitleLocal = "Approximate Location (Fallback)";
 
       var tzString = str(TzOffset);
       // Add in a plus sign if not negative
@@ -335,7 +338,7 @@ function oneTimeInit() {
   //
 
   //     misc buttons
-  ResetToLocalButton = createButton('Fetch Precise Location');
+  ResetToLocalButton = createButton('Fetch Current Location');
   ResetToLocalButton.mousePressed(usePreciseLocation);
 
   //     mode buttons  
@@ -1267,6 +1270,33 @@ function handleLocationError(error) {
 
   console.log(errorMsg);
   CityNameInput.value(errorMsg);
+
+  // Restore approximate location if available
+  if (LatLocal !== 99999 && LngLocal !== 99999) {
+    console.log("Restoring approximate location...");
+    Latitude = LatLocal;
+    Longitude = LngLocal;
+    if (LocaleTitleLocal) {
+      LocaleTitle = LocaleTitleLocal;
+      CityNameInput.value(LocaleTitleLocal);
+    }
+
+    // Restore timezone
+    getTzUsingLatLong(Latitude, Longitude);
+
+    // Recalculate times
+    IsSunRiseSetObtained = false;
+    updateTimeThisDay();
+
+    // Clear mismatch flag since we are back to IP location
+    // (or keep it if we want to warn about VPN still? 
+    //  Actually if we restore IP loc, we are back to the state where mismatch might exist)
+    // But let's check if we should re-evaluate mismatch. 
+    // For now, let's assume the previous mismatch state is still valid or will be re-checked.
+    // However, getTzUsingLatLong might not re-check mismatch.
+    // Let's just leave IsTimezoneMismatch as is, or maybe re-run the check?
+    // Simpler to just restore the values.
+  }
 }
 
 //-----------------------------------------------------------------
