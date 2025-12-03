@@ -319,7 +319,7 @@ function oneTimeInit() {
   //
 
   //     misc buttons
-  ResetToLocalButton = createButton('Use Precise Location');
+  ResetToLocalButton = createButton('Fetch Precise Location');
   ResetToLocalButton.mousePressed(usePreciseLocation);
 
   //     mode buttons  
@@ -1228,11 +1228,56 @@ function setGmtDisplay()  // Toggling mode button
 
 
 //-----------------------------------------------------------------
+// Handler for location errors
+function handleLocationError(error) {
+  console.log("GPS location error:", error.message);
+
+  // Show user-friendly message based on error type
+  var errorMsg = "";
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      errorMsg = "Location permission denied";
+      alert("Location permission was denied.\n\nPlease enable location access in your browser settings (usually by clicking the icon to the left of the address bar) and try again.");
+      break;
+    case error.POSITION_UNAVAILABLE:
+      errorMsg = "Location unavailable";
+      break;
+    case error.TIMEOUT:
+      errorMsg = "Location request timed out";
+      break;
+    default:
+      errorMsg = "Location error occurred";
+  }
+
+  console.log(errorMsg);
+  CityNameInput.value(errorMsg);
+}
+
+//-----------------------------------------------------------------
 // Handler for the Use Precise Location button
 // Requests browser GPS coordinates (will show permission prompt)
 function usePreciseLocation() {
   console.log("Requesting precise GPS location...");
   IsTimezoneMismatch = false; // User intentionally requesting location
+
+  // Allow testing permission denial via URL hash parameter
+  // TODO: REMOVE THIS TEST CODE
+  var urlHash = window.location.hash.toLowerCase();
+  if (urlHash === '#testdenyloc' || urlHash === '#simulatedenyloc') {
+    console.log("🧪 TEST MODE: Simulating location permission denial");
+    // Create a mock error object
+    var mockError = {
+      code: 1, // PERMISSION_DENIED
+      message: "Simulated permission denial"
+    };
+    // Add constants to the mock error since the switch statement expects them
+    mockError.PERMISSION_DENIED = 1;
+    mockError.POSITION_UNAVAILABLE = 2;
+    mockError.TIMEOUT = 3;
+
+    handleLocationError(mockError);
+    return;
+  }
 
   navigator.geolocation.getCurrentPosition(
     // Success callback
@@ -1271,28 +1316,7 @@ function usePreciseLocation() {
     },
 
     // Error callback
-    function (error) {
-      console.log("GPS location error:", error.message);
-
-      // Show user-friendly message based on error type
-      var errorMsg = "";
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          errorMsg = "Location permission denied";
-          break;
-        case error.POSITION_UNAVAILABLE:
-          errorMsg = "Location unavailable";
-          break;
-        case error.TIMEOUT:
-          errorMsg = "Location request timed out";
-          break;
-        default:
-          errorMsg = "Location error occurred";
-      }
-
-      console.log(errorMsg);
-      CityNameInput.value(errorMsg);
-    }
+    handleLocationError
   );
 }
 

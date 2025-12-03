@@ -17,6 +17,13 @@
             "name": "Launch with VPN Test Mode",
             "url": "http://localhost:8000#testVPN",
             "webRoot": "${workspaceFolder}"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch with Deny Location Test",
+            "url": "http://localhost:8000#testDenyLoc",
+            "webRoot": "${workspaceFolder}"
         }
     ]
 }
