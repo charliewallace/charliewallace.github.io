@@ -312,32 +312,14 @@ function oneTimeInit() {
 
   // Use this to allow customizing layout for windows vs mobile
   IsWindows = (window.navigator.platform == "Win32");
-  /******************************	
-    if (IsWindows)
-    {
-      window.alert('Windows detected.');
-    }
-    else
-    {
-      window.alert('Windows not detected.');
-    }
-  	
-    if (window.navigator.platform.indexOf("Mac") === 0)
-    {
-      window.alert('Mac detected.');
-    }
-    else
-    {
-      window.alert('Mac not detected.');
-    }	
-  ************************/
 
   IsDesktop = IsWindows ||
     (window.navigator.platform.indexOf("Mac") === 0)
   console.log("IsWindows=" + IsWindows)
 
-  //fullscreen(); 
-  createCanvas(window.innerWidth, window.innerHeight);
+  // Create canvas and parent it to the container
+  var cnv = createCanvas(window.innerWidth, window.innerHeight);
+  cnv.parent('canvas-container');
 
 
   //========= Get location ==========
@@ -358,64 +340,70 @@ function oneTimeInit() {
   }
 
 
-  // ==== button and field creation and setup done here only once; ======
-  //  but position is set in reInit() since it will change on window resize.
-  //
+  // ==== Bind to existing HTML elements ======
 
   //     misc buttons
-  ResetToLocalButton = createButton('Fetch Current Location');
+  ResetToLocalButton = select('#btn-reset-loc');
   ResetToLocalButton.mousePressed(usePreciseLocation);
 
   //     mode buttons  
-  DaySpiralButtonLabel = "Week Spiral";
-  DaySpiralButton = createButton(DaySpiralButtonLabel);
+  DaySpiralButton = select('#btn-mode-toggle');
   DaySpiralButton.mousePressed(setDaySpiral);
+  DaySpiralButtonLabel = "Week Spiral"; // Keep track of label state
 
-  ColorfulModeButtonLabel = "More Colorful";
-  ColorfulModeButton = createButton(ColorfulModeButtonLabel);
+  ColorfulModeButton = select('#btn-colorful');
   ColorfulModeButton.mousePressed(setColorfulMode);
-  ColorfulModeButton.hide();
+  // ColorfulModeButton.hide(); // Handled by CSS/HTML initially
 
-  GmtDisplayButtonLabel = "Show GMT";
-  GmtDisplayButton = createButton(GmtDisplayButtonLabel);
+  GmtDisplayButton = select('#btn-gmt');
   GmtDisplayButton.mousePressed(setGmtDisplay);
-  GmtDisplayButton.show();
+  GmtDisplayButtonLabel = "Show GMT";
 
   //    Location buttons
-  SilveradoButton = createButton('Silverado');
+  SilveradoButton = select('#btn-loc-silverado');
   SilveradoButton.mousePressed(setSilverado);
 
-  BerkeleyButton = createButton('Berkeley');
+  BerkeleyButton = select('#btn-loc-berkeley');
   BerkeleyButton.mousePressed(setBerkeley);
 
-  LondonButton = createButton('San Diego');
-  LondonButton.mousePressed(setSanDiego);
+  SanDiegoButton = select('#btn-loc-sandiego');
+  SanDiegoButton.mousePressed(setSanDiego);
 
-  KansasCityButton = createButton('Kansas City');
+  LondonButton = select('#btn-loc-london');
+  LondonButton.mousePressed(setLondon);
+
+  KansasCityButton = select('#btn-loc-kc');
   KansasCityButton.mousePressed(setKansasCity);
 
-  MelbourneButton = createButton('Melbourne');
+  MelbourneButton = select('#btn-loc-melbourne');
   MelbourneButton.mousePressed(setMelbourne);
 
-  SanDiegoButton = createButton('London');
-  SanDiegoButton.mousePressed(setLondon);
-
   //     Input fields setup
-  TzInput = createInput('');
-  TzInput.value("100")
+  TzInput = select('#input-tz');
+  TzInput.value("100");
   TzInput.input(tzInputEvent);
 
-  LatInput = createInput('');
+  LatInput = select('#input-lat');
   LatInput.input(latInputEvent);
 
-  LngInput = createInput('');
+  LngInput = select('#input-lng');
   LngInput.input(longInputEvent);
 
-  //    Create field for entering name of a city    
-  CityNameInput = createInput('');
-  //    Create button for submitting city
-  CitySubmitButton = createButton('Submit');
+  //    City Name Input
+  CityNameInput = select('#input-city');
+
+  //    City Submit Button
+  CitySubmitButton = select('#btn-city-submit');
   CitySubmitButton.mousePressed(handleCitySubmit);
+
+  //    Website Link
+  WebsiteLink = select('#link-website');
+
+  //    Full Screen Button
+  var fsBtn = select('#btn-fullscreen');
+  if (fsBtn) {
+    fsBtn.mousePressed(toggleFullScreen);
+  }
 
   // get local time zone of the user's browser ============.
   // ATTN: by convention, this returns positive value when
@@ -482,13 +470,13 @@ function oneTimeInit() {
   // (actually since setup was called, so should be 0 ish)
   LastMillisec = millis();
 
-  // Create the website link
-  WebsiteLink = createA('http://coolweird.com', 'Coolweird.com', '_blank');
-  WebsiteLink.style('color', '#ADFF2F'); // GreenYellow
-  WebsiteLink.style('font-weight', 'bold');
-  WebsiteLink.style('text-decoration', 'none');
-
 }  // end of oneTimeInit()  ====================
+
+// Toggle Full Screen Mode
+function toggleFullScreen() {
+  var fs = fullscreen();
+  fullscreen(!fs);
+}
 
 
 
@@ -545,35 +533,8 @@ function reInit() {
   CurrentFontSize = RefFontSize;
 
   // ==== (re)set button and field positions ========
+  // REMOVED: Positioning is now handled by CSS in style.css
 
-  ResetToLocalButton.position(10, CenterY * 2 - 160);
-
-  //    mode buttons
-  // Shifted down to make room for website link
-  WebsiteLink.position(CenterX * 0.02, CenterY * 0.32);
-  DaySpiralButton.position(CenterX * 0.02, CenterY * 0.38);
-  ColorfulModeButton.position(CenterX * 0.02, CenterY * 0.445);
-  GmtDisplayButton.position(CenterX * 0.02, CenterY * 0.445);
-
-  //    Location buttons
-  SilveradoButton.position(CenterX * 2 - 115, CenterY * 2 - 160);
-  BerkeleyButton.position(CenterX * 2 - 115, CenterY * 2 - 135);
-  LondonButton.position(CenterX * 2 - 115, CenterY * 2 - 110);
-  KansasCityButton.position(CenterX * 2 - 115, CenterY * 2 - 85);
-  MelbourneButton.position(CenterX * 2 - 115, CenterY * 2 - 60);
-  SanDiegoButton.position(CenterX * 2 - 115, CenterY * 2 - 35);
-
-  //    Input fields
-  TzInput.position(110, CenterY * 2 - 130);//CenterY* 1.75);
-  TzInput.size(35);
-  LatInput.position(110, CenterY * 2 - 100);//CenterY* 1.83);
-  LatInput.size(60);
-  LngInput.position(110, CenterY * 2 - 70);//CenterY* 1.9);
-  LngInput.size(60);
-
-  //    button for entering name of a city    
-  CityNameInput.position(50, CenterY * 2 - 40);
-  CitySubmitButton.position(223, CenterY * 2 - 40);
 }    // End of reInit()  ============================================
 
 
@@ -2137,12 +2098,13 @@ function draw() {
 
   textAlign(LEFT, TOP);
 
-  // Draw clock title
+  // Draw clock title - MOVED TO HTML
+  /*
   if (IsDesktop) {
     textSize(CurrentFontSize * 0.8);
   }
   else {
-    textSize(CurrentFontSize * 1.4);
+    textSize(CurrentFontSize * 1.8); // Increased from 1.4
   }
 
   if (IsDaySpiral) {
@@ -2157,22 +2119,26 @@ function draw() {
     textSize(CurrentFontSize * 0.38);
   }
   else {
-    textSize(CurrentFontSize * 0.68);
+    textSize(CurrentFontSize * 1.2); // Increased from 0.68
   }
 
+  // Adjust vertical spacing for description
+  var descSpacing = IsDesktop ? 0.05 : 0.08;
+  var descStartY = IsDesktop ? 0.12 : 0.15;
+
   if (IsDaySpiral) {
-    text("Hour hand tip follows the day spiral,", CenterX * 0.02, CenterY * 0.12)
-    text("making 1 turn for AM and 1 for PM.", CenterX * 0.02, CenterY * 0.17)
+    text("Hour hand tip follows the day spiral,", CenterX * 0.02, CenterY * descStartY)
+    text("making 1 turn for AM and 1 for PM.", CenterX * 0.02, CenterY * (descStartY + descSpacing))
   }
   else // is week spiral
   {
-    text("Hour hand tip follows the week spiral,", CenterX * 0.02, CenterY * 0.12)
-    text("making 2 turns per day for AM and PM.", CenterX * 0.02, CenterY * 0.17)
+    text("Hour hand tip follows the week spiral,", CenterX * 0.02, CenterY * descStartY)
+    text("making 2 turns per day for AM and PM.", CenterX * 0.02, CenterY * (descStartY + descSpacing))
   }
 
-  text("Dark part of spiral indicates night.", CenterX * 0.02, CenterY * 0.22)
-  text("Dark part of spiral indicates night.", CenterX * 0.02, CenterY * 0.22)
-  text("v" + Version + " (C)2025 by Charlie Wallace", CenterX * 0.02, CenterY * 0.27)
+  text("Dark part of spiral indicates night.", CenterX * 0.02, CenterY * (descStartY + descSpacing * 2))
+  text("v" + Version + " (C)2025 by Charlie Wallace", CenterX * 0.02, CenterY * (descStartY + descSpacing * 3))
+  */
 
 
   // Bail out if lat/long is not set yet.
@@ -2204,13 +2170,13 @@ function draw() {
   //  tzOffsetString = "+" + str(TzOffset);
   //}
 
-  text("GMT offset:", 10, CenterY * 2 - 110);
+  //text("GMT offset:", 10, CenterY * 2 - 110);
 
-  text("Latitude:", 10, CenterY * 2 - 80);
+  //text("Latitude:", 10, CenterY * 2 - 80);
 
-  text("Longitude:", 10, CenterY * 2 - 50);
+  //text("Longitude:", 10, CenterY * 2 - 50);
 
-  text("City:", 10, CenterY * 2 - 20);
+  //text("City:", 10, CenterY * 2 - 20);
 
   fill(0);  // black
 
@@ -2378,7 +2344,7 @@ function draw() {
     textSize(CurrentFontSize * 0.8);
   }
   else {
-    textSize(CurrentFontSize * 1.4);
+    textSize(CurrentFontSize * 1.6); // Increased from 1.4
   }
   textAlign(RIGHT, TOP);
   if (Latitude != 99999 && Longitude != 99999) {
@@ -2389,7 +2355,7 @@ function draw() {
     textSize(CurrentFontSize * 0.38);
   }
   else {
-    textSize(CurrentFontSize * 0.68);
+    textSize(CurrentFontSize * 1.2); // Increased from 0.68 (approx doubled)
   }
 
 
@@ -2399,24 +2365,33 @@ function draw() {
   }
 
   textAlign(RIGHT, TOP);
-  text(TimeString + amPmString, CenterX * 2 - 19, CenterY * 0.12); // 53);
-  text(DateString, CenterX * 2 - 19, CenterY * 0.17); // 75);
-  text(getDayStringLong(IDow), CenterX * 2 - 19, CenterY * 0.22); // 98);
+
+  // Adjust vertical spacing based on device
+  var lineSpacing = IsDesktop ? 0.05 : 0.09; // Increased spacing for mobile
+  var startY = IsDesktop ? 0.12 : 0.15;
+
+  text(TimeString + amPmString, CenterX * 2 - 19, CenterY * startY);
+  text(DateString, CenterX * 2 - 19, CenterY * (startY + lineSpacing));
+  text(getDayStringLong(IDow), CenterX * 2 - 19, CenterY * (startY + lineSpacing * 2));
+
+  var nextLineY = startY + lineSpacing * 3;
+
   if (Latitude != 99999 && Longitude != 99999) {
-    text("Daylight Savings: " + IsDst, CenterX * 2 - 19, CenterY * 0.27); // 121);
+    text("Daylight Savings: " + IsDst, CenterX * 2 - 19, CenterY * nextLineY);
+    nextLineY += lineSpacing;
   }
 
   if (SunriseHour >= 0) {
     text("Sunrise: " + SunriseHourString + ":" + SunriseMinString
-      + SunriseAmpmString, CenterX * 2 - 19, CenterY * 0.32);
+      + SunriseAmpmString, CenterX * 2 - 19, CenterY * nextLineY);
     text("Sunset: " + SunsetHourString + ":" + SunsetMinString
-      + SunsetAmpmString, CenterX * 2 - 19, CenterY * 0.37);
+      + SunsetAmpmString, CenterX * 2 - 19, CenterY * (nextLineY + lineSpacing));
   }
   else if (SunriseHour == -2) {
-    text("Light All Day", CenterX * 2 - 19, CenterY * 0.32);
+    text("Light All Day", CenterX * 2 - 19, CenterY * nextLineY);
   }
   else if (SunriseHour == -1) {
-    text("Dark All Day", CenterX * 2 - 19, CenterY * 0.32);
+    text("Dark All Day", CenterX * 2 - 19, CenterY * nextLineY);
   }
 
   // If location is not yet set, hide the sunrise/set info
