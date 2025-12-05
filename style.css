@@ -110,6 +110,11 @@ canvas {
   padding: 0;
 }
 
+/* Add vertical separation below Fetch button */
+#btn-reset-loc {
+  margin-bottom: 30px;
+}
+
 /* --- Bottom Right --- */
 #bottom-right-container {
   bottom: 10px;
@@ -289,6 +294,10 @@ canvas {
     width: 100%;
   }
 
+  #btn-reset-loc {
+    margin-bottom: 10px;
+  }
+
   #bottom-left-container .control-group {
     background: rgba(0, 0, 0, 0.7);
     padding: 10px;
@@ -350,6 +359,10 @@ canvas {
   .ui-btn.preset {
     font-size: 0.8rem;
     padding: 6px;
+  }
+
+  #btn-reset-loc {
+    margin-bottom: 10px;
   }
 
   #bottom-left-container .control-group {
