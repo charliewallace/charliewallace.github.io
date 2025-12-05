@@ -114,7 +114,202 @@ body {
 #app-version {
   font-size: 0.65rem;
   color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+/* --- Top Right --- */
+#top-right-container {
+  top: 12px;
+  right: 12px;
+  align-items: flex-end;
+  text-align: right;
+  max-width: 200px;
+}
+
+#location-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   margin-bottom: 8px;
+}
+
+#locale-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+#time-display {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+#date-display,
+#day-display,
+#dst-display,
+#sunrise-display,
+#sunset-display {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+#vpn-warning {
+  display: none;
+  font-size: 0.75rem;
+  color: var(--warning-color);
+  padding: 6px 10px;
+  background: rgba(255, 204, 0, 0.15);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  max-width: 240px;
+  line-height: 1.3;
+}
+
+#vpn-warning.visible {
+  display: block;
+}
+
+#precise-hint {
+  display: none;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+#precise-hint.visible {
+  display: block;
+}
+
+#btn-fullscreen {
+  display: none;
+}
+
+/* --- Bottom Left --- */
+#bottom-left-container {
+  bottom: 12px;
+  left: 12px;
+  max-width: 260px;
+}
+
+#btn-reset-loc {
+  margin-bottom: 12px;
+}
+
+.input-prompt {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.input-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+#input-city {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-color);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+#input-city:focus {
+  outline: none;
+  border-color: #666;
+}
+
+.coord-inputs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.coord-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.coord-row label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  min-width: 24px;
+}
+
+.coord-input {
+  width: 55px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-muted);
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+.coord-input:focus {
+  outline: none;
+  border-color: #666;
+}
+
+/* --- Bottom Right --- */
+#bottom-right-container {
+  bottom: 12px;
+  right: 12px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* --- Corner Containers --- */
+.ui-corner {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* --- Top Left --- */
+#top-left-container {
+  top: 12px;
+  left: 12px;
+  max-width: 280px;
+  align-items: flex-start;
+}
+
+#app-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+#app-description {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+  margin-bottom: 2px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+#app-description p {
+  margin: 0;
+}
+
+#app-version {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-bottom: 2px;
 }
 
 .button-group {
@@ -271,7 +466,7 @@ body {
 
 .preset-buttons {
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: 1fr;
   gap: 4px;
   justify-content: end;
 }
@@ -475,8 +670,10 @@ body {
 
   .button-row {
     display: flex;
+    flex-direction: column;
     gap: 8px;
     margin-top: 5px;
+    align-items: flex-start;
   }
 
   #bottom-right-container {
@@ -495,7 +692,7 @@ body {
   }
 
   #locale-title {
-    font-size: 1rem;
+    font-size: 1.rem;
   }
 }
 
@@ -521,10 +718,11 @@ body {
   }
 
   /* Hide hints in landscape to save space */
-  #precise-hint,
+  /* User reported they want them visible, so removing the force hide for now or ensuring they work */
+  /* #precise-hint,
   #vpn-warning {
     display: none !important;
-  }
+  } */
 
   .ui-btn {
     font-size: 0.8rem;
@@ -554,6 +752,11 @@ body {
   }
 
   .preset-buttons {
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: 1fr;
+  }
+}
+@media screen and (max-width: 900px) {
+  #btn-reset-loc {
+    margin-bottom: 5px;
   }
 }

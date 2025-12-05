@@ -21,7 +21,7 @@
       <!-- Top Left: Title, Description, Buttons -->
       <div id="top-left-container" class="ui-corner">
         <h1 id="app-title">Day Spiral Clock</h1>
-        
+
         <!-- Desktop: Description inline -->
         <div id="app-description" class="desktop-only">
           <p>Hour hand tip follows the day spiral,</p>
@@ -44,7 +44,7 @@
         <div id="location-info">
           <div id="locale-title">Loading...</div>
           <div id="time-display">--:-- --</div>
-          
+
           <!-- Desktop: Detailed Info inline -->
           <div id="desktop-details" class="desktop-only">
             <div id="date-display"></div>
@@ -54,10 +54,10 @@
             <div id="sunset-display"></div>
           </div>
         </div>
-        
+
         <!-- Mobile: Details Button -->
         <button id="btn-details" class="ui-btn mobile-only">Details</button>
-        
+
         <button id="btn-fullscreen" class="ui-btn secondary">Full Screen</button>
       </div>
 
@@ -67,7 +67,7 @@
           accurate local times.</div>
         <div id="precise-hint">↓ For more precise sunrise/sunset times</div>
         <button id="btn-reset-loc" class="ui-btn">Fetch Current Location</button>
-        
+
         <!-- Desktop: Inline Inputs -->
         <div class="desktop-only">
           <div class="input-prompt">Enter city or lat/long:</div>
@@ -93,8 +93,8 @@
 
         <!-- Mobile: Popup Buttons -->
         <div class="mobile-only button-row">
-          <button id="btn-lookup-city" class="ui-btn">Lookup City</button>
           <button id="btn-manual-coords" class="ui-btn">Manual Lat/Long</button>
+          <button id="btn-lookup-city" class="ui-btn">Lookup City</button>
         </div>
       </div>
 
@@ -121,7 +121,7 @@
 
     <!-- Modals Overlay -->
     <div id="modal-overlay" class="hidden">
-      
+
       <!-- About Modal -->
       <div id="modal-about" class="modal-content hidden">
         <h2>About Day Spiral Clock</h2>
@@ -151,8 +151,8 @@
           <div id="city-error-msg" class="error-msg"></div>
         </div>
         <div class="modal-actions">
-           <button id="btn-city-submit-modal" class="ui-btn">OK</button>
-           <button class="ui-btn secondary btn-close-modal">Cancel</button>
+          <button id="btn-city-submit-modal" class="ui-btn">OK</button>
+          <button class="ui-btn secondary btn-close-modal">Cancel</button>
         </div>
       </div>
 
@@ -187,14 +187,12 @@
         <h2>Select Location</h2>
         <div class="modal-body">
           <div class="preset-grid">
-             <!-- Buttons injected/moved via JS or duplicated here? 
-                  Duplicating for simplicity to avoid complex DOM moving logic -->
-             <button id="btn-loc-silverado-m" class="ui-btn preset-modal">Silverado</button>
-             <button id="btn-loc-berkeley-m" class="ui-btn preset-modal">Berkeley</button>
-             <button id="btn-loc-sandiego-m" class="ui-btn preset-modal">San Diego</button>
-             <button id="btn-loc-london-m" class="ui-btn preset-modal">London</button>
-             <button id="btn-loc-kc-m" class="ui-btn preset-modal">Kansas City</button>
-             <button id="btn-loc-melbourne-m" class="ui-btn preset-modal">Melbourne</button>
+            <button id="btn-loc-silverado-m" class="ui-btn preset-modal">Silverado</button>
+            <button id="btn-loc-berkeley-m" class="ui-btn preset-modal">Berkeley</button>
+            <button id="btn-loc-sandiego-m" class="ui-btn preset-modal">San Diego</button>
+            <button id="btn-loc-london-m" class="ui-btn preset-modal">London</button>
+            <button id="btn-loc-kc-m" class="ui-btn preset-modal">Kansas City</button>
+            <button id="btn-loc-melbourne-m" class="ui-btn preset-modal">Melbourne</button>
           </div>
         </div>
         <button class="ui-btn btn-close-modal">Cancel</button>

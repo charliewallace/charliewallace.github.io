@@ -1569,7 +1569,7 @@ function usePreciseLocation() {
       LngInput.value(longString);
       LastLong = Longitude;
 
-      CityNameInput.value("Precise Location");
+      CityNameInput.value("");
       LocaleTitle = "Precise Location";
 
       // Get timezone using existing GeoNames function
