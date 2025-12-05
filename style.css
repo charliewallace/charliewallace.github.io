@@ -273,7 +273,7 @@ body {
 }
 
 .preset-buttons {
-  display: flex;
+  display: flex !important;
   flex-direction: column;
   gap: 6px;
   align-items: flex-end;
@@ -475,8 +475,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    bottom: 50px;
-    /* Raise slightly to avoid version line overlap */
+    bottom: 15px;
+    /* Lowered to fill corner space */
   }
 
   .button-row {
