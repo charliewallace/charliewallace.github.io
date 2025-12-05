@@ -682,7 +682,9 @@ function handleCitySubmitModal() {
           var lon = parseFloat(data[0].lon);
           Latitude = round(lat, 3);
           Longitude = round(lon, 3);
-          CityNameInput.value(data[0].display_name); // Update main input too
+          // CityNameInput.value(data[0].display_name); // Don't update main input with result
+          CityNameInput.value(''); // Clear the main input
+          select('#input-city-modal').value(''); // Clear the modal input
           LocaleTitle = data[0].display_name.split(',')[0];
 
           // Update other state
@@ -1947,6 +1949,9 @@ function handleCitySubmit() {
     // response to the url call comes in.  We won't know the lat/lon until then.
     //  THis means the subsequent API call to get the time zone can't happen until then.
     loadJSON(apiUrl, gotCityLocationDataOpenStMap);
+
+    // Clear the input field
+    CityNameInput.value('');
   }
   else // no city name was found
   {
