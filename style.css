@@ -475,7 +475,7 @@ body {
 
   /* Reduce top-left to prevent overlap with bottom-left */
   #top-left-container {
-    max-width: 160px;
+    max-width: 220px;
     max-height: 38%;
   }
 

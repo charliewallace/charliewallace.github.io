@@ -496,6 +496,19 @@ function oneTimeInit() {
 function toggleFullScreen() {
   var fs = fullscreen();
   fullscreen(!fs);
+
+  // Update button text based on new state
+  var fsBtn = document.getElementById('btn-fullscreen');
+  if (fsBtn) {
+    fsBtn.textContent = !fs ? 'Exit Full Screen' : 'Full Screen';
+  }
+
+  // Show/hide description based on fullscreen state
+  // In fullscreen we have more vertical space, so show the description
+  var descEl = document.getElementById('app-description');
+  if (descEl) {
+    descEl.style.display = !fs ? 'block' : 'none';
+  }
 }
 
 // Update HTML UI elements with current data
