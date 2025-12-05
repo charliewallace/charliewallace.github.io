@@ -148,8 +148,7 @@ var LondonButton;
 var BerkeleyButton;
 var SilveradoButton;
 
-var DaySpiralButton;
-var DaySpiralButtonLabel;  // needed when button label must change
+
 
 var ColorfulModeButton;
 var ColorfulModeButtonLabel;  // needed when button label must change
@@ -175,7 +174,7 @@ var IsWindows;
 var IsDesktop;
 
 var IsOnlyTodayInColor;
-var IsDaySpiral;
+
 var IsGmtShown;
 var ClockMode;
 
@@ -304,7 +303,7 @@ function oneTimeInit() {
 
   // state vars.  Preserve these thru window resize.
   IsOnlyTodayInColor = true; // false; //
-  IsDaySpiral = true;
+  // IsDaySpiral = true; // Removed
   IsGmtShown = false; //true; // false; //
 
   ClockMode = 0;
@@ -367,9 +366,33 @@ function oneTimeInit() {
   ResetToLocalButton.mousePressed(usePreciseLocation);
 
   //     mode buttons  
-  DaySpiralButtonLabel = "Week Spiral";
-  DaySpiralButton = select('#btn-mode-toggle');
-  DaySpiralButton.mousePressed(setDaySpiral);
+  // DaySpiralButtonLabel = "Week Spiral";
+  // DaySpiralButton = select('#btn-mode-toggle');
+  // DaySpiralButton.mousePressed(setDaySpiral);
+
+  // --- NEW MODAL BUTTONS ---
+  select('#btn-about').mousePressed(() => openModal('modal-about'));
+  select('#btn-details').mousePressed(openDetailsModal);
+  select('#btn-lookup-city').mousePressed(() => openModal('modal-city'));
+  select('#btn-manual-coords').mousePressed(() => openModal('modal-coords'));
+  select('#btn-more-locs').mousePressed(() => openModal('modal-locations'));
+
+  // --- MODAL CLOSE BUTTONS ---
+  selectAll('.btn-close-modal').forEach(btn => {
+    btn.mousePressed(closeAllModals);
+  });
+
+  // --- MODAL SUBMIT BUTTONS ---
+  select('#btn-city-submit-modal').mousePressed(handleCitySubmitModal);
+  select('#btn-coords-submit-modal').mousePressed(handleCoordsSubmitModal);
+
+  // --- PRESET MODAL BUTTONS ---
+  select('#btn-loc-silverado-m').mousePressed(() => { setSilverado(); closeAllModals(); });
+  select('#btn-loc-berkeley-m').mousePressed(() => { setBerkeley(); closeAllModals(); });
+  select('#btn-loc-sandiego-m').mousePressed(() => { setSanDiego(); closeAllModals(); });
+  select('#btn-loc-london-m').mousePressed(() => { setLondon(); closeAllModals(); });
+  select('#btn-loc-kc-m').mousePressed(() => { setKansasCity(); closeAllModals(); });
+  select('#btn-loc-melbourne-m').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
   ColorfulModeButtonLabel = "More Colorful";
   ColorfulModeButton = select('#btn-colorful');
@@ -516,17 +539,14 @@ function updateUIElements() {
   // Update title based on mode
   var titleEl = document.getElementById('app-title');
   if (titleEl) {
-    titleEl.textContent = IsDaySpiral ? 'Day Spiral Clock' : 'Week Spiral Clock';
+    titleEl.textContent = 'Day Spiral Clock'; // Always Day Spiral
   }
 
   // Update description based on mode
   var descEl = document.getElementById('app-description');
   if (descEl) {
-    if (IsDaySpiral) {
-      descEl.innerHTML = '<p>Hour hand tip follows the day spiral,</p><p>making 1 turn for AM and 1 for PM.</p><p>Dark part of spiral indicates night.</p>';
-    } else {
-      descEl.innerHTML = '<p>Hour hand tip follows the week spiral,</p><p>making 2 turns per day for AM and PM.</p><p>Dark part of spiral indicates night.</p>';
-    }
+    // Always Day Spiral description
+    descEl.innerHTML = '<p>Hour hand tip follows the day spiral,</p><p>making 1 turn for AM and 1 for PM.</p><p>Dark part of spiral indicates night.</p>';
   }
 
   // Update locale title
@@ -597,6 +617,122 @@ function updateUIElements() {
     } else {
       preciseHint.classList.remove('visible');
     }
+  }
+}
+
+
+// --- MODAL FUNCTIONS ---
+
+function openModal(modalId) {
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  document.querySelectorAll('.modal-content').forEach(el => el.classList.add('hidden'));
+  document.getElementById(modalId).classList.remove('hidden');
+}
+
+function closeAllModals() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  document.querySelectorAll('.modal-content').forEach(el => el.classList.add('hidden'));
+  // Clear errors
+  var errEl = document.getElementById('city-error-msg');
+  if (errEl) errEl.textContent = '';
+}
+
+function openDetailsModal() {
+  var content = '';
+  if (Latitude != 99999) {
+    content += '<p><strong>Date:</strong> ' + (DateString || '') + '</p>';
+    content += '<p><strong>Day:</strong> ' + (typeof IDow !== 'undefined' ? getDayStringLong(IDow) : '') + '</p>';
+    content += '<p><strong>DST:</strong> ' + (IsDst ? 'Yes' : 'No') + '</p>';
+    if (SunriseHour >= 0) {
+      content += '<p><strong>Sunrise:</strong> ' + SunriseHourString + ':' + SunriseMinString + SunriseAmpmString + '</p>';
+      content += '<p><strong>Sunset:</strong> ' + SunsetHourString + ':' + SunsetMinString + SunsetAmpmString + '</p>';
+    }
+  } else {
+    content = '<p>Location not set.</p>';
+  }
+  document.getElementById('details-content').innerHTML = content;
+  openModal('modal-details');
+}
+
+function handleCitySubmitModal() {
+  var city = select('#input-city-modal').value();
+  var errEl = select('#city-error-msg');
+  errEl.html('Searching...'); // Use .html() for p5 element or .textContent for vanilla
+
+  // Re-use existing logic but adapted for modal feedback
+  // Using ipapi or nominatim logic from existing code?
+  // Existing code uses `handleCitySubmit` which calls `getLatLongFromCityName`
+  // I need to hook into that or replicate it.
+  // Let's look at `handleCitySubmit` implementation (not shown in view_file yet, likely further down).
+  // I will assume I can call a modified version or duplicate the fetch logic here to handle the error UI.
+
+  // For now, let's call the existing function but we need to intercept the result.
+  // Since the existing function likely updates global state, we can wrap it.
+  // BUT, the existing function probably doesn't have a callback for error.
+  // I should probably implement the fetch here directly to control the UI.
+
+  if (city && city.length > 0) {
+    var url = `https://nominatim.openstreetmap.org/search?format=json&q=${city}`;
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          // Success
+          var lat = parseFloat(data[0].lat);
+          var lon = parseFloat(data[0].lon);
+          Latitude = round(lat, 3);
+          Longitude = round(lon, 3);
+          CityNameInput.value(data[0].display_name); // Update main input too
+          LocaleTitle = data[0].display_name.split(',')[0];
+
+          // Update other state
+          LatLocal = Latitude;
+          LngLocal = Longitude;
+          LatInput.value(str(Latitude));
+          LngInput.value(str(Longitude));
+
+          getTzUsingLatLong(Latitude, Longitude); // This updates TZ and closes loop
+
+          closeAllModals();
+        } else {
+          errEl.html("City not found. Please try 'City, Country'.");
+        }
+      })
+      .catch(err => {
+        errEl.html("Error connecting to search service.");
+        console.error(err);
+      });
+  } else {
+    errEl.html("Please enter a city name.");
+  }
+}
+
+function handleCoordsSubmitModal() {
+  var lat = parseFloat(select('#input-lat-modal').value());
+  var lng = parseFloat(select('#input-lng-modal').value());
+  var tz = parseFloat(select('#input-tz-modal').value());
+
+  if (!isNaN(lat) && !isNaN(lng) && !isNaN(tz)) {
+    Latitude = lat;
+    Longitude = lng;
+    TzOffset = tz;
+
+    // Update globals
+    LatLocal = Latitude;
+    LngLocal = Longitude;
+    TzOffsetLocal = TzOffset;
+    LastTz = TzOffset;
+
+    // Update main UI inputs to match
+    LatInput.value(str(Latitude));
+    LngInput.value(str(Longitude));
+    TzInput.value(str(TzOffset));
+
+    LocaleTitle = "Manual Location";
+    updateTimeThisDay();
+    closeAllModals();
+  } else {
+    alert("Please enter valid numbers for Lat, Lng, and Time Zone.");
   }
 }
 
@@ -704,14 +840,9 @@ function genSpiral() //III
   let startFrac = 0.1;
   let endFrac = 0.72;
 
-  if (IsDaySpiral) {
-    startFrac = 0.24;
-    endFrac = 0.6;
-  }
-  else {
-    startFrac = 0.1;
-    endFrac = 0.72;
-  }
+  // Always Day Spiral settings
+  startFrac = 0.24;
+  endFrac = 0.6;
 
   var smallerDim = CenterX;
   if (CenterX > CenterY) {
@@ -746,9 +877,8 @@ function getDayColor(dow) // range 0-6
 {
   //III
   var iColor = color(0, 0, 0);
-  if (IsDaySpiral) {
-    dow = IDow;
-  }
+  // Always Day Spiral logic
+  dow = IDow;
   switch (dow) {
 
     case 0:
@@ -802,7 +932,7 @@ function getDayColor(dow) // range 0-6
       break;
   }
 
-  if (IsOnlyTodayInColor || IsDaySpiral) {
+  if (IsOnlyTodayInColor || true) {
     if (dow != IDow) {
       iColor = color(210, 210, 210);
     }
@@ -826,9 +956,8 @@ function getDayColor(dow) // range 0-6
 function getNightColor(dow) // range 0-6
 {
   var iColor = color(0, 0, 0);
-  if (IsDaySpiral) {
-    dow = IDow;
-  }
+  // Always Day Spiral logic
+  dow = IDow;
 
   switch (dow) {
 
@@ -879,7 +1008,7 @@ function getNightColor(dow) // range 0-6
       break;
   }
 
-  if (IsOnlyTodayInColor || IsDaySpiral) {
+  if (IsOnlyTodayInColor || true) {
     if (dow != IDow) {
       //iColor = color(90,90,90);
       iColor = color(70, 70, 70);
@@ -887,13 +1016,7 @@ function getNightColor(dow) // range 0-6
     else {
       //iColor = color(112, 102, 31);
       //iColor = color(66, 105, 120);
-      if (IsDaySpiral) {
-        iColor = color(20, 80, 100); // darker blue 32, 60, 98
-      }
-      else {
-        //iColor = color(66, 105, 120); // light blue
-        iColor = color(20, 80, 100); // darker blue 32, 60, 98
-      }
+      iColor = color(20, 80, 100); // darker blue 32, 60, 98
     }
   }
 
@@ -1297,33 +1420,7 @@ function updateTimeThisDay() {
 
 //=== TODO: replace this toggling button with a set of buttons for each clock type, 
 // programmed to work as radio buttons.  Will set ClockMode to indicate type.
-function setDaySpiral()  // Toggling mode button
-{
-  if (IsDaySpiral) {
-    IsDaySpiral = false;
-    DaySpiralButtonLabel = "Day Spiral";
-    NumSpiralTurns = 14; // a week of am/pm's    
-    genSpiral();
 
-    // show the colorful mode button
-    ColorfulModeButton.show();
-    GmtDisplayButton.hide();
-  }
-  else {
-    IsDaySpiral = true;
-    DaySpiralButtonLabel = "Week Spiral";
-    NumSpiralTurns = 2; // one for am, one for pm
-    genSpiral();
-    //DaySpiralButton.attribute('disabled', DaySpiralButtonLabel);
-
-    // hide the colorful mode button
-    ColorfulModeButton.hide();
-    GmtDisplayButton.show();
-  }
-
-  // update button label
-  DaySpiralButton.html(DaySpiralButtonLabel); // Change the button's HTML content
-}
 
 
 //-----------------------------------------------------------------
@@ -2199,12 +2296,7 @@ function draw() {
   // we redo this below after successfully getting the lat/long
   background(BkColor);
 
-  if (IsDaySpiral) {
-    fill(100);  // gray
-  }
-  else {
-    fill(40);  // dark gray
-  }
+  fill(100);  // gray
 
   noStroke();
   ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
@@ -2341,14 +2433,8 @@ function draw() {
 
   // Calc index into radius array for the current time.
   //  taking into acct that there are two turns per day for each AM/PM.
-  if (IsDaySpiral) {
-    iiSpiral = int((theHour / 24) * NumSpiralPointsPerTurn * 2);
-  }
-  else // is week spiral
-  {
-    iiSpiral = int(IDow * NumSpiralPointsPerTurn * 2) +
-      int((theHour / 24) * NumSpiralPointsPerTurn * 2);
-  }
+  // Always Day Spiral logic
+  iiSpiral = int((theHour / 24) * NumSpiralPointsPerTurn * 2);
 
   if (iiSpiral < NumSpiralPointsPerTurn * NumSpiralTurns) // if index is valid
   {
@@ -2416,28 +2502,15 @@ function draw() {
     stroke(200); // Neutral light gray
     noFill();
 
-    if (IsDaySpiral) {
-      strokeWeight(14);
-      if (IsDesktop) strokeWeight(30);
-      beginShape();
-      for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
-        vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-      }
-      endShape();
-    } else {
-      strokeWeight(6);
-      if (IsDesktop) strokeWeight(10);
-      for (dw = 0; dw < 7; dw++) {
-        vvBase = dw * NumSpiralPointsPerTurn * 2;
-        beginShape();
-        for (vv = vvBase; vv <= vvBase + 2 * NumSpiralPointsPerTurn; vv++) {
-          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-        }
-        endShape();
-      }
+    strokeWeight(14);
+    if (IsDesktop) strokeWeight(30);
+    beginShape();
+    for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
+      vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
     }
+    endShape();
   }
-  else if (IsDaySpiral) {
+  else {
     // Draw the day spiral for the current day.
     // Use broader stroke for the day spiral, since it's only 2 turns long
     strokeWeight(14); // for phone
@@ -2616,133 +2689,6 @@ function draw() {
 
     // END of spiral draw for day spiral
   }
-  else  // Draw logic for 14-turn week spiral ============================
-  {
-
-    for (dw = 0; dw < 7; dw++) // step thru the days of the week
-    {
-      dayColor = getDayColor(dw);
-      nightColor = getNightColor(dw);
-      dayString = getDayStringShort(dw);
-
-      stroke(dayColor);
-
-      vvBase = dw * NumSpiralPointsPerTurn * 2;
-
-      if (SunriseWeekHourArray[dw] != -1) // if not dark-all-day
-      {
-        // use daytime color, but draw the entire 24hrs for this day.
-        // If it's light all day (midnight sun) then this is all we need.
-        // Otherwise, we'll draw the night-time part over this.
-        beginShape();
-        for (vv = vvBase; vv <= vvBase + 2 * NumSpiralPointsPerTurn; vv++) {
-          //print("for day=" + dw +" color="+ dayColor);
-          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-        }
-        endShape();
-
-        if (SunriseWeekHourArray[dw] != -2) // if not all-day-sun
-        {
-          // now draw in the night portion for this day-of-week.
-          stroke(nightColor); // set black color
-
-          // first the part from midnight to sunrise ----------------
-          // vv at midnight is vvBase; vv at sunrise is needed = vvRise.
-
-          // seconds from midnight on day dw to sunrise that day
-          secToRise = SunriseWeekSecFromSunArray[dw] -
-            (60 * 60 * 24 * dw);
-          // convert seconds to vv offset from start of day dw
-          vvRise = int((secToRise / (60 * 60 * 24)) * NumSpiralPointsPerTurn * 2);
-
-          beginShape();
-          for (vv = vvBase; vv < vvBase + vvRise; vv++) {
-            vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-          }
-          endShape();
-
-          // Next draw the part from sunset to midnight ----
-          // vv at sunset is vvSet, 
-          // vv at midnight is vvBase+NumSpiralPointsPerTurn
-
-          // seconds from midnight on day dw to sunset that day
-          secToSet = SunsetWeekSecFromSunArray[dw] -
-            (60 * 60 * 24 * dw);
-          // convert seconds to vv offset
-          vvSet = int((secToSet / (60 * 60 * 24)) * NumSpiralPointsPerTurn * 2);
-          beginShape();
-
-          // NOTE use of <= below, this ensures that the last vertex hooks up with first.
-          for (vv = vvBase + vvSet; vv <= vvBase + 2 * NumSpiralPointsPerTurn; vv++) {
-            vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-          }
-
-          endShape();
-        }
-      }
-      else // midnight sun
-      {
-        // use night-time color, but draw the entire 24hrs for this day.
-        stroke(nightColor);
-
-        beginShape();
-        for (vv = vvBase; vv <= vvBase + 2 * NumSpiralPointsPerTurn; vv++) {
-          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-        }
-        endShape();
-      }
-
-      // Add day-of-week label just after midnight 
-      fill(255);
-      noStroke();
-
-      // Draw in the day-of-week label, in a column under the 12. Make the current day bold/larger.
-      if (dw == IDow) {
-        textStyle(BOLD);
-        fill(color(251, 246, 71));  // yellow
-
-        // boost text size for emphasis, same for dsktop and mobile
-        if (IsDesktop) {
-          textSize(RefFontSize * dowLabelSizeDsktpBoost); // boosted text scale for desktop
-          text(dayString,
-            CenterX + XSpiralArray[vvBase] + 3,
-            CenterY + YSpiralArray[vvBase] - 11);
-        }
-        else {
-          textSize(RefFontSize * dowLabelSizeMoblBoost);  // boosted text scale for mobile  
-          text(dayString,
-            CenterX + XSpiralArray[vvBase] + 3,
-            CenterY + YSpiralArray[vvBase] - 8);
-        }
-      }
-      else  // is NOT the current day of the week.
-      {
-        textStyle(NORMAL);
-        if (IsDesktop) {
-          text(dayString,
-            CenterX + XSpiralArray[vvBase] + 3,
-            CenterY + YSpiralArray[vvBase] - 5);
-        }
-        else {
-          text(dayString,
-            CenterX + XSpiralArray[vvBase] + 3,
-            CenterY + YSpiralArray[vvBase] - 5);
-        }
-      }
-
-      // Restore text size
-      if (IsDesktop) {
-        textSize(RefFontSize * dowLabelSizeDsktp);
-      }
-      else {
-        textSize(RefFontSize * dowLabelSizeMobl);
-      }
-
-      textStyle(NORMAL);
-
-      noFill();
-    }
-  }
 
   strokeCap(ROUND);
   fill(0);
@@ -2767,7 +2713,7 @@ function draw() {
   // week spiral.  
   strokeCap(SQUARE);
   let adjustedHourRadius = HoursRadius;
-  if (IsGmtShown && IsDaySpiral) {
+  if (IsGmtShown) {
     adjustedHourRadius = RadiusSpiralArray[iiSpiral] - ClockDiameter * 0.017;  //wc5
   }
 
@@ -2786,20 +2732,10 @@ function draw() {
 
   stroke(255); // white
 
-
-  if (IsDaySpiral) {
-    ellipse(CenterX + cos(hourRads) * HoursRadius,
-      CenterY + sin(hourRads) * HoursRadius,
-      32 * FontScaleFactor,
-      32 * FontScaleFactor);
-  }
-  else // for week spiral use smaller diameter circle
-  {
-    ellipse(CenterX + cos(hourRads) * HoursRadius,
-      CenterY + sin(hourRads) * HoursRadius,
-      27 * FontScaleFactor,
-      27 * FontScaleFactor);
-  }
+  ellipse(CenterX + cos(hourRads) * HoursRadius,
+    CenterY + sin(hourRads) * HoursRadius,
+    32 * FontScaleFactor,
+    32 * FontScaleFactor);
 
   // restore text style
   textStyle(NORMAL);

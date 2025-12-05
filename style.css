@@ -17,6 +17,8 @@
   --input-border: #444;
   --link-color: #ADFF2F;
   --warning-color: #ffcc00;
+  --modal-overlay-bg: rgba(0, 0, 0, 0.85);
+  --modal-bg: #1a1a1a;
 }
 
 /* --- Base Reset --- */
@@ -324,257 +326,210 @@ body {
   text-decoration: underline;
 }
 
+/* --- Modals --- */
+#modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--modal-overlay-bg);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+}
+
+#modal-overlay.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--modal-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content.hidden {
+  display: none;
+}
+
+.modal-content h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-color);
+  text-align: center;
+}
+
+.modal-body {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.help-text {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+.modal-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-color);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.modal-input.small {
+  width: 80px;
+}
+
+.coord-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.preset-modal {
+  width: 100%;
+  padding: 10px;
+  font-size: 0.9rem;
+}
+
+.error-msg {
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  margin-top: 5px;
+  min-height: 1.2em;
+}
+
+/* --- Visibility Classes --- */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
 /* ===================================================
-   RESPONSIVE: Mobile Portrait
+   RESPONSIVE: Mobile Portrait & Landscape (Unified Mobile)
    =================================================== */
-@media screen and (max-width: 600px) and (orientation: portrait) {
+@media screen and (max-width: 900px) {
 
-  /* Limit top-left to prevent overlap with top-right */
+  /* Toggle Visibility */
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+    /* Force block for buttons */
+  }
+
+  /* Adjust Layouts */
   #top-left-container {
-    max-width: 55%;
+    max-width: 50%;
   }
 
-  #app-title {
-    font-size: 1.1rem;
+  #top-right-container {
+    max-width: 50%;
   }
 
-  #app-description {
-    font-size: 0.7rem;
+  #bottom-left-container {
+    max-width: 60%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  #app-version {
-    font-size: 0.6rem;
+  .button-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
   }
 
+  #bottom-right-container {
+    align-items: flex-end;
+  }
+
+  /* Button Sizing for Touch */
   .ui-btn {
-    font-size: 0.8rem;
-    padding: 5px 10px;
+    font-size: 0.9rem;
+    padding: 8px 12px;
   }
 
-  .ui-btn.small {
-    font-size: 0.75rem;
-    padding: 4px 8px;
-  }
-
-  .ui-btn.secondary {
-    font-size: 0.75rem;
-    padding: 4px 8px;
-  }
-
-  .ui-btn.preset {
-    font-size: 0.7rem;
-    padding: 4px 6px;
+  /* Specific Tweaks */
+  #app-title {
+    font-size: 1.2rem;
   }
 
   #locale-title {
-    font-size: 0.9rem;
-  }
-
-  #time-display {
-    font-size: 0.8rem;
-  }
-
-  #date-display,
-  #day-display,
-  #dst-display,
-  #sunrise-display,
-  #sunset-display {
-    font-size: 0.7rem;
-  }
-
-  /* Bottom-left: shrink to prevent overlap */
-  #bottom-left-container {
-    max-width: 55%;
-  }
-
-  #btn-reset-loc {
-    font-size: 0.75rem;
-    padding: 5px 8px;
-    margin-bottom: 6px;
-  }
-
-  #vpn-warning {
-    font-size: 0.65rem;
-    padding: 4px 6px;
-    max-width: 100%;
-  }
-
-  #precise-hint {
-    font-size: 0.65rem;
-  }
-
-  .input-prompt {
-    font-size: 0.7rem;
-  }
-
-  #input-city {
-    font-size: 0.8rem;
-    padding: 5px;
-    width: 100px;
-  }
-
-  .coord-row label {
-    font-size: 0.7rem;
-  }
-
-  .coord-input {
-    font-size: 0.75rem;
-    width: 50px;
-    padding: 3px;
-  }
-
-  /* L-shape layout: 3 buttons in right column, 3 along bottom row */
-  .preset-buttons {
-    display: grid;
-    grid-template-columns: auto auto auto;
-    grid-template-rows: auto auto auto;
-    gap: 4px;
-    justify-content: end;
-  }
-
-  /* First 3 buttons stacked in right column */
-  .preset-buttons button:nth-child(1) {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .preset-buttons button:nth-child(2) {
-    grid-column: 3;
-    grid-row: 2;
-  }
-
-  .preset-buttons button:nth-child(3) {
-    grid-column: 3;
-    grid-row: 3;
-  }
-
-  /* Last 3 buttons along the bottom row */
-  .preset-buttons button:nth-child(4) {
-    grid-column: 1;
-    grid-row: 3;
-  }
-
-  .preset-buttons button:nth-child(5) {
-    grid-column: 2;
-    grid-row: 3;
-  }
-
-  .preset-buttons button:nth-child(6) {
-    grid-column: 3;
-    grid-row: 3;
+    font-size: 1rem;
   }
 }
 
 /* ===================================================
-   RESPONSIVE: Mobile Landscape
+   RESPONSIVE: Mobile Landscape Specific
    =================================================== */
 @media screen and (max-width: 900px) and (orientation: landscape) {
   #btn-fullscreen {
     display: block;
   }
 
-  /* Reduce top-left to prevent overlap with bottom-left */
   #top-left-container {
-    max-width: 220px;
-    max-height: 38%;
-  }
-
-  #app-title {
-    font-size: 0.95rem;
-  }
-
-  /* Hide description in landscape to save vertical space */
-  #app-description {
-    display: none;
-  }
-
-  #app-version {
-    font-size: 0.7rem;
-    margin-bottom: 2px;
-    color: #ffffff;
-  }
-
-  .button-group {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-  }
-
-  .ui-btn {
-    font-size: 0.75rem;
-    padding: 5px 8px;
-  }
-
-  .ui-btn.secondary {
-    font-size: 0.7rem;
+    max-width: 250px;
+    max-height: 40%;
   }
 
   #top-right-container {
-    max-width: 160px;
-  }
-
-  #locale-title {
-    font-size: 0.85rem;
-  }
-
-  #time-display,
-  #date-display,
-  #day-display,
-  #dst-display,
-  #sunrise-display,
-  #sunset-display {
-    font-size: 0.7rem;
+    max-width: 200px;
   }
 
   #bottom-left-container {
-    max-width: 160px;
     bottom: 8px;
   }
 
-  /* Hide some elements in landscape to save vertical space */
+  /* Hide hints in landscape to save space */
   #precise-hint,
   #vpn-warning {
     display: none !important;
   }
 
-  #btn-reset-loc {
-    font-size: 0.7rem;
-    padding: 5px 8px;
-    margin-bottom: 6px;
-  }
-
-  .input-prompt {
-    font-size: 0.65rem;
-  }
-
-  #input-city {
-    font-size: 0.7rem;
-    padding: 5px;
-  }
-
-  .coord-inputs {
-    gap: 6px;
-  }
-
-  .coord-row label {
-    font-size: 0.65rem;
-    min-width: 20px;
-  }
-
-  .coord-input {
-    width: 45px;
-    font-size: 0.65rem;
-    padding: 3px 4px;
-  }
-
-  .preset-buttons {
-    grid-template-columns: repeat(3, auto);
-    gap: 3px;
-  }
-
-  .ui-btn.preset {
-    font-size: 0.65rem;
-    padding: 4px 6px;
+  .ui-btn {
+    font-size: 0.8rem;
+    /* Slightly smaller in landscape */
+    padding: 6px 10px;
   }
 }
 
