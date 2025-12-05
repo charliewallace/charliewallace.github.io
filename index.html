@@ -2,20 +2,98 @@
 <html lang="en">
 
 <head>
-  <script src="p5.js"></script>
-  <script src="p5.sound.min.js"></script>
-  <link rel="stylesheet" type="text/css" href="style.css">
   <meta charset="utf-8">
-  <title>Day Spiral</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Day Spiral Clock</title>
+  <meta name="description"
+    content="A unique 12-hour clock where the hour hand follows a spiral showing day and night periods based on your location.">
+  <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 
 <body>
-  <main>
-  </main>
+  <div id="app-container">
+    <!-- p5.js canvas will be injected here -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-layer">
+
+      <!-- Top Left: Title, Description, Buttons -->
+      <div id="top-left-container" class="ui-corner">
+        <h1 id="app-title">Day Spiral Clock</h1>
+        <div id="app-description">
+          <p>Hour hand tip follows the day spiral,</p>
+          <p>making 1 turn for AM and 1 for PM.</p>
+          <p>Dark part of spiral indicates night.</p>
+        </div>
+        <div id="app-version">v0.1.0 ©2025 by Charlie Wallace</div>
+        <div class="button-group">
+          <button id="btn-mode-toggle" class="ui-btn">Week Spiral</button>
+          <button id="btn-gmt" class="ui-btn secondary">Show GMT</button>
+          <button id="btn-colorful" class="ui-btn secondary" style="display:none;">More Colorful</button>
+          <a id="link-website" href="http://coolweird.com" target="_blank">Coolweird.com</a>
+        </div>
+      </div>
+
+      <!-- Top Right: Location & Time Info -->
+      <div id="top-right-container" class="ui-corner">
+        <div id="location-info">
+          <div id="locale-title">Loading...</div>
+          <div id="time-display">--:-- --</div>
+          <div id="date-display"></div>
+          <div id="day-display"></div>
+          <div id="dst-display"></div>
+          <div id="sunrise-display"></div>
+          <div id="sunset-display"></div>
+        </div>
+        <button id="btn-fullscreen" class="ui-btn secondary">Full Screen</button>
+      </div>
+
+      <!-- Bottom Left: Location Inputs -->
+      <div id="bottom-left-container" class="ui-corner">
+        <div id="vpn-warning">⚠️ Timezone mismatch detected. Your IP location may be inaccurate (VPN?). Click below for
+          accurate local times.</div>
+        <div id="precise-hint">↓ For more precise sunrise/sunset times</div>
+        <button id="btn-reset-loc" class="ui-btn">Fetch Current Location</button>
+        <div class="input-prompt">Enter city or lat/long:</div>
+        <div class="input-row">
+          <input type="text" id="input-city" placeholder="City Name">
+          <button id="btn-city-submit" class="ui-btn small">Go</button>
+        </div>
+        <div class="coord-inputs">
+          <div class="coord-row">
+            <label>Lat:</label>
+            <input type="text" id="input-lat" class="coord-input">
+          </div>
+          <div class="coord-row">
+            <label>Lng:</label>
+            <input type="text" id="input-lng" class="coord-input">
+          </div>
+          <div class="coord-row">
+            <label>TZ:</label>
+            <input type="text" id="input-tz" class="coord-input">
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Right: Preset Location Buttons -->
+      <div id="bottom-right-container" class="ui-corner">
+        <div class="preset-buttons">
+          <button id="btn-loc-silverado" class="ui-btn preset">Silverado</button>
+          <button id="btn-loc-berkeley" class="ui-btn preset">Berkeley</button>
+          <button id="btn-loc-sandiego" class="ui-btn preset">San Diego</button>
+          <button id="btn-loc-london" class="ui-btn preset">London</button>
+          <button id="btn-loc-kc" class="ui-btn preset">Kansas City</button>
+          <button id="btn-loc-melbourne" class="ui-btn preset">Melbourne</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="p5.js"></script>
+  <script src="p5.sound.min.js"></script>
   <script src="sketch.js"></script>
-
-
 </body>
 
 </html>
