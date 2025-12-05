@@ -2,51 +2,54 @@
 <html lang="en">
 
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Day Spiral Clock</title>
-  <meta name="description"
-    content="A unique 12-hour clock where the hour hand follows a spiral showing day and night periods based on your location.">
-  <link rel="stylesheet" type="text/css" href="style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N0L8F40M22"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-N0L8F40M22');
+  </script>
 </head>
 
 <body>
   <div id="app-container">
-    <!-- p5.js canvas will be injected here -->
     <div id="canvas-container"></div>
 
     <!-- UI Overlay Layer -->
     <div id="ui-layer">
 
-      <!-- Top Left: Title, Description, Buttons -->
+      <!-- Top Left: Controls -->
       <div id="top-left-container" class="ui-corner">
         <h1 id="app-title">Day Spiral Clock</h1>
-
-        <!-- Desktop: Description inline -->
-        <div id="app-description" class="desktop-only">
+        <div id="app-description">
           <p>Hour hand tip follows the day spiral,</p>
           <p>making 1 turn for AM and 1 for PM.</p>
           <p>Dark part of spiral indicates night.</p>
         </div>
 
-        <!-- Mobile: About Button -->
-        <button id="btn-about" class="ui-btn mobile-only">About</button>
-
         <div class="button-group">
-          <!-- Week Spiral Removed -->
-          <button id="btn-gmt" class="ui-btn secondary">Show GMT</button>
-          <button id="btn-colorful" class="ui-btn secondary" style="display:none;">More Colorful</button>
+          <button id="btn-colorful" class="ui-btn">More Colorful</button>
+          <button id="btn-gmt" class="ui-btn">Show GMT</button>
+          <button id="btn-about" class="ui-btn mobile-only">About</button>
         </div>
       </div>
 
-      <!-- Top Right: Location & Time Info -->
+      <!-- Top Right: Info Display -->
       <div id="top-right-container" class="ui-corner">
         <div id="location-info">
-          <div id="locale-title">Loading...</div>
-          <div id="time-display">--:-- --</div>
+          <div id="locale-title">Local Time</div>
+          <div id="time-display"></div>
 
-          <!-- Desktop: Detailed Info inline -->
-          <div id="desktop-details" class="desktop-only">
+          <!-- Desktop: Detailed Info -->
+          <div class="desktop-only">
             <div id="date-display"></div>
             <div id="day-display"></div>
             <div id="dst-display"></div>
@@ -160,20 +163,20 @@
       <div id="modal-coords" class="modal-content hidden">
         <h2>Manual Coordinates</h2>
         <div class="modal-body">
-          <p class="help-text">Use negative hour offset for cities west of London.</p>
           <div class="coord-form">
             <div class="form-row">
-              <label>Lat:</label>
+              <label>Latitude:</label>
               <input type="text" id="input-lat-modal" class="modal-input small">
             </div>
             <div class="form-row">
-              <label>Lng:</label>
+              <label>Longitude:</label>
               <input type="text" id="input-lng-modal" class="modal-input small">
             </div>
             <div class="form-row">
-              <label>TZ:</label>
+              <label>Time Zone:</label>
               <input type="text" id="input-tz-modal" class="modal-input small">
             </div>
+            <p class="help-text" style="margin-top: 10px;">Use negative hour offset for cities west of London.</p>
           </div>
         </div>
         <div class="modal-actions">
@@ -201,8 +204,6 @@
     </div>
   </div>
 
-  <script src="p5.js"></script>
-  <script src="p5.sound.min.js"></script>
   <script src="sketch.js"></script>
 </body>
 

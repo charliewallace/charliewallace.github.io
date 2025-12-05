@@ -216,21 +216,21 @@ body {
 
 #input-city {
   flex: 1;
-  background: #111;
-  /* Darker background to distinguish from buttons */
-  border: 1px solid var(--input-border);
-  color: var(--text-color);
+  background: #eee;
+  /* Light background for distinct input look */
+  border: 1px solid #ccc;
+  color: #000;
+  /* Dark text */
   padding: 6px 8px;
   border-radius: 4px;
   font-size: 0.75rem;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
-  /* Inset shadow for field look */
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 #input-city:focus {
   outline: none;
-  border-color: #888;
-  background: #000;
+  border-color: #666;
+  background: #fff;
 }
 
 .coord-inputs {
@@ -253,21 +253,21 @@ body {
 
 .coord-input {
   width: 55px;
-  background: #111;
-  /* Darker background */
-  border: 1px solid var(--input-border);
-  color: var(--text-muted);
+  background: #eee;
+  /* Light background */
+  border: 1px solid #ccc;
+  color: #333;
+  /* Darker text */
   padding: 4px 6px;
   border-radius: 3px;
   font-size: 0.7rem;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
-  /* Inset shadow */
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .coord-input:focus {
   outline: none;
-  border-color: #888;
-  background: #000;
+  border-color: #666;
+  background: #fff;
 }
 
 /* --- Bottom Right --- */
@@ -319,7 +319,7 @@ body {
 .ui-btn.secondary {
   background: var(--btn-secondary-bg);
   border-color: var(--btn-secondary-border);
-  font-size: 0.75rem;
+  /* font-size: 0.75rem; Removed to allow inheritance/media query override */
 }
 
 .ui-btn.preset {
@@ -403,9 +403,10 @@ body {
 
 .modal-input {
   width: 100%;
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  color: var(--text-color);
+  background: #eee;
+  /* Light background */
+  border: 1px solid #ccc;
+  color: #000;
   padding: 8px;
   border-radius: 4px;
   font-size: 1rem;
@@ -499,30 +500,57 @@ body {
 
   #bottom-right-container {
     align-items: flex-end;
+    /* Ensure buttons are clickable */
+    pointer-events: none;
   }
 
-  /* Button Sizing for Touch - INCREASED SIZE */
+  #btn-more-locs {
+    pointer-events: auto;
+    /* Re-enable clicks */
+  }
+
+  /* Button Sizing for Touch - INCREASED SIZE (approx 20% more) */
   .ui-btn {
-    font-size: 1.05rem;
-    /* Increased from 0.9rem */
-    padding: 10px 14px;
+    font-size: 1.25rem;
+    /* Increased from 1.05rem */
+    padding: 12px 16px;
   }
 
   /* Specific Tweaks - INCREASED SIZE */
   #app-title {
-    font-size: 1.4rem;
-    /* Increased from 1.2rem */
+    font-size: 1.7rem;
+    /* Increased from 1.4rem */
   }
 
   #locale-title {
-    font-size: 1.2rem;
-    /* Increased from 1.rem */
+    font-size: 1.45rem;
+    /* Increased from 1.2rem */
   }
 
   #vpn-warning,
   #precise-hint {
-    font-size: 0.85rem;
+    font-size: 1.0rem;
+    /* Increased from 0.85rem */
+  }
+
+  /* Fix small elements */
+  #btn-gmt {
+    font-size: 1.25rem;
+    /* Ensure match with other buttons */
+  }
+
+  #app-version {
+    font-size: 0.9rem;
+    /* Increased from 0.65rem */
+  }
+
+  #link-website {
+    font-size: 1.0rem;
     /* Increased from 0.75rem */
+  }
+
+  .input-prompt {
+    font-size: 1.0rem;
   }
 }
 
@@ -532,6 +560,8 @@ body {
 @media screen and (max-width: 900px) and (orientation: landscape) {
   #btn-fullscreen {
     display: block;
+    font-size: 1.1rem;
+    /* Ensure readable */
   }
 
   #top-left-container {
@@ -547,17 +577,31 @@ body {
     bottom: 8px;
   }
 
-  /* Button Sizing for Landscape - MODERATE INCREASE */
+  /* Constrain tip message width to prevent overlap */
+  #precise-hint,
+  #vpn-warning {
+    max-width: 220px;
+    /* Approx width of Fetch Location button */
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  /* Button Sizing for Landscape - INCREASED SIZE (approx 20% more) */
   .ui-btn {
-    font-size: 0.9rem;
-    /* Increased from 0.8rem (half of portrait increase) */
-    padding: 7px 11px;
+    font-size: 1.1rem;
+    /* Increased from 0.9rem */
+    padding: 8px 12px;
   }
 
   /* Override title sizes for landscape if needed, or let them inherit/adjust */
   #app-title {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     /* Slightly smaller than portrait but bigger than original */
+  }
+
+  #btn-gmt {
+    font-size: 1.1rem;
+    /* Ensure match */
   }
 }
 

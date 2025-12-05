@@ -222,7 +222,7 @@ function fetchIpLocation() {
         }
       }
 
-      CityNameInput.value(locationString);
+      // CityNameInput.value(locationString); // Keep empty as per user request
       LocaleTitle = locationString;
       LocaleTitleLocal = locationString; // Save for fallback
 
