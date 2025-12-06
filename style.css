@@ -470,6 +470,11 @@ body {
     display: block !important;
   }
 
+  /* Hide description on mobile (shown in About modal instead) */
+  #app-description {
+    display: none;
+  }
+
   /* Adjust Layouts */
   #top-left-container {
     max-width: 50%;

@@ -150,8 +150,7 @@ var SilveradoButton;
 
 
 
-var ColorfulModeButton;
-var ColorfulModeButtonLabel;  // needed when button label must change
+
 
 var GmtDisplayButton;
 var GmtDisplayButtonLabel;  // needed when button label must change
@@ -173,7 +172,7 @@ var NumSpiralTurns;
 var IsWindows;
 var IsDesktop;
 
-var IsOnlyTodayInColor;
+
 
 var IsGmtShown;
 var ClockMode;
@@ -302,7 +301,7 @@ function oneTimeInit() {
   console.log("🔍 URL Hash:", window.location.hash);
 
   // state vars.  Preserve these thru window resize.
-  IsOnlyTodayInColor = true; // false; //
+
   // IsDaySpiral = true; // Removed
   IsGmtShown = false; //true; // false; //
 
@@ -394,10 +393,7 @@ function oneTimeInit() {
   select('#btn-loc-kc-m').mousePressed(() => { setKansasCity(); closeAllModals(); });
   select('#btn-loc-melbourne-m').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
-  ColorfulModeButtonLabel = "More Colorful";
-  ColorfulModeButton = select('#btn-colorful');
-  ColorfulModeButton.mousePressed(setColorfulMode);
-  // ColorfulModeButton is hidden by default in HTML
+
 
   GmtDisplayButtonLabel = "Show GMT";
   GmtDisplayButton = select('#btn-gmt');
@@ -934,17 +930,14 @@ function getDayColor(dow) // range 0-6
       break;
   }
 
-  if (IsOnlyTodayInColor || true) {
-    if (dow != IDow) {
-      iColor = color(210, 210, 210);
-    }
-    else {
-      iColor = color(0x84, 0xd2, 0xf1);
-      iColor = color(0x74, 0xc0, 0xff);
-      //iColor = color(0x8a, 0xc7, 0xdb);
-      //iColor = color(0xad, 0xd8, 0xe6);
+  if (dow != IDow) {
+    iColor = color(210, 210, 210);
+  }
+  else {
+    iColor = color(0x74, 0xc0, 0xff);
+    //iColor = color(0x8a, 0xc7, 0xdb);
+    //iColor = color(0xad, 0xd8, 0xe6);
 
-    }
   }
   return iColor;
 }
@@ -1005,28 +998,19 @@ function getNightColor(dow) // range 0-6
       iColor = color(108, 48, 43);
 
       break;
+
     default:
       iColor = color(0, 0, 0);
       break;
   }
 
-  if (IsOnlyTodayInColor || true) {
-    if (dow != IDow) {
-      //iColor = color(90,90,90);
-      iColor = color(70, 70, 70);
-    }
-    else {
-      //iColor = color(112, 102, 31);
-      //iColor = color(66, 105, 120);
-      iColor = color(20, 80, 100); // darker blue 32, 60, 98
-    }
+  if (dow != IDow) {
+    iColor = color(70, 70, 70);
   }
 
   return iColor;
 }
 
-
-//==========================================
 // Short label for the 7 days of the week.
 // Wraps around to sunday (s) for dow==7.
 function getDayStringShort(dow) // range 0-6
@@ -1217,7 +1201,7 @@ function updateTimeThisDay() {
     if (tempTest) // Test: this was set in SetMelbourne() and SetKansasCity() and cleard below
     {
       let tempDate = new Date();
-
+ 
       //    currDate = new Date(currDate.getTime() + 86400000); 
       // figure out how much to rotate the date based on time zone diff
       if (TzOffset != TzOffsetLocal)
@@ -1235,7 +1219,7 @@ function updateTimeThisDay() {
       }
       tempTest = false;
     }  
-
+ 
     // Below is the old logic.  This worked but was over complicated. =================
     
     var hourDiff = TzOffset - TzOffsetLocal;
@@ -1269,7 +1253,7 @@ function updateTimeThisDay() {
       // advance the date by one day
       currDate = new Date(currDate.getTime() + 86400000); 
     }  
-
+ 
     if (dateRollbackNeeded) // we're in the previous day
     {
       // roll back the date by one day
@@ -1425,22 +1409,7 @@ function updateTimeThisDay() {
 
 
 
-//-----------------------------------------------------------------
-// Handler for the toggling SetColorfulMode button
-function setColorfulMode()  // Toggling mode button
-{
-  if (IsOnlyTodayInColor) {
-    IsOnlyTodayInColor = false;
-    ColorfulModeButtonLabel = "Less Colorful";
-  }
-  else {
-    IsOnlyTodayInColor = true;
-    ColorfulModeButtonLabel = "More Colorful";
-  }
 
-  // update button label
-  ColorfulModeButton.html(ColorfulModeButtonLabel); // Change the button's HTML content
-}
 
 
 //-----------------------------------------------------------------
@@ -1995,17 +1964,17 @@ function getLocationUsingCityName(passedCityName) {
 function gotCityLocationDataGeoNames(data) 
 {
   //console.log("Entering gotCityLocationDataGeoNames()");
-
+ 
   // Check if the response contains any results
   var isError = false;
   if (data.length != 0) 
   {
     console.log("City location data from GeoNames:")
     console.log(data[0].goenames[0]);
-
+ 
     let result = data.geonames[0];
     // Take the first result
-
+ 
     // Extract latitude, longitude, and time zone offset
     let lat = result.lat;
     let lon = result.lng;
@@ -2911,5 +2880,6 @@ function calcRiseSetTimeWithOffset(
   OutputHour = int(vv);
   OutputMin = int(xx);
 }
+
 
 
