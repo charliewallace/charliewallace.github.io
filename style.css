@@ -514,48 +514,41 @@ body {
     /* Re-enable clicks */
   }
 
-  /* Button Sizing for Touch - INCREASED SIZE (approx 20% more) */
+  /* Button Sizing for Touch - REDUCED SIZE (approx 25% less from previous) */
   .ui-btn {
-    font-size: 1.25rem;
-    /* Increased from 1.05rem */
-    padding: 12px 16px;
+    font-size: 0.95rem;
+    padding: 8px 12px;
   }
 
-  /* Specific Tweaks - INCREASED SIZE */
+  /* Specific Tweaks - REDUCED SIZE */
   #app-title {
-    font-size: 1.7rem;
-    /* Increased from 1.4rem */
+    font-size: 1.3rem;
   }
 
   #locale-title {
-    font-size: 1.45rem;
-    /* Increased from 1.2rem */
+    font-size: 1.1rem;
   }
 
   #vpn-warning,
   #precise-hint {
-    font-size: 1.0rem;
-    /* Increased from 0.85rem */
+    font-size: 0.75rem;
   }
 
   /* Fix small elements */
   #btn-gmt {
-    font-size: 1.25rem;
-    /* Ensure match with other buttons */
+    font-size: 0.95rem;
   }
 
   #app-version {
-    font-size: 0.9rem;
-    /* Increased from 0.65rem */
+    font-size: 0.7rem;
   }
 
   #link-website {
-    font-size: 1.0rem;
-    /* Increased from 0.75rem */
+    font-size: 0.75rem;
   }
 
   .input-prompt {
-    font-size: 1.0rem;
+    font-size: 0.75rem;
   }
 }
 
@@ -591,22 +584,19 @@ body {
     line-height: 1.2;
   }
 
-  /* Button Sizing for Landscape - INCREASED SIZE (approx 20% more) */
+  /* Button Sizing for Landscape - REDUCED SIZE (approx 15% less from previous) */
   .ui-btn {
-    font-size: 1.1rem;
-    /* Increased from 0.9rem */
-    padding: 8px 12px;
+    font-size: 0.95rem;
+    padding: 6px 10px;
   }
 
   /* Override title sizes for landscape if needed, or let them inherit/adjust */
   #app-title {
-    font-size: 1.5rem;
-    /* Slightly smaller than portrait but bigger than original */
+    font-size: 1.2rem;
   }
 
   #btn-gmt {
-    font-size: 1.1rem;
-    /* Ensure match */
+    font-size: 0.95rem;
   }
 }
 

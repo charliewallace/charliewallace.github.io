@@ -524,8 +524,9 @@ function toggleFullScreen() {
 
   // Show/hide description based on fullscreen state
   // In fullscreen we have more vertical space, so show the description
+  // BUT only on desktop (width > 950), as mobile hides it permanently
   var descEl = document.getElementById('app-description');
-  if (descEl) {
+  if (descEl && window.innerWidth > 950) {
     descEl.style.display = !fs ? 'block' : 'none';
   }
 }
@@ -784,7 +785,7 @@ function reInit() {
   // Above call depends on current CenterX/Y, nSpiralTurns, etc. 
 
   RefFontSize = 40;
-  FontScaleFactor = smallerDim / 900; //240;
+  FontScaleFactor = smallerDim / 950; //240;
 
   CurrentFontSize = RefFontSize;
 
@@ -1330,7 +1331,7 @@ function updateTimeThisDay() {
     LastLong = Longitude;
 
     // populate the sunrise and sunset arrays for the current week.
-    // Needed only for the week spiral mode.
+    // Needed only for the week spiral mode. [TODO: week spiral mode was removed]
     // NOTE, the OutputHour may be -1 (no day) or -2 (no night)
     var secFromSunday;
     for (var dd = 0; dd <= 6; dd++) // loop from sunday to saturday
