@@ -158,11 +158,7 @@ var CitySubmitButton;
 
 var IsDst; // daylight savings time
 
-var SunsetWeekSecFromSunArray;
-var SunriseWeekHourArray;  // only used to check for no-day or no-night results
-var SunriseWeekSecFromSunArray;
 
-var XSpiralArray;
 var YSpiralArray;
 var RadiusSpiralArray;
 var NumSpiralPointsPerTurn;
@@ -363,10 +359,6 @@ function oneTimeInit() {
   ResetToLocalButton = select('#btn-reset-loc');
   ResetToLocalButton.mousePressed(usePreciseLocation);
 
-  //     mode buttons  
-  // DaySpiralButtonLabel = "Week Spiral";
-  // DaySpiralButton = select('#btn-mode-toggle');
-  // DaySpiralButton.mousePressed(setDaySpiral);
 
   // --- NEW MODAL BUTTONS ---
   select('#btn-about').mousePressed(() => openModal('modal-about'));
@@ -462,11 +454,6 @@ function oneTimeInit() {
   // init the time zone field on screen
   TzInput.value(tzString);
   LastTz = TzOffset;
-
-  // init for the week spiral mode
-  SunsetWeekSecFromSunArray = new Array(7);
-  SunriseWeekHourArray = new Array(7);
-  SunriseWeekSecFromSunArray = new Array(7);
 
   XSpiralArray = [];
   YSpiralArray = [];
@@ -866,151 +853,6 @@ function genSpiral() //III
 
 }
 
-//==========================================
-// Custom mapping of color depicting daytime to the 7 days of the week,
-// progressing from red thru violet for the week spiral mode,
-// but for IsOnlyTodayInColor mode, only the current day is in color, all 
-// the others are monochrome to be less distracting.
-function getDayColor(dow) // range 0-6
-{
-  //III
-  var iColor = color(0, 0, 0);
-  // Always Day Spiral logic
-  dow = IDow;
-  switch (dow) {
-
-    case 0:
-      // r
-      //iColor = color(0xcd, 0x48, 0x49);
-      iColor = color(216, 96, 87);
-      break;
-
-    case 1:
-      // o
-      iColor = color(0xe0, 0x94, 0x35);
-      //iColor = color(234, 191, 115);
-      break;
-
-    case 2:
-      // y
-      //iColor = color(0xfc, 0xfb, 0x46);
-      iColor = color(251, 246, 71);
-      break;
-
-    case 3:
-      // g
-      //iColor = color(0x7c, 0xc4, 0x39);
-      iColor = color(156, 250, 92);
-      break;
-
-    case 4:
-      // b
-      iColor = color(0x84, 0xd2, 0xf1);
-      break;
-
-    case 5:
-      // v
-      //iColor = color(0xa8, 0x82, 0xf1);
-      iColor = color(139, 140, 250);
-      break;
-
-    case 6:
-      // lt gray/purple
-      iColor = color(190, 160, 190);  //(230, 200, 230)
-      break;
-
-    case 12:
-      // r - <<< same as case 0
-      //iColor = color(0xcd, 0x48, 0x49);
-      iColor = color(215, 86, 80);
-
-      break;
-    default:
-      iColor = color(0, 0, 0);
-      break;
-  }
-
-  if (dow != IDow) {
-    iColor = color(210, 210, 210);
-  }
-  else {
-    iColor = color(0x74, 0xc0, 0xff);
-    //iColor = color(0x8a, 0xc7, 0xdb);
-    //iColor = color(0xad, 0xd8, 0xe6);
-
-  }
-  return iColor;
-}
-
-
-//==========================================
-// Custom mapping of color depicting night to the 7 days of the week,
-// progressing from red thru violet for the week spiral mode,
-// but for IsOnlyTodayInColor mode, only the current day is in color, all 
-// the others are monochrome to be less distracting.
-function getNightColor(dow) // range 0-6
-{
-  var iColor = color(0, 0, 0);
-  // Always Day Spiral logic
-  dow = IDow;
-
-  switch (dow) {
-
-    case 0:
-      // r
-      iColor = color(108, 48, 43);
-      break;
-
-    case 1:
-      // o
-      iColor = color(112, 74, 26);
-      break;
-
-    case 2:
-      // y
-      //iColor = color(125, 123, 35); // a bit too light...
-      iColor = color(112, 102, 31);
-      break;
-
-    case 3:
-      // g
-      iColor = color(78, 125, 46);
-      break;
-
-    case 4:
-      // b
-      iColor = color(66, 105, 120);
-      break;
-
-    case 5:
-      // v
-      iColor = color(69, 70, 125); // too dark
-      iColor = color(73, 85, 137);
-      break;
-
-    case 6:
-      // lt gray/purple
-      iColor = color(95, 80, 95);
-      break;
-
-    case 12:
-      // r - <<< same as case 0
-      iColor = color(108, 48, 43);
-
-      break;
-
-    default:
-      iColor = color(0, 0, 0);
-      break;
-  }
-
-  if (dow != IDow) {
-    iColor = color(70, 70, 70);
-  }
-
-  return iColor;
-}
-
 // Short label for the 7 days of the week.
 // Wraps around to sunday (s) for dow==7.
 function getDayStringShort(dow) // range 0-6
@@ -1054,7 +896,7 @@ function getDayStringShort(dow) // range 0-6
 
 
 //==========================================
-// Short label for the 7 days of the week
+// Long label for the 7 days of the week
 // Wraps around to sunday for dow==7.
 function getDayStringLong(dow) // range 0-6
 {
@@ -1181,8 +1023,6 @@ function updateTimeThisDay() {
   IDowPrevious = IDow; // save the previous day of week
 
   let currDate = new Date();
-  //let dateRollbackNeeded = false;
-  //let dateAdvanceNeeded = false;
 
   // Start with local hour and day of week
   IDow = currDate.getDay(); // 0 is sunday 
@@ -1192,77 +1032,7 @@ function updateTimeThisDay() {
   //  adjust the hour and day-of-week accordingly.
   if (TzOffset != TzOffsetLocal) {
 
-    /****************************************************************************
-    
-    //Old logic for day of week and hour correction logic - save ==240203a
-    
-    // this block tests new approach that was eventually adopted. <<<<<<<<<<<
-    
-    if (tempTest) // Test: this was set in SetMelbourne() and SetKansasCity() and cleard below
-    {
-      let tempDate = new Date();
- 
-      //    currDate = new Date(currDate.getTime() + 86400000); 
-      // figure out how much to rotate the date based on time zone diff
-      if (TzOffset != TzOffsetLocal)
-      {
-        console.log(`Time Zone Offset: ${TzOffset}  TzOffsetLocal= ${TzOffsetLocal}`);
-        let TzDiffHours = TzOffset - TzOffsetLocal;
-        let TzDiffMs = TzDiffHours * 60 * 60 * 1000;
-        tempDate = new Date(tempDate.getTime() + TzDiffMs); 
-        // what's needed: Hour, IDow
-        console.log("Hour is " + str(currDate.getHours()) + " Rotated hour is " + str(tempDate.getHours()));
-        let testIDow =  tempDate.getDay(); // 0 is sunday 
-        console.log("IDow is " + str(IDow) + " Rotated Day is " + str(testIDow));
-        console.log(tempDate.toLocaleDateString(
-          'en-us', { year:"numeric", month:"short", day:"numeric"}) );
-      }
-      tempTest = false;
-    }  
- 
-    // Below is the old logic.  This worked but was over complicated. =================
-    
-    var hourDiff = TzOffset - TzOffsetLocal;
-    IHour += hourDiff;
-    if (IHour < 0)
-    {
-      dateRollbackNeeded = true;
-      IHour += 24;
-      // we passed into the previous day
-      IDow--;
-      if (IDow < 0)
-      {
-        IDow = 6;
-      }
-    }
-    else if (IHour > 23)
-    {
-      dateAdvanceNeeded = true;
-      IHour -= 24;  
-      // we passed into the next day.
-      IDow++;
-      if (IDow > 6)
-      {
-        IDow = 0;
-      }
-    }
-    //  Check if changing to new tz has shifted
-    //  us into the next or previous day.
-    if (dateAdvanceNeeded) // we're in the next day
-    {
-      // advance the date by one day
-      currDate = new Date(currDate.getTime() + 86400000); 
-    }  
- 
-    if (dateRollbackNeeded) // we're in the previous day
-    {
-      // roll back the date by one day
-      currDate = new Date(current.getTime() - 86400000); 
-    }      
-    ****** End of old tz logic *******************************************/
-
     // Here is the new simpler logic for tz correction
-
     let TzDiffHours = TzOffset - TzOffsetLocal;
     let TzDiffMs = TzDiffHours * 60 * 60 * 1000;
 
@@ -1329,39 +1099,9 @@ function updateTimeThisDay() {
     LngInput.value(longString);
     LastLong = Longitude;
 
-    // populate the sunrise and sunset arrays for the current week.
-    // Needed only for the week spiral mode. [TODO: week spiral mode was removed]
-    // NOTE, the OutputHour may be -1 (no day) or -2 (no night)
-    var secFromSunday;
-    for (var dd = 0; dd <= 6; dd++) // loop from sunday to saturday
-    {
-      calcRiseSetTimeWithOffset(
-        true,  // calc sunrise
-        dd - IDow,  // offset from current day-of-week
-        Latitude,
-        -Longitude,
-        TzOffset,
-        false);  // always set dst false since Tz offset takes dst into acct
-
-      // only used to check for -1 or -2 indicating no day or no night.
-      SunriseWeekHourArray[dd] = OutputHour;
-
-      secFromSunday = OutputMin * 60 + OutputHour * 3600 + dd * 60 * 60 * 24; //III
-      SunriseWeekSecFromSunArray[dd] = secFromSunday;
-
-      calcRiseSetTimeWithOffset(
-        false,  // calc sunset
-        dd - IDow,  // offset from current day-of-week
-        Latitude,
-        -Longitude,
-        TzOffset,
-        false);  // always set dst false since Tz offset takes dst into acct
-
-      secFromSunday = OutputMin * 60 + OutputHour * 3600 + dd * 60 * 60 * 24;
-      SunsetWeekSecFromSunArray[dd] = secFromSunday;
-    }
-
     IsSunRiseSetObtained = true;
+
+
   }
 
   if (IsSunRiseSetObtained) {
@@ -2399,10 +2139,6 @@ function draw() {
     hourRads -= TWO_PI
   }
 
-  //-------------------------------------------------------
-  // Set length of hour hand to fall on the week spiral
-  // appropriately for the current day and am/pm.
-  // note that there are 2 turns per day
   var iiSpiral = 0;
 
   // Calc index into radius array for the current time.
@@ -2456,8 +2192,8 @@ function draw() {
   var secToSet;
 
   var dw = IDow;
-  var dayColor = getDayColor(dw);
-  var nightColor = getNightColor(dw);
+  var dayColor = color(0x84, 0xd2, 0xf1);
+  var nightColor = color(20, 80, 100);
   var dayString = getDayStringShort(dw);
   var nextDayString = getDayStringShort(dw + 1);
 
@@ -2468,11 +2204,11 @@ function draw() {
     strokeWeight(10);
   }
 
-  // Draw logic for the simple 2-turn case, DaySpiral.  See below for 
-  // more complex week spiral code...
+  // Draw logic for the simple 2-turn case, DaySpiral.  
 
   // Check if location is available. If not, draw neutral spiral.
   if (Latitude == 99999 || Longitude == 99999) {
+    // location is not available, so draw neutral spiral
     stroke(200); // Neutral light gray
     noFill();
 
@@ -2493,8 +2229,7 @@ function draw() {
     }
 
     // ==240125a
-    dayColor = getDayColor(dw);
-    nightColor = getNightColor(dw);
+
 
     dowLabelSizeDsktpBoost = 0.5;
     dowLabelSizeMoblBoost = 0.4;
@@ -2684,7 +2419,7 @@ function draw() {
   strokeWeight(17 * FontScaleFactor);
 
   // Draw hour hand with square cap so it clearly shows where it's tracking on the
-  // week spiral.  
+  // spiral.  
   strokeCap(SQUARE);
   let adjustedHourRadius = HoursRadius;
   if (IsGmtShown) {
@@ -2700,7 +2435,7 @@ function draw() {
   line(CenterX, CenterY, CenterX + cos(hourRads) * HoursRadius / 2, CenterY + sin(hourRads) * HoursRadius / 2);
 
   // Draw a little circle around the tip of the hour hand to emphasize that it's following
-  //   the week spiral
+  //   the spiral
   noFill();
   strokeWeight(3)
 
