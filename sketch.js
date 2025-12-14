@@ -325,9 +325,10 @@ function oneTimeInit() {
     }	
   ************************/
 
-  IsDesktop = IsWindows ||
-    (window.navigator.platform.indexOf("Mac") === 0)
-  console.log("IsWindows=" + IsWindows)
+  // ==240212a
+  // Fix for mobile simulation on desktop: check width too
+  IsDesktop = (IsWindows || (window.navigator.platform.indexOf("Mac") === 0)) && (window.innerWidth > 950);
+  console.log("IsWindows=" + IsWindows + " IsDesktop=" + IsDesktop);
 
   // Create canvas and parent it to the container
   var cnv = createCanvas(window.innerWidth, window.innerHeight);
