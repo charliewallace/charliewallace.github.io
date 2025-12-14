@@ -1,8 +1,7 @@
 /** ===========================================================
  * Day Spiral Clock V2: Sunrise & Sunset shown on 12-hr clock face.
- * This clock initially shows the current day as a spiral, with 2 turns because
+ * This clock shows the current 24-hour day as a spiral, with 2 turns because
  * of AM and PM on the 12-hour clock face.  
- * It also provides week mode via button at upper left.
  *
  * A web service from OpenStreetMap is used to fetch location
  * of a user-entered city. 
