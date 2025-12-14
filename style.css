@@ -516,19 +516,19 @@ body {
     /* Re-enable clicks */
   }
 
-  /* Button Sizing for Touch - REDUCED SIZE (approx 20% less) */
+  /* Button Sizing for Touch - INCREASED SIZE (~10%) */
   .ui-btn {
-    font-size: 0.8rem;
-    padding: 6px 10px;
+    font-size: 0.9rem;
+    padding: 7px 11px;
   }
 
-  /* Specific Tweaks - REDUCED SIZE */
+  /* Specific Tweaks - INCREASED SIZE */
   #app-title {
-    font-size: 1.0rem;
+    font-size: 1.1rem;
   }
 
   #locale-title {
-    font-size: 0.95rem;
+    font-size: 1.05rem;
   }
 
   #vpn-warning,
@@ -582,15 +582,15 @@ body {
     line-height: 1.2;
   }
 
-  /* Button Sizing for Landscape - REDUCED SIZE (approx 20% less) */
+  /* Button Sizing for Landscape - INCREASED SIZE (~10%) */
   .ui-btn {
-    font-size: 0.75rem;
-    padding: 5px 8px;
+    font-size: 0.85rem;
+    padding: 6px 9px;
   }
 
   /* Override title sizes for landscape if needed, or let them inherit/adjust */
   #app-title {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
   }
 
 
