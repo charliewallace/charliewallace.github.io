@@ -516,6 +516,15 @@ function toggleFullScreen() {
   if (descEl && window.innerWidth > 950) {
     descEl.style.display = !fs ? 'block' : 'none';
   }
+
+  // Toggle the active class for visual feedback
+  if (fsBtn) {
+    if (!fs) {
+      fsBtn.classList.add('toggled-on');
+    } else {
+      fsBtn.classList.remove('toggled-on');
+    }
+  }
 }
 
 // Update HTML UI elements with current data
@@ -1168,6 +1177,13 @@ function setGmtDisplay()  // Toggling mode button
 
   // update button label
   GmtDisplayButton.html(GmtDisplayButtonLabel); // Change the button's HTML content
+
+  // Toggle the active class
+  if (IsGmtShown) {
+    GmtDisplayButton.addClass('toggled-on');
+  } else {
+    GmtDisplayButton.removeClass('toggled-on');
+  }
 }
 
 
