@@ -635,6 +635,11 @@ body {
   #locale-title {
     font-size: 1.1rem;
   }
+
+  #btn-reset-loc {
+    width: 80%;
+    /* Reduce width to avoid clock collision on resize */
+  }
 }
 
 @media screen and (max-width: 900px) {
