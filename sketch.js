@@ -104,6 +104,7 @@ var IsSunRiseSetObtained;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
 var IsPreciseLocation = false; // true if using GPS location
+var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset, BaseMsSunset;
@@ -185,6 +186,7 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 // Fetch approximate location from IP geolocation API
 function fetchIpLocation() {
   console.log("Fetching approximate location from IP...");
+  setLoadingState();
   IsPreciseLocation = false;
   // Using ipapi.co (free, no API key required)
   fetch('https://ipapi.co/json/')
@@ -257,6 +259,7 @@ function fetchIpLocation() {
       getTzUsingLatLong(Latitude, Longitude);
     })
     .catch(error => {
+      clearLoadingState();
       console.log("IP geolocation failed:", error);
       console.log("Using fallback location (Melbourne)");
 
@@ -613,6 +616,16 @@ function updateUIElements() {
   }
 }
 
+// --- LOADING STATE HELPER FUNCTIONS ---
+function setLoadingState() {
+  IsLoadingLocation = true;
+  IsSunRiseSetObtained = false; // Force recalc when done
+}
+
+function clearLoadingState() {
+  IsLoadingLocation = false;
+  // Note: IsSunRiseSetObtained will be handled by updateTimeThisDay() eventually
+}
 
 // --- MODAL FUNCTIONS ---
 
@@ -651,6 +664,7 @@ function handleCitySubmitModal() {
   var city = select('#input-city-modal').value();
   var errEl = select('#city-error-msg');
   errEl.html('Searching...'); // Use .html() for p5 element or .textContent for vanilla
+  setLoadingState();
 
   // Re-use existing logic but adapted for modal feedback
   // Using ipapi or nominatim logic from existing code?
@@ -690,10 +704,12 @@ function handleCitySubmitModal() {
 
           closeAllModals();
         } else {
+          clearLoadingState();
           errEl.html("City not found. Please try 'City, Country'.");
         }
       })
       .catch(err => {
+        clearLoadingState();
         errEl.html("Error connecting to search service.");
         console.error(err);
       });
@@ -1212,6 +1228,15 @@ function handleLocationError(error) {
   console.log(errorMsg);
   CityNameInput.value(errorMsg);
 
+  // If we are restoring a previous location, we might still be loading (waiting for TZ),
+  // but if we are just failing, we should clear loading.
+  // Actually, if we restore below, we call getTzUsingLatLong which continues the loading chain.
+  // If we don't restore (fallback to IP), we call fetchIpLocation which sets loading.
+  // So strictly speaking, we don't need to clear here IF we always take a path that handles it.
+  // But to be safe, if we don't take those paths?
+  // Let's check below.
+
+
   // Restore approximate location if available
   if (LatLocal !== 99999 && LngLocal !== 99999) {
     console.log("Restoring approximate location...");
@@ -1250,6 +1275,7 @@ function handleLocationError(error) {
 // Requests browser GPS coordinates (will show permission prompt)
 function usePreciseLocation() {
   console.log("Requesting precise GPS location...");
+  setLoadingState();
   IsTimezoneMismatch = false; // User intentionally requesting location
 
   // Allow testing permission denial via URL hash parameter
@@ -1670,10 +1696,10 @@ function handleCitySubmit() {
     // Use the full string entered by the user, may contain state or country.
     let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
 
-    // Make a GET request to the Nominatim API (OpenStreetMap)
     // ATTN: the gotCityLocationDataOpenStMap() fcn will be called a bit later, when the  
     // response to the url call comes in.  We won't know the lat/lon until then.
     //  THis means the subsequent API call to get the time zone can't happen until then.
+    setLoadingState();
     loadJSON(apiUrl, gotCityLocationDataOpenStMap);
 
     // Clear the input field
@@ -1815,6 +1841,7 @@ function gotCityLocationDataOpenStMap(data) {
     console.log(`No results found for ${CityName}`);
     CityNameInput.value(CityName + " not found");
     LocaleTitle = PrevLocaleTitle;
+    clearLoadingState();
   }
 
 }
@@ -1897,6 +1924,8 @@ function gotCityTzData(data) {
     console.log(`Longitude: ${Longitude}`);
     console.log('==tz based on GeoNames data==')
     console.log(`Time Zone Offset: ${timeZoneOffset} hours`);
+
+    clearLoadingState();
   }
   else {
     isError = true;
@@ -1910,6 +1939,7 @@ function gotCityTzData(data) {
 
     NewLatitude = 99999; // allow draw() to resume
     NewLongitude = 99999;
+    clearLoadingState();
   }
 }
 
@@ -2224,7 +2254,7 @@ function draw() {
   // Draw logic for the simple 2-turn case, DaySpiral.  
 
   // Check if location is available. If not, draw neutral spiral.
-  if (Latitude == 99999 || Longitude == 99999) {
+  if (IsLoadingLocation || Latitude == 99999 || Longitude == 99999) {
     // location is not available, so draw neutral spiral
     stroke(200); // Neutral light gray
     noFill();
