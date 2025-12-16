@@ -338,22 +338,7 @@ function oneTimeInit() {
   cnv.parent('canvas-container');
 
 
-  //========= Get location ==========
-  // Check if location permission is already granted
-  if (navigator.permissions && navigator.permissions.query) {
-    navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
-      if (result.state === 'granted') {
-        console.log("Location permission already granted. Using precise location.");
-        usePreciseLocation();
-      } else {
-        // Permission not granted (prompt or denied), fallback to IP geolocation
-        fetchIpLocation();
-      }
-    });
-  } else {
-    // Browser doesn't support permissions API, fallback to IP geolocation
-    fetchIpLocation();
-  }
+  // (Location fetch logic moved to end of function to ensure UI is ready)
 
 
   // ==== Bind to existing HTML elements ======
@@ -368,7 +353,7 @@ function oneTimeInit() {
   select('#btn-about').mousePressed(() => openModal('modal-about'));
   select('#btn-details').mousePressed(openDetailsModal);
   select('#btn-lookup-city').mousePressed(() => openModal('modal-city'));
-  select('#btn-manual-coords').mousePressed(() => openModal('modal-coords'));
+  select('#btn-manual-coords').mousePressed(openManualCoordsModal);
   select('#btn-more-locs').mousePressed(() => openModal('modal-locations'));
 
   // --- MODAL CLOSE BUTTONS ---
@@ -511,6 +496,24 @@ function oneTimeInit() {
   // Watchdog to ensure UI stays in sync if events are missed (robust fallback)
   setInterval(onFullScreenChange, 500);
 
+  // ==== Initial Location Fetch (Moved here) ====
+  // Check if we have permission? 
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
+      if (result.state === 'granted') {
+        console.log("Location permission already granted, using precise.");
+        usePreciseLocation();
+      } else if (result.state === 'prompt') {
+        console.log("Location permission prompt, defaulting to IP.");
+        fetchIpLocation();
+      } else {
+        console.log("Location permission denied, defaulting to IP.");
+        fetchIpLocation();
+      }
+    });
+  } else {
+    fetchIpLocation();
+  }
 }  // end of oneTimeInit()  ====================
 
 // Helper to check fullscreen state across browsers
@@ -687,6 +690,37 @@ function closeAllModals() {
   // Clear errors
   var errEl = document.getElementById('city-error-msg');
   if (errEl) errEl.textContent = '';
+}
+
+
+// --- Helper for Manual Coords Modal ---
+function openManualCoordsModal() {
+  // Populate fields with current values if available
+  var latField = select('#input-lat-modal');
+  var lngField = select('#input-lng-modal');
+  var tzField = select('#input-tz-modal');
+
+  if (typeof Latitude !== 'undefined' && Latitude != 99999) latField.value(Latitude);
+  else latField.value('');
+
+  if (typeof Longitude !== 'undefined' && Longitude != 99999) lngField.value(Longitude);
+  else lngField.value('');
+
+  if (typeof TimeZone !== 'undefined' && TimeZone != 99999) tzField.value(TimeZone);
+  else {
+    // try global TzOffset
+    if (typeof TzOffset !== 'undefined') {
+      var tzString = str(TzOffset);
+      if (TzOffset > 0) {
+        tzString = "+" + str(TzOffset);
+      }
+      tzField.value(tzString);
+    } else {
+      tzField.value('');
+    }
+  }
+
+  openModal('modal-coords');
 }
 
 function openDetailsModal() {
@@ -2710,6 +2744,8 @@ function calcRiseSetTimeWithOffset(
   OutputHour = int(vv);
   OutputMin = int(xx);
 }
+
+
 
 
 
