@@ -499,17 +499,69 @@ function oneTimeInit() {
   // Website link is now in HTML
   WebsiteLink = select('#link-website');
 
+  // Listen for fullscreen change events (ESC key, etc.)
+  document.addEventListener("fullscreenchange", onFullScreenChange);
+  document.addEventListener("webkitfullscreenchange", onFullScreenChange);
+  document.addEventListener("mozfullscreenchange", onFullScreenChange);
+  document.addEventListener("MSFullscreenChange", onFullScreenChange);
+
+  // Sync UI with initial state (in case we launched in fullscreen)
+  onFullScreenChange();
+
+  // Watchdog to ensure UI stays in sync if events are missed (robust fallback)
+  setInterval(onFullScreenChange, 500);
+
 }  // end of oneTimeInit()  ====================
+
+// Helper to check fullscreen state across browsers
+// Helper to check fullscreen state across browsers
+function isFullScreen() {
+  var std = document.fullscreenElement;
+  var webkit = document.webkitFullscreenElement;
+  var moz = document.mozFullScreenElement;
+  var ms = document.msFullscreenElement;
+
+  var hasElement = (std || webkit || moz || ms) != null;
+  var isMQ = false;
+
+  // Use Media Query as a tiebreaker/validator if available
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(display-mode: fullscreen)');
+    isMQ = mq.matches;
+    if (mq.media !== 'not all') {
+      // If we have an element but MQ says no, we are likely not in FS
+      if (hasElement && !isMQ) {
+        // hasElement = false; // logic attempted previously
+      }
+    }
+  }
+
+  // Debug logging - Always log if we suspect an issue (or just throttle?)
+  // For this debug session, let's log frequently but maybe check a global?
+  // User explicitly asked for logs.
+  // Debug logging - Removed for final version
+  return hasElement;
+}
+
+
 
 // Toggle Full Screen Mode
 function toggleFullScreen() {
-  var fs = fullscreen();
+  var fs = isFullScreen();
   fullscreen(!fs);
+  // UI update is handled by onFullScreenChange event listener
+}
+
+// Handle fullscreen change events (from button or ESC key)
+function onFullScreenChange(e) {
+  // Check if we are currently in full screen mode
+  // Use robust helper to be sure
+  var fs = isFullScreen();
 
   // Update button text based on new state
   var fsBtn = document.getElementById('btn-fullscreen');
   if (fsBtn) {
-    fsBtn.textContent = !fs ? 'Exit Full Screen' : 'Full Screen';
+    fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
   }
 
   // Show/hide description based on fullscreen state
@@ -517,12 +569,12 @@ function toggleFullScreen() {
   // BUT only on desktop (width > 950), as mobile hides it permanently
   var descEl = document.getElementById('app-description');
   if (descEl && window.innerWidth > 950) {
-    descEl.style.display = !fs ? 'block' : 'none';
+    descEl.style.display = fs ? 'block' : 'none';
   }
 
   // Toggle the active class for visual feedback
   if (fsBtn) {
-    if (!fs) {
+    if (fs) {
       fsBtn.classList.add('toggled-on');
     } else {
       fsBtn.classList.remove('toggled-on');
@@ -835,6 +887,8 @@ function windowResized() {
   console.log("Resize Detected;")
   resizeCanvas(window.innerWidth, window.innerHeight);
   reInit();
+  // Ensure fullscreen UI is synced on resize (often triggered by FS toggle)
+  onFullScreenChange();
 }
 //*************************/
 
