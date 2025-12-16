@@ -819,7 +819,13 @@ function handleCoordsSubmitModal() {
     LngInput.value(str(Longitude));
     TzInput.value(str(TzOffset));
 
-    LocaleTitle = "Manual Location";
+    // Create descriptive title for mobile context
+    // Format TZ string with + if positive
+    var tzStr = str(TzOffset);
+    if (TzOffset > 0) tzStr = "+" + tzStr;
+
+    // Use nfc for clean formatting (2 decimal places)
+    LocaleTitle = "Lat:" + nfc(Latitude, 2) + " Lng:" + nfc(Longitude, 2) + " TZ:" + tzStr;
     updateTimeThisDay();
     closeAllModals();
   } else {
