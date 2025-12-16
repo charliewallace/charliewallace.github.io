@@ -564,13 +564,7 @@ function onFullScreenChange(e) {
     fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
   }
 
-  // Show/hide description based on fullscreen state
-  // In fullscreen we have more vertical space, so show the description
-  // BUT only on desktop (width > 950), as mobile hides it permanently
-  var descEl = document.getElementById('app-description');
-  if (descEl && window.innerWidth > 950) {
-    descEl.style.display = fs ? 'block' : 'none';
-  }
+
 
   // Toggle the active class for visual feedback
   if (fsBtn) {
