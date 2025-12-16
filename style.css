@@ -471,7 +471,8 @@ body {
 /* ===================================================
    RESPONSIVE: Mobile Portrait & Landscape (Unified Mobile)
    =================================================== */
-@media screen and (max-width: 900px) {
+@media screen and (max-width: 950px),
+screen and (max-height: 600px) {
 
   /* Toggle Visibility */
   .desktop-only {
@@ -568,7 +569,7 @@ body {
 /* ===================================================
    RESPONSIVE: Mobile Landscape Specific
    =================================================== */
-@media screen and (max-width: 900px) and (orientation: landscape) {
+@media screen and (max-width: 950px) and (orientation: landscape) {
 
 
   #top-left-container {
@@ -613,7 +614,7 @@ body {
 /* ===================================================
    RESPONSIVE: Large Desktop
    =================================================== */
-@media screen and (min-width: 951px) {
+@media screen and (min-width: 951px) and (min-height: 601px) {
   #top-left-container {
     max-width: 320px;
   }
