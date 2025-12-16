@@ -511,7 +511,7 @@ screen and (max-height: 600px) {
     /* Override .mobile-only block */
     flex-direction: column;
     gap: 8px;
-    margin-top: 5px;
+    margin-top: 4px;
     align-items: flex-start;
     width: 100%;
   }
@@ -666,9 +666,10 @@ screen and (max-height: 600px) {
   }
 }
 
-@media screen and (max-width: 900px) {
+@media screen and (max-width: 950px),
+screen and (max-height: 600px) {
   #btn-reset-loc {
-    margin-bottom: 5px;
+    margin-bottom: 0;
   }
 }
 
