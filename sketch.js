@@ -129,7 +129,7 @@ var TimeString;
 var DateString;
 var IMsSinceDayStart;
 
-var InputFieldProcessingTimeout; // processing of field contents happens on timeout
+var InputFieldProcessingTimeout = 2000; // processing of field contents happens on timeout
 
 var TzInput;
 var TzInputTimestampMs;  // ms since pgm start when input happened
