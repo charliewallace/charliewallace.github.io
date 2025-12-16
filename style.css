@@ -640,6 +640,29 @@ body {
     width: 80%;
     /* Reduce width to avoid clock collision on resize */
   }
+
+  /* Refine Location Info Typography & Spacing */
+  #location-info {
+    gap: 4px;
+    /* Uniform spacing */
+  }
+
+  #time-display {
+    font-size: 1.1rem;
+    /* Match Location Title */
+    font-weight: 400;
+    /* Non-bold */
+  }
+
+  #date-display,
+  #day-display,
+  #dst-display,
+  #sunrise-display,
+  #sunset-display {
+    font-size: 0.85rem;
+    /* Match App Description */
+    line-height: 1.4;
+  }
 }
 
 @media screen and (max-width: 900px) {
