@@ -624,8 +624,10 @@ body {
   }
 
   #app-description {
-    font-size: 1.2rem;
-    /* Increased ~50% from 0.8rem */
+    font-size: 0.85rem;
+    /* Reduced to match time display */
+    margin: 4px 0 16px 0;
+    /* Vertically center (less top, more bottom) */
     display: block;
     /* Ensure visible */
   }
