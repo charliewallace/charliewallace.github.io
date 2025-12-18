@@ -66,7 +66,6 @@ Future Enhancement Ideas ------------
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
 console.log("📦 Day Spiral Clock loaded");
-var Version = "0.1.0";
 var WebsiteLink;
 var CityNameInput;
 
@@ -271,7 +270,10 @@ function fetchIpLocation() {
       LatLocal = Latitude;
       LngLocal = Longitude;
       TzOffsetLocal = TzOffset;
-      LocaleTitleLocal = "Approximate Location (Fallback)";
+      LocaleTitleLocal = "Melbourne";
+      LocaleTitle = "Melbourne";
+
+      alert("IP-based location detection failed. Defaulting to Melbourne, Australia.");
 
       var tzString = str(TzOffset);
       // Add in a plus sign if not negative
@@ -596,8 +598,17 @@ function updateUIElements() {
 
   // Update locale title
   var localeEl = document.getElementById('locale-title');
-  if (localeEl && Latitude != 99999 && Longitude != 99999) {
-    localeEl.textContent = LocaleTitle;
+  if (localeEl) {
+    if (IsLoadingLocation) {
+      // Check for mobile portrait mode to use shorter string
+      if (!IsDesktop && window.innerHeight > window.innerWidth) {
+        localeEl.textContent = "Waiting for loc...";
+      } else {
+        localeEl.textContent = "Waiting for location...";
+      }
+    } else if (Latitude != 99999 && Longitude != 99999) {
+      localeEl.textContent = LocaleTitle;
+    }
   }
 
   // Update time display
@@ -741,60 +752,52 @@ function openDetailsModal() {
 }
 
 function handleCitySubmitModal() {
-  var city = select('#input-city-modal').value();
+  var city = select('#input-city-modal').value().trim();
   var errEl = select('#city-error-msg');
   errEl.html('Searching...'); // Use .html() for p5 element or .textContent for vanilla
   setLoadingState();
 
-  // Re-use existing logic but adapted for modal feedback
-  // Using ipapi or nominatim logic from existing code?
-  // Existing code uses `handleCitySubmit` which calls `getLatLongFromCityName`
-  // I need to hook into that or replicate it.
-  // Let's look at `handleCitySubmit` implementation (not shown in view_file yet, likely further down).
-  // I will assume I can call a modified version or duplicate the fetch logic here to handle the error UI.
-
-  // For now, let's call the existing function but we need to intercept the result.
-  // Since the existing function likely updates global state, we can wrap it.
-  // BUT, the existing function probably doesn't have a callback for error.
-  // I should probably implement the fetch here directly to control the UI.
 
   if (city && city.length > 0) {
     var url = `https://nominatim.openstreetmap.org/search?format=json&q=${city}`;
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        if (data && data.length > 0) {
-          // Success
-          var lat = parseFloat(data[0].lat);
-          var lon = parseFloat(data[0].lon);
-          Latitude = round(lat, 3);
-          Longitude = round(lon, 3);
-          // CityNameInput.value(data[0].display_name); // Don't update main input with result
-          CityNameInput.value(''); // Clear the main input
-          select('#input-city-modal').value(''); // Clear the modal input
-          LocaleTitle = data[0].display_name.split(',')[0];
 
-          // Update other state
-          LatLocal = Latitude;
-          LngLocal = Longitude;
-          LatInput.value(str(Latitude));
-          LngInput.value(str(Longitude));
-
-          getTzUsingLatLong(Latitude, Longitude); // This updates TZ and closes loop
-
-          closeAllModals();
-        } else {
-          clearLoadingState();
-          errEl.html("City not found. Please try 'City, Country'.");
-        }
-      })
-      .catch(err => {
-        clearLoadingState();
-        errEl.html("Error connecting to search service.");
-        console.error(err);
-      });
+    // Use p5.js loadJSON instead of fetch to avoid CORS and ensure consistency
+    loadJSON(url, gotCityLocationDataModal, (err) => {
+      clearLoadingState();
+      errEl.html("Search error (CORS/403). Try again or use desktop mode.");
+      console.error(err);
+    });
   } else {
     errEl.html("Please enter a city name.");
+  }
+}
+
+// Callback for mobile modal city lookup
+function gotCityLocationDataModal(data) {
+  var errEl = select('#city-error-msg');
+
+  if (data && data.length > 0) {
+    // Success
+    var lat = parseFloat(data[0].lat);
+    var lon = parseFloat(data[0].lon);
+    Latitude = round(lat, 3);
+    Longitude = round(lon, 3);
+
+    CityNameInput.value(''); // Clear the main input
+    select('#input-city-modal').value(''); // Clear the modal input
+    LocaleTitle = data[0].display_name.split(',')[0];
+
+    // Update other state
+    LatLocal = Latitude;
+    LngLocal = Longitude;
+    LatInput.value(str(Latitude));
+    LngInput.value(str(Longitude));
+
+    getTzUsingLatLong(Latitude, Longitude); // This updates TZ and closes loop
+    closeAllModals();
+  } else {
+    clearLoadingState();
+    errEl.html("City not found. Please try 'City, Country'.");
   }
 }
 
@@ -1305,12 +1308,15 @@ function handleLocationError(error) {
       break;
     case error.POSITION_UNAVAILABLE:
       errorMsg = "Location unavailable";
+      alert("Location services are unavailable on this device.");
       break;
     case error.TIMEOUT:
       errorMsg = "Location request timed out";
+      alert("The location request timed out. Please try again.");
       break;
     default:
       errorMsg = "Location error occurred";
+      alert("An unknown location error occurred.");
   }
 
   console.log(errorMsg);
@@ -1332,7 +1338,6 @@ function handleLocationError(error) {
     Longitude = LngLocal;
     if (LocaleTitleLocal) {
       LocaleTitle = LocaleTitleLocal;
-      CityNameInput.value(LocaleTitleLocal);
     }
 
     // Restore timezone
@@ -1890,11 +1895,13 @@ function gotCityLocationDataOpenStMap(data) {
     if (lat > 90 || lat < -90 || lon < -180 || lon > 180) {
       isError = true;
       print("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
+      clearLoadingState();
     }
     //else if (timeZoneOffset/3600 > 13 || timeZoneOffset/3600 < -13) 
     else if (timeZoneOffset > 13 || timeZoneOffset < -13) {
       isError = true;
       print("Error, invalid time zone offest=" + str(timeZoneOffset));
+      clearLoadingState();
     }
     else // looks like a valid offset
     {
@@ -1927,7 +1934,8 @@ function gotCityLocationDataOpenStMap(data) {
   }
   else {
     console.log(`No results found for ${CityName}`);
-    CityNameInput.value(CityName + " not found");
+    alert(`Could not find location for: ${CityName}`);
+    CityNameInput.value('');
     LocaleTitle = PrevLocaleTitle;
     clearLoadingState();
   }
@@ -2050,10 +2058,12 @@ function getTzUsingLatLong(lat, lon) {
   if (lat > 90 || lat < -90 || lon < -180 || lon > 180) {
     isError = true;
     print("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
+    clearLoadingState();
   }
   else if (timeZoneOffset > 13 || timeZoneOffset < -13) {
     isError = true;
     print("Error, invalid time zone offest=" + str(timeZoneOffset));
+    clearLoadingState();
   }
   else // looks like a valid offset
   {
