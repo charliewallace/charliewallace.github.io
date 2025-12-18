@@ -592,10 +592,18 @@ function updateUIElements() {
   }
 
   // Update description based on mode
+  var descText = 'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM. The darker part of the spiral indicates night.';
+
   var descEl = document.getElementById('app-description');
   if (descEl) {
-    // Always Day Spiral description
-    descEl.textContent = 'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM. The darker part of the spiral indicates night.';
+    descEl.textContent = descText;
+  }
+
+  // Sync the About modal text (mobile)
+  var aboutDescEl = document.getElementById('about-description');
+  if (aboutDescEl) {
+    aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
+      '<p style="margin-top: 10px; font-size: 0.8rem; color: #888;">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
   }
 
   // Update locale title
