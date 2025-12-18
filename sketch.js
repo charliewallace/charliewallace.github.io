@@ -183,6 +183,9 @@ var PrevLocaleTitle;
 var LocaleTitleLocal; // Stores the IP-based location name for fallback
 //var tempTest = true;  // used only for testing
 
+// tracking for orientation/fullscreen attention cue
+var WasMobileLandscapeLastCheck = false;
+
 
 //================================================================
 // Fetch approximate location from IP geolocation API
@@ -577,6 +580,7 @@ function onFullScreenChange(e) {
   if (fsBtn) {
     if (fs) {
       fsBtn.classList.add('toggled-on');
+      fsBtn.classList.remove('fs-highlight-pulse'); // Clear attention cue if we are now in FS
     } else {
       fsBtn.classList.remove('toggled-on');
     }
@@ -945,6 +949,36 @@ function reInit() {
   // NOTE: Button and field positioning is now handled by CSS (responsive design)
   // No more .position() calls needed here
 
+  // --- Fullscreen Attention Cue Logic ---
+  var isLandscape = (window.innerWidth > window.innerHeight);
+  var isMobileLandscape = (!IsDesktop && isLandscape);
+
+  if (isMobileLandscape && !WasMobileLandscapeLastCheck) {
+    // We just transitioned into mobile landscape.
+    // If not already in fullscreen, draw attention to the button.
+    if (!isFullScreen()) {
+      var fsBtn = document.getElementById('btn-fullscreen');
+      if (fsBtn) {
+        console.log("🔦 Triggering Fullscreen Attention Cue");
+        // Remove class first to allow restart if they rotate back and forth quickly
+        fsBtn.classList.remove('fs-highlight-pulse');
+        // Force reflow to restart animation
+        void fsBtn.offsetWidth;
+        fsBtn.classList.add('fs-highlight-pulse');
+      }
+    }
+  } else if (!isLandscape) {
+    // If we leave landscape, we can clear the highlight immediately
+    var fsBtn = document.getElementById('btn-fullscreen');
+    if (fsBtn) {
+      fsBtn.classList.remove('fs-highlight-pulse');
+    }
+  }
+
+  // Update tracking var (only when NOT in fullscreen to avoid FS-toggle logic glitches)
+  if (!isFullScreen()) {
+    WasMobileLandscapeLastCheck = isMobileLandscape;
+  }
 }    // End of reInit()  ============================================
 
 
