@@ -1658,29 +1658,24 @@ function processTzInputEvent() {
   TzInputTimestampMs = -1;
   TzOffset = Number(TzInput.value());
 
-  if (isNaN(TzOffset)) {
-    // can't convert to a float, restore to previous
+  if (isNaN(TzOffset) || TzOffset < -13 || TzOffset > 13) {
+    if (isNaN(TzOffset)) {
+      alert("Invalid Time Zone format. Please enter a number.");
+    } else {
+      alert("Time Zone must be between -13 and 13.");
+    }
+    // restore to previous
     TzOffset = LastTz;
     var tzString = str(TzOffset);
-    // Add in a plus sign if not negative
-    if (TzOffset > 0) {
-      tzString = "+" + str(TzOffset);
-    }
+    if (TzOffset > 0) tzString = "+" + str(TzOffset);
     TzInput.value(tzString);
   }
   else {
     LastTz = TzOffset;
-
-    IsTimezoneMismatch = false; // User manually entered location
+    IsTimezoneMismatch = false;
     CityNameInput.value("");
     LocaleTitle = "Entered Location";
-
-    //calcSunRiseSet();   
-
-    // Location may have changed, so need to regen spiral point array.
-    // Clear flag that's checked in updateTimeThisDay()
     IsSunRiseSetObtained = false;
-
     updateTimeThisDay();
   }
 
@@ -1702,24 +1697,22 @@ function processLatInputEvent() {
   //  else just stops parsing 
   Latitude = Number(LatInput.value());
 
-  if (isNaN(Latitude)) {
-    // can't convert to a float, restore to previous
+  if (isNaN(Latitude) || Latitude < -90 || Latitude > 90) {
+    if (isNaN(Latitude)) {
+      alert("Invalid Latitude format. Please enter a number.");
+    } else {
+      alert("Latitude must be between -90 and 90.");
+    }
+    // restore to previous
     Latitude = LastLat;
     LatInput.value(LastLat);
   }
   else {
     LastLat = Latitude;
-
-    IsTimezoneMismatch = false; // User manually entered location
+    IsTimezoneMismatch = false;
     CityNameInput.value("");
     LocaleTitle = "Entered Location";
-
-    //calcSunRiseSet();   
-
-    // Location may have changed, so need to regen spiral point array.
-    // Clear flag that's checked in updateTimeThisDay()
     IsSunRiseSetObtained = false;
-
     updateTimeThisDay();
   }
   //print("lat=" + Latitude)
@@ -1738,24 +1731,22 @@ function processLongInputEvent() {
   LngInputTimestampMs = -1;
   Longitude = Number(LngInput.value());
 
-  if (isNaN(Longitude)) {
-    // can't convert to a float, restore to previous
+  if (isNaN(Longitude) || Longitude < -180 || Longitude > 180) {
+    if (isNaN(Longitude)) {
+      alert("Invalid Longitude format. Please enter a number.");
+    } else {
+      alert("Longitude must be between -180 and 180.");
+    }
+    // restore to previous
     Longitude = LastLong;
     LngInput.value(LastLong);
   }
   else {
     LastLong = Longitude;
-
-    IsTimezoneMismatch = false; // User manually entered location
+    IsTimezoneMismatch = false;
     CityNameInput.value("");
     LocaleTitle = "Entered Location";
-
-    //calcSunRiseSet();   
-
-    // Location may have changed, so need to regen spiral point array.
-    // Clear flag that's checked in updateTimeThisDay()
     IsSunRiseSetObtained = false;
-
     updateTimeThisDay();
   }
 
