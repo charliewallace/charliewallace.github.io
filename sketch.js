@@ -607,7 +607,7 @@ function updateUIElements() {
   var aboutDescEl = document.getElementById('about-description');
   if (aboutDescEl) {
     // Get version and attribution from desktop elements if possible, or use defaults
-    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.2 ©2025 by Charlie Wallace';
+    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.3 ©2025 by Charlie Wallace';
     var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
     var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
 
