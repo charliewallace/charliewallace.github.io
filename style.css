@@ -209,7 +209,8 @@ body {
 
 .input-prompt {
   font-size: 0.7rem;
-  color: var(--text-dim);
+  color: #ffffff;
+  /* Changed from var(--text-dim) to white for better visibility */
   margin-bottom: 4px;
 }
 
@@ -252,7 +253,8 @@ body {
 
 .coord-row label {
   font-size: 0.7rem;
-  color: var(--text-dim);
+  color: #ffffff;
+  /* Changed from var(--text-dim) to white for better readability */
   min-width: 24px;
 }
 
@@ -343,8 +345,9 @@ body {
 }
 
 .ui-btn.preset {
-  font-size: 0.7rem;
-  padding: 5px 8px;
+  font-size: 0.8rem;
+  /* Matched to default button size */
+  padding: 6px 12px;
 }
 
 /* --- Links --- */
