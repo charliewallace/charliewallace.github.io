@@ -163,6 +163,8 @@ var YSpiralArray;
 var RadiusSpiralArray;
 var NumSpiralPointsPerTurn;
 var NumSpiralTurns;
+var SpiralStrokeWeight;       // Proportional weight for main spiral
+var SpiralStrokeWeightSecondary; // Proportional weight for hands/ticks
 
 var IsWindows;
 var IsDesktop;
@@ -331,9 +333,8 @@ function oneTimeInit() {
   ************************/
 
   // ==240212a
-  // Fix for mobile simulation on desktop: check width too
-  IsDesktop = (IsWindows || (window.navigator.platform.indexOf("Mac") === 0)) && (window.innerWidth > 950);
-  console.log("IsWindows=" + IsWindows + " IsDesktop=" + IsDesktop);
+  // IsDesktop is now calculated in reInit() to support dynamic toggling
+  console.log("IsWindows=" + IsWindows);
 
   // Create canvas and parent it to the container
   var cnv = createCanvas(window.innerWidth, window.innerHeight);
@@ -878,6 +879,10 @@ function setup() {
 //==================================================
 // This is run at startup and also when window size changes
 function reInit() {
+  // Update environment state
+  IsDesktop = (IsWindows || (window.navigator.platform.indexOf("Mac") === 0)) && (window.innerWidth > 950);
+  console.log("📐 reInit: IsDesktop=" + IsDesktop + " Width=" + window.innerWidth);
+
   // On phones, height looks ok, but width is too big
   TheHeight = window.innerHeight; //*0.8; //height * 0.7;
   TheWidth = window.innerWidth; //*0.9; //width * 0.7;
@@ -970,6 +975,15 @@ function genSpiral() //III
   var endRadius = smallerDim * endFrac;
   var nTurns = NumSpiralTurns; //2 per day! //wc4 // ==240123a
   var deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
+
+  // Set proportional stroke weights:
+  // Main spiral weight is 2/3 of the distance between turns (deltaRadiusPerTurn)
+  // This maintains a 2:1 ratio of spiral width to the gap between turns.
+  SpiralStrokeWeight = deltaRadiusPerTurn * 0.66;
+  // Secondary weight (for GMT lines, hands) is scaled proportionally
+  SpiralStrokeWeightSecondary = SpiralStrokeWeight * 0.33;
+
+  console.log("🌀 Spiral Weights: Primary=" + nfc(SpiralStrokeWeight, 1) + " Secondary=" + nfc(SpiralStrokeWeightSecondary, 1) + " Gap=" + nfc(deltaRadiusPerTurn - SpiralStrokeWeight, 1));
 
   // NOTE use of <= below, so the array lengths are 1+NumSpiralPointsPerTurn*nTurns
   for (var ii = 0; ii <= NumSpiralPointsPerTurn * nTurns; ii++) {
@@ -2182,7 +2196,7 @@ function draw() {
   // as background for the hour labels on outside.
 
   strokeWeight(0)
-  fill(255); //60)
+  fill(255); // background for the hour labels
   ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
 
   fill(120);  // Color of bkgnd behind spiral
@@ -2190,7 +2204,7 @@ function draw() {
 
   // Draw the hour ticks
   stroke(255)
-  strokeWeight(8 * FontScaleFactor);
+  strokeWeight(SpiralStrokeWeightSecondary * 0.8);
   beginShape(POINTS);
   for (var b = 0; b < 360; b += 30) {
     var angle = radians(b);
@@ -2356,10 +2370,7 @@ function draw() {
 
   // set weight differently when running on phone.  
   //   Should be reduced by about half.
-  strokeWeight(6); //Note, 6/12 is max on phone/desktop
-  if (IsDesktop) {
-    strokeWeight(10);
-  }
+  strokeWeight(SpiralStrokeWeightSecondary);
 
   // Draw logic for the simple 2-turn case, DaySpiral.  
 
@@ -2369,8 +2380,7 @@ function draw() {
     stroke(200); // Neutral light gray
     noFill();
 
-    strokeWeight(14);
-    if (IsDesktop) strokeWeight(30);
+    strokeWeight(SpiralStrokeWeight);
     beginShape();
     for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
       vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
@@ -2380,10 +2390,7 @@ function draw() {
   else {
     // Draw the day spiral for the current day.
     // Use broader stroke for the day spiral, since it's only 2 turns long
-    strokeWeight(14); // for phone
-    if (IsDesktop) {
-      strokeWeight(30);
-    }
+    strokeWeight(SpiralStrokeWeight);
 
     // ==240125a
 
@@ -2565,15 +2572,15 @@ function draw() {
   stroke(255);  // set hand color
 
   // Draw second hand
-  strokeWeight(5 * FontScaleFactor);
+  strokeWeight(SpiralStrokeWeightSecondary * 0.35);
   line(CenterX, CenterY, CenterX + cos(secRads) * SecondsRadius, CenterY + sin(secRads) * SecondsRadius);
 
   // draw minute hand
-  strokeWeight(10 * FontScaleFactor);
+  strokeWeight(SpiralStrokeWeightSecondary * 0.7);
   line(CenterX, CenterY, CenterX + cos(minRads) * MinutesRadius, CenterY + sin(minRads) * MinutesRadius);
 
-  // draw hour hand
-  strokeWeight(17 * FontScaleFactor);
+  // draw local hour hand
+  strokeWeight(SpiralStrokeWeightSecondary);
 
   // Draw hour hand with square cap so it clearly shows where it's tracking on the
   // spiral.  
@@ -2594,8 +2601,7 @@ function draw() {
   // Draw a little circle around the tip of the hour hand to emphasize that it's following
   //   the spiral
   noFill();
-  strokeWeight(3)
-
+  strokeWeight(SpiralStrokeWeightSecondary * 0.5);
   stroke(255); // white
 
   ellipse(CenterX + cos(hourRads) * HoursRadius,
