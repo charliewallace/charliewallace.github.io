@@ -602,8 +602,15 @@ function updateUIElements() {
   // Sync the About modal text (mobile)
   var aboutDescEl = document.getElementById('about-description');
   if (aboutDescEl) {
+    // Get version and attribution from desktop elements if possible, or use defaults
+    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.2 ©2025 by Charlie Wallace';
+    var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
+    var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
+
     aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
-      '<p style="margin-top: 10px; font-size: 0.8rem; color: #888;">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
+      '<p style="margin-top: 15px; font-weight: bold;">' + versionVal + '</p>' +
+      '<p style="margin-top: 5px;"><a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none;">' + linkText + '</a></p>' +
+      '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
   }
 
   // Update locale title
