@@ -1664,6 +1664,7 @@ function setSanDiego() {
 // This approach avoids the need for an enter button.
 function tzInputEvent() {
   console.log('you are typing tz=', this.value());
+  TzInput.addClass('input-pending');
   TzInputTimestampMs = millis();
 }
 
@@ -1671,6 +1672,7 @@ function tzInputEvent() {
 //  typing, avoiding temporarily invalid numbers like "-"
 function processTzInputEvent() {
   TzInputTimestampMs = -1;
+  TzInput.removeClass('input-pending');
   TzOffset = Number(TzInput.value());
 
   if (isNaN(TzOffset) || TzOffset < -13 || TzOffset > 13) {
@@ -1699,12 +1701,14 @@ function processTzInputEvent() {
 // ===== keystroke detected in Latitude field
 function latInputEvent() {
   console.log('you are typing latitude=', this.value());
+  LatInput.addClass('input-pending');
   LatInputTimestampMs = millis();
 }
 
 // == delayed processing done after user finishes entering latitude
 function processLatInputEvent() {
   LatInputTimestampMs = -1;
+  LatInput.removeClass('input-pending');
 
   //Latitude = float(this.value());
   // NOTE: using float above is too tolerant,
@@ -1738,12 +1742,14 @@ function processLatInputEvent() {
 // ===== keystroke detected in longitude field
 function longInputEvent() {
   console.log('you are typing longitude=', this.value());
+  LngInput.addClass('input-pending');
   LngInputTimestampMs = millis();
 }
 
 // == delayed processing done after user finishes entering longitude
 function processLongInputEvent() {
   LngInputTimestampMs = -1;
+  LngInput.removeClass('input-pending');
   Longitude = Number(LngInput.value());
 
   if (isNaN(Longitude) || Longitude < -180 || Longitude > 180) {
