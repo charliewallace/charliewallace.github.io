@@ -782,6 +782,7 @@ function openDetailsModal() {
 }
 
 function handleCitySubmitModal() {
+  PrevLocaleTitle = LocaleTitle; // Capture for error reversion
   var city = select('#input-city-modal').value().trim();
   var errEl = select('#city-error-msg');
   errEl.html('Searching...'); // Use .html() for p5 element or .textContent for vanilla
@@ -792,11 +793,7 @@ function handleCitySubmitModal() {
     var url = `https://nominatim.openstreetmap.org/search?format=json&q=${city}`;
 
     // Use p5.js loadJSON instead of fetch to avoid CORS and ensure consistency
-    loadJSON(url, gotCityLocationDataModal, (err) => {
-      clearLoadingState();
-      errEl.html("Search error (CORS/403). Try again or use desktop mode.");
-      console.error(err);
-    });
+    loadJSON(url, gotCityLocationDataModal, handleNetworkError);
   } else {
     errEl.html("Please enter a city name.");
   }
@@ -1424,6 +1421,25 @@ function handleLocationError(error) {
   }
 }
 
+// -----------------------------------------------------------------
+// Unified handler for network and CORS errors during API calls
+function handleNetworkError(err) {
+  console.log("Network/CORS error:", err);
+  var errorMsg = "Network error: Could not reach the location service. This may be due to a CORS issue, ad blocker, or network loss.";
+
+  // Try to be more specific if possible
+  if (err && err.message) {
+    console.log("Error details:", err.message);
+  }
+
+  alert(errorMsg);
+
+  // Revert UI state
+  clearLoadingState();
+  if (typeof CityNameInput !== 'undefined') CityNameInput.value('');
+  if (typeof PrevLocaleTitle !== 'undefined') LocaleTitle = PrevLocaleTitle;
+}
+
 //-----------------------------------------------------------------
 // Handler for the Use Precise Location button
 // Requests browser GPS coordinates (will show permission prompt)
@@ -1431,6 +1447,7 @@ function usePreciseLocation() {
   console.log("Requesting precise GPS location...");
   setLoadingState();
   IsTimezoneMismatch = false; // User intentionally requesting location
+  PrevLocaleTitle = LocaleTitle; // Capture for error reversion
 
   // Allow testing permission denial via URL hash parameter
   // TODO: REMOVE THIS TEST CODE
@@ -1499,9 +1516,15 @@ function usePreciseLocation() {
 //  
 function setSilverado() {
   IsTimezoneMismatch = false; // User manually selected location
+  PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Silverado, CA, USA");
   LocaleTitle = "Silverado";
-  getLocationUsingCityName("Silverado, CA, USA");
+
+  // Skip Nominatim and go direct to Tz lookup
+  Latitude = 33.743;
+  Longitude = -117.643;
+  setLoadingState();
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -1534,9 +1557,15 @@ function setSilverado() {
 //  
 function setLondon() {
   IsTimezoneMismatch = false; // User manually selected location
+  PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("London, UK");
   LocaleTitle = "London";
-  getLocationUsingCityName("London, UK");
+
+  // Skip Nominatim and go direct to Tz lookup
+  Latitude = 51.507;
+  Longitude = -0.127;
+  setLoadingState();
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -1569,9 +1598,15 @@ function setLondon() {
 //  
 function setBerkeley() {
   IsTimezoneMismatch = false; // User manually selected location
+  PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Berkeley, CA, USA");
   LocaleTitle = "Berkeley";
-  getLocationUsingCityName("Berkeley, CA, USA");
+
+  // Skip Nominatim and go direct to Tz lookup
+  Latitude = 37.871;
+  Longitude = -122.273;
+  setLoadingState();
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -1604,9 +1639,15 @@ function setBerkeley() {
 //  
 function setKansasCity() {
   IsTimezoneMismatch = false; // User manually selected location
+  PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Kansas City, MO, USA");
   LocaleTitle = "Kansas City";
-  getLocationUsingCityName("Kansas City, MO, USA");
+
+  // Skip Nominatim and go direct to Tz lookup
+  Latitude = 39.099;
+  Longitude = -94.578;
+  setLoadingState();
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -1641,9 +1682,15 @@ function setKansasCity() {
 //  
 function setMelbourne() {
   IsTimezoneMismatch = false; // User manually selected location
+  PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Melbourne, AU");
   LocaleTitle = "Melbourne";
-  getLocationUsingCityName("Melbourne, AU");
+
+  // Skip Nominatim and go direct to Tz lookup
+  Latitude = -37.813;
+  Longitude = 144.963;
+  setLoadingState();
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -1674,9 +1721,15 @@ function setMelbourne() {
 // Set location and timezone to San Diego
 function setSanDiego() {
   IsTimezoneMismatch = false; // User manually selected location
+  PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("San Diego, CA, USA");
   LocaleTitle = "San Diego";
-  getLocationUsingCityName("San Diego, CA, USA");
+
+  // Skip Nominatim and go direct to Tz lookup
+  Latitude = 32.715;
+  Longitude = -117.161;
+  setLoadingState();
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -1851,14 +1904,14 @@ function handleCitySubmit() {
     // response to the url call comes in.  We won't know the lat/lon until then.
     //  THis means the subsequent API call to get the time zone can't happen until then.
     setLoadingState();
-    loadJSON(apiUrl, gotCityLocationDataOpenStMap);
+    loadJSON(apiUrl, gotCityLocationDataOpenStMap, handleNetworkError);
 
     // Clear the input field
     CityNameInput.value('');
   }
   else // no city name was found
   {
-    LoaleTitle = PrevLocaleTitle;
+    LocaleTitle = PrevLocaleTitle;
   }
 
   // ALT way to get lat/long
@@ -1870,6 +1923,7 @@ function handleCitySubmit() {
 // ==============
 // Alternate way to set location, timezone, and IsDst using passed city name.
 function getLocationUsingCityName(passedCityName) {
+  PrevLocaleTitle = LocaleTitle; // Capture for error reversion
   CityName = passedCityName;
 
   // url used for OpenStreetmap (Nominatim)
@@ -1879,7 +1933,8 @@ function getLocationUsingCityName(passedCityName) {
   // ATTN: the gotCityLocationDataOpenStMap() fcn will be called a bit later, when the  
   // response to the url call comes in.  We won't know the lat/lon until then.
   //  THis means the subsequent API call to get the time zone can't happen until then.
-  loadJSON(apiUrl, gotCityLocationDataOpenStMap);
+  setLoadingState();
+  loadJSON(apiUrl, gotCityLocationDataOpenStMap, handleNetworkError);
 
   // ALT way to get lat/long - this works! SAVE ======
   //let geoApiUrl = `https://secure.geonames.org/searchJSON?q=${CityName}&maxRows=1&username=charliewallace`; 
@@ -1987,7 +2042,7 @@ function gotCityLocationDataOpenStMap(data) {
 
       // Make a GET request using Geonames to get timezone details.
       // The gotCityTzData() fcn will run a bit later when the response arrives.
-      loadJSON(timezoneUrl, gotCityTzData);
+      loadJSON(timezoneUrl, gotCityTzData, handleNetworkError);
     }
   }
   else {
@@ -2148,7 +2203,7 @@ function getTzUsingLatLong(lat, lon) {
     // Make a GET request using Geonames to get timezone details.
     // The gotCityTzData() fcn will run a bit later when the response arrives.
     // It sets the global time zone offset and also sets IsDst.
-    loadJSON(timezoneUrl, gotCityTzData);
+    loadJSON(timezoneUrl, gotCityTzData, handleNetworkError);
   }
 
 }

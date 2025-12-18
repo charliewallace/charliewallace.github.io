@@ -601,6 +601,36 @@ screen and (max-height: 600px) {
     /* Approx width of Fetch Location button */
     white-space: normal;
     line-height: 1.2;
+    font-size: 0.65rem;
+  }
+
+  /* Loc Details: Two-column grid for landscape to save vertical space */
+  #details-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    row-gap: 4px;
+    font-size: 0.8rem;
+    line-height: 1.2;
+  }
+
+  #details-content hr {
+    grid-column: span 2;
+    margin: 5px 0 !important;
+  }
+
+  #details-content p {
+    margin: 2px 0;
+  }
+
+  .modal-content {
+    padding: 12px 20px;
+    gap: 8px;
+    max-width: 500px;
+  }
+
+  .modal-content h2 {
+    font-size: 1.1rem;
   }
 
   /* Button Sizing for Landscape - INCREASED SIZE (~10%) */
