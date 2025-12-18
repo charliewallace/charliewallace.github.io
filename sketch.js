@@ -165,6 +165,7 @@ var NumSpiralPointsPerTurn;
 var NumSpiralTurns;
 var SpiralStrokeWeight;       // Proportional weight for main spiral
 var SpiralStrokeWeightSecondary; // Proportional weight for hands/ticks
+var SpiralFontSize;              // Proportional font size for spiral text
 
 var IsWindows;
 var IsDesktop;
@@ -983,7 +984,11 @@ function genSpiral() //III
   // Secondary weight (for GMT lines, hands) is scaled proportionally
   SpiralStrokeWeightSecondary = SpiralStrokeWeight * 0.33;
 
-  console.log("🌀 Spiral Weights: Primary=" + nfc(SpiralStrokeWeight, 1) + " Secondary=" + nfc(SpiralStrokeWeightSecondary, 1) + " Gap=" + nfc(deltaRadiusPerTurn - SpiralStrokeWeight, 1));
+  // Proportional font size for text on the spiral (DOW, GMT)
+  // Set to roughly 2/3 of the spiral width for comfort
+  SpiralFontSize = SpiralStrokeWeight * 0.66;
+
+  console.log("🌀 Spiral Weights: Primary=" + nfc(SpiralStrokeWeight, 1) + " Secondary=" + nfc(SpiralStrokeWeightSecondary, 1) + " FontSize=" + nfc(SpiralFontSize, 1));
 
   // NOTE use of <= below, so the array lengths are 1+NumSpiralPointsPerTurn*nTurns
   for (var ii = 0; ii <= NumSpiralPointsPerTurn * nTurns; ii++) {
@@ -2479,26 +2484,11 @@ function draw() {
 
     // Supress the day labels when gmt display is on
     if (!IsGmtShown) {
-      if (IsDesktop) {
-        textSize(RefFontSize * dowLabelSizeDsktpBoost); // boosted text scale for desktop
-        text(dayString, CenterX + XSpiralArray[vvBase] + 3, CenterY + YSpiralArray[vvBase] - 9);
+      textSize(SpiralFontSize);
+      text(dayString, CenterX + XSpiralArray[vvBase] + 3, CenterY + YSpiralArray[vvBase] - (SpiralFontSize * 0.5));
 
-        textAlign(LEFT, TOP);
-        text(nextDayString, CenterX + XSpiralArray[vvEnd] + 5, CenterY + YSpiralArray[vvEnd] - 11);
-        textSize(RefFontSize * dowLabelSizeDsktp); // Restore text size
-
-      }
-      else // on phone
-      {
-        textSize(RefFontSize * dowLabelSizeMoblBoost);  // boosted text scale for mobile  
-        text(dayString,
-          CenterX + XSpiralArray[vvBase] + 1,
-          CenterY + YSpiralArray[vvBase] - 7);
-
-        textAlign(LEFT, TOP);
-        text(nextDayString, CenterX + XSpiralArray[vvEnd] + 5, CenterY + YSpiralArray[vvEnd] - 9);
-        textSize(RefFontSize * dowLabelSizeMobl); // Restore text size        
-      }
+      textAlign(LEFT, TOP);
+      text(nextDayString, CenterX + XSpiralArray[vvEnd] + 5, CenterY + YSpiralArray[vvEnd] - (SpiralFontSize * 0.5));
     }
 
     // If display of GMT is enabled, we show on the spiral
@@ -2510,12 +2500,7 @@ function draw() {
       let gmtLabelY = 0;
 
       textAlign(CENTER, CENTER);
-      if (IsDesktop) {
-        textSize(RefFontSize * dowLabelSizeDsktpBoost); // boosted text scale for desktop
-      }
-      else {
-        textSize(RefFontSize * dowLabelSizeMoblBoost);  // boosted text scale for mobile      
-      }
+      textSize(SpiralFontSize);
 
       // FINDME
 
