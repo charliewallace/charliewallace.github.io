@@ -732,6 +732,7 @@ function openManualCoordsModal() {
   }
 
   openModal('modal-coords');
+  select('#coords-error-msg').html(''); // Clear error message when opening
 }
 
 function openDetailsModal() {
@@ -802,38 +803,52 @@ function gotCityLocationDataModal(data) {
 }
 
 function handleCoordsSubmitModal() {
-  var lat = parseFloat(select('#input-lat-modal').value());
-  var lng = parseFloat(select('#input-lng-modal').value());
-  var tz = parseFloat(select('#input-tz-modal').value());
+  var latVal = select('#input-lat-modal').value().trim();
+  var lngVal = select('#input-lng-modal').value().trim();
+  var tzVal = select('#input-tz-modal').value().trim();
+  var errEl = select('#coords-error-msg');
+  errEl.html('');
 
-  if (!isNaN(lat) && !isNaN(lng) && !isNaN(tz)) {
-    Latitude = lat;
-    Longitude = lng;
-    TzOffset = tz;
+  var lat = parseFloat(latVal);
+  var lng = parseFloat(lngVal);
+  var tz = parseFloat(tzVal);
 
-    // Update globals
-    LatLocal = Latitude;
-    LngLocal = Longitude;
-    TzOffsetLocal = TzOffset;
-    LastTz = TzOffset;
-
-    // Update main UI inputs to match
-    LatInput.value(str(Latitude));
-    LngInput.value(str(Longitude));
-    TzInput.value(str(TzOffset));
-
-    // Create descriptive title for mobile context
-    // Format TZ string with + if positive
-    var tzStr = str(TzOffset);
-    if (TzOffset > 0) tzStr = "+" + tzStr;
-
-    // Use nfc for clean formatting (2 decimal places)
-    LocaleTitle = "Lat:" + nfc(Latitude, 2) + " Lng:" + nfc(Longitude, 2) + " TZ:" + tzStr;
-    updateTimeThisDay();
-    closeAllModals();
-  } else {
-    alert("Please enter valid numbers for Lat, Lng, and Time Zone.");
+  if (latVal === "" || isNaN(lat) || lat < -90 || lat > 90) {
+    errEl.html("Invalid Latitude: must be between -90 and 90.");
+    return;
   }
+  if (lngVal === "" || isNaN(lng) || lng < -180 || lng > 180) {
+    errEl.html("Invalid Longitude: must be between -180 and 180.");
+    return;
+  }
+  if (tzVal === "" || isNaN(tz) || tz < -13 || tz > 13) {
+    errEl.html("Invalid Time Zone: must be between -13 and 13.");
+    return;
+  }
+
+  // If we get here, all are valid
+  Latitude = lat;
+  Longitude = lng;
+  TzOffset = tz;
+
+  // Update globals
+  LatLocal = Latitude;
+  LngLocal = Longitude;
+  TzOffsetLocal = TzOffset;
+  LastTz = TzOffset;
+
+  // Update main UI inputs to match
+  LatInput.value(str(Latitude));
+  LngInput.value(str(Longitude));
+  TzInput.value(str(TzOffset));
+
+  // Create descriptive title for mobile context
+  var tzStr = str(TzOffset);
+  if (TzOffset > 0) tzStr = "+" + tzStr;
+
+  LocaleTitle = "Lat:" + nfc(Latitude, 2) + " Lng:" + nfc(Longitude, 2) + " TZ:" + tzStr;
+  updateTimeThisDay();
+  closeAllModals();
 }
 
 
