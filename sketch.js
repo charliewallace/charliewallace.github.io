@@ -640,6 +640,16 @@ function updateUIElements() {
     dayEl.textContent = getDayStringLong(IDow);
   }
 
+  // Update live time/date in details modal if open
+  var modalTimeEl = document.getElementById('modal-time-display');
+  if (modalTimeEl && TimeString) {
+    modalTimeEl.textContent = TimeString + (IsAM ? ' AM' : ' PM');
+  }
+  var modalDateEl = document.getElementById('modal-date-display');
+  if (modalDateEl && DateString) {
+    modalDateEl.textContent = DateString;
+  }
+
   // Update DST display
   var dstEl = document.getElementById('dst-display');
   if (dstEl && Latitude != 99999 && Longitude != 99999) {
@@ -748,9 +758,18 @@ function openManualCoordsModal() {
 function openDetailsModal() {
   var content = '';
   if (Latitude != 99999) {
-    content += '<p><strong>Date:</strong> ' + (DateString || '') + '</p>';
+    content += '<p><strong>Place:</strong> ' + (LocaleTitle || 'Entered Location') + '</p>';
+    content += '<p><strong>Latitude:</strong> ' + Latitude + '</p>';
+    content += '<p><strong>Longitude:</strong> ' + Longitude + '</p>';
+
+    // Add a visual separator for clarity
+    content += '<hr style="border:0; border-top:1px solid #444; margin:10px 0;">';
+
+    content += '<p><strong>Time at this location:</strong> <span id="modal-time-display">' + TimeString + (IsAM ? ' AM' : ' PM') + '</span></p>';
+    content += '<p><strong>Date at this location:</strong> <span id="modal-date-display">' + DateString + '</span></p>';
     content += '<p><strong>Day:</strong> ' + (typeof IDow !== 'undefined' ? getDayStringLong(IDow) : '') + '</p>';
     content += '<p><strong>DST:</strong> ' + (IsDst ? 'Yes' : 'No') + '</p>';
+
     if (SunriseHour >= 0) {
       content += '<p><strong>Sunrise:</strong> ' + SunriseHourString + ':' + SunriseMinString + SunriseAmpmString + '</p>';
       content += '<p><strong>Sunset:</strong> ' + SunsetHourString + ':' + SunsetMinString + SunsetAmpmString + '</p>';
