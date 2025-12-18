@@ -1,5 +1,7 @@
 # Day Spiral Clock
 
+![Day Spiral Clock Screenshot](clock_spiral_screenshot.png)
+
 A unique visualization of time using a spiral clock face that shows the full 24 hour day
 coiled into a 12-hour clock face.  The spiral is color-coded to show the day and night
 segments based on your location, thus indicating sunrise and sunset times.  
