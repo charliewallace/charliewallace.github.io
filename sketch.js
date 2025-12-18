@@ -595,7 +595,7 @@ function updateUIElements() {
   var descEl = document.getElementById('app-description');
   if (descEl) {
     // Always Day Spiral description
-    descEl.innerHTML = '<p>Hour hand tip follows the day spiral,</p><p>making 1 turn for AM and 1 for PM.</p><p>Dark part of spiral indicates night.</p>';
+    descEl.textContent = 'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM. The darker part of the spiral indicates night.';
   }
 
   // Update locale title
