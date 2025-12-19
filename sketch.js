@@ -103,6 +103,7 @@ var IsSunRiseSetObtained;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
 var IsPreciseLocation = false; // true if using GPS location
+var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 
 var OutputHour, OutputMin;
@@ -187,12 +188,13 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 var WasMobileLandscapeLastCheck = false;
 
 
-//================================================================
+// ================================================================
 // Fetch approximate location from IP geolocation API
 function fetchIpLocation() {
   console.log("Fetching approximate location from IP...");
   setLoadingState();
   IsPreciseLocation = false;
+  IsUserInitiatedLocation = false; // IP location is automatic, not user-initiated
   // Using ipapi.co (free, no API key required)
   fetch('https://ipapi.co/json/')
     .then(response => response.json())
@@ -216,7 +218,7 @@ function fetchIpLocation() {
       var locationString = "Approximate Location";
 
       if (city) {
-        locationString = "Near " + city;
+        locationString = "Near " + city; // Add "Near" prefix for IP-based location
         if (region) {
           // Optional: could add region too, but keeping it short for now
           // locationString += ", " + region;
@@ -260,6 +262,9 @@ function fetchIpLocation() {
       LngLocal = Longitude;
       LastLong = Longitude;
 
+      // DO NOT update URL hash for IP-based location on initial load
+      // Only user-initiated actions should update URL (GPS, presets, city lookup)
+
       // Get timezone using existing GeoNames function
       getTzUsingLatLong(Latitude, Longitude);
     })
@@ -297,6 +302,9 @@ function fetchIpLocation() {
       var longString = str(Longitude);
       LngInput.value(longString);
       LastLong = Longitude;
+
+      // DO NOT update URL hash for fallback location
+      // Only user-initiated actions should update URL
     });
 }
 
@@ -504,6 +512,14 @@ function oneTimeInit() {
   setInterval(onFullScreenChange, 500);
 
   // ==== Initial Location Fetch (Moved here) ====
+
+  // First, check if location is in the URL hash
+  if (parseUrlLocation()) {
+    console.log("Location found in URL hash, using it.");
+    // parseUrlLocation already sets the globals and calls updateTimeThisDay
+    return;
+  }
+
   // Check if we have permission? 
   if (navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
@@ -522,6 +538,111 @@ function oneTimeInit() {
     fetchIpLocation();
   }
 }  // end of oneTimeInit()  ====================
+
+// Parse location from URL hash (lat,lon,tz,city)
+function parseUrlLocation() {
+  var hash = window.location.hash.substring(1); // remove #
+  if (!hash) return false;
+
+  // Expected format: lat=33.743&lon=-117.643&tz=-8&city=Silverado
+  // or just comma separated: 33.743,-117.643,-8,Silverado
+
+  var params = new URLSearchParams(hash);
+  var lat = params.get('lat');
+  var lon = params.get('lon');
+  var tz = params.get('tz');
+  var city = params.get('city');
+
+  // Fallback to comma separated if not key-value
+  if (!lat && hash.includes(',')) {
+    var parts = hash.split(',');
+    if (parts.length >= 2) {
+      lat = parts[0];
+      lon = parts[1];
+      tz = parts[2] || null;
+      city = parts[3] || null;
+    }
+  }
+
+  if (lat && lon) {
+    console.log("Parsed URL location:", { lat, lon, tz, city });
+    IsUserInitiatedLocation = true; // URL location is intentional (someone shared it)
+    Latitude = parseFloat(lat);
+    Longitude = parseFloat(lon);
+
+    if (tz !== null) {
+      TzOffset = parseFloat(tz);
+      var tzString = str(TzOffset);
+      if (TzOffset > 0) tzString = "+" + str(TzOffset);
+      TzInput.value(tzString);
+      LastTz = TzOffset;
+    }
+
+    if (city) {
+      LocaleTitle = decodeURIComponent(city);
+    } else {
+      LocaleTitle = "URL Location";
+    }
+
+    LatInput.value(Latitude);
+    LngInput.value(Longitude);
+    LastLat = Latitude;
+    LastLong = Longitude;
+
+    // Also update fallback variables so any error handling doesn't override URL location
+    LatLocal = Latitude;
+    LngLocal = Longitude;
+    if (tz !== null) {
+      TzOffsetLocal = TzOffset;
+    }
+    LocaleTitleLocal = LocaleTitle;
+
+    IsPreciseLocation = true; // Treating URL location as precise/intentional
+    IsTimezoneMismatch = false;
+
+    // Recalculate everything
+    IsSunRiseSetObtained = false;
+    updateTimeThisDay();
+    return true;
+  }
+
+  return false;
+}
+
+// Update URL hash with current location
+function updateUrlHash() {
+  console.log("🔗 updateUrlHash() called");
+  console.log("  Latitude:", Latitude);
+  console.log("  Longitude:", Longitude);
+  console.log("  TzOffset:", TzOffset);
+  console.log("  LocaleTitle:", LocaleTitle);
+
+  if (Latitude == 99999 || Longitude == 99999) {
+    console.log("  ❌ Early return: Latitude or Longitude is 99999");
+    return;
+  }
+
+  var city = LocaleTitle || "";
+  // Don't include "Approximate Location" or "Precise Location" as city name in URL if possible
+  if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
+    city = "";
+  }
+
+  var hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
+  if (city) {
+    hash += `&city=${encodeURIComponent(city)}`;
+  }
+
+  console.log("  📝 Generated hash:", hash);
+
+  // Update without triggering hashchange if we were listening for it (we aren't yet)
+  // window.location.hash = hash; 
+  // Using history.replaceState to avoid adding to browser history on every update
+  var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "#" + hash;
+  console.log("  🌐 New URL:", newUrl);
+  window.history.replaceState({ path: newUrl }, '', newUrl);
+  console.log("  ✅ URL updated successfully");
+}
 
 // Helper to check fullscreen state across browsers
 // Helper to check fullscreen state across browsers
@@ -816,6 +937,7 @@ function gotCityLocationDataModal(data) {
 
   if (data && data.length > 0) {
     // Success
+    IsUserInitiatedLocation = true; // User entered city via modal
     var lat = parseFloat(data[0].lat);
     var lon = parseFloat(data[0].lon);
     Latitude = round(lat, 3);
@@ -864,6 +986,7 @@ function handleCoordsSubmitModal() {
   }
 
   // If we get here, all are valid
+  IsUserInitiatedLocation = true; // User manually entered coordinates
   Latitude = lat;
   Longitude = lng;
   TzOffset = tz;
@@ -1488,6 +1611,7 @@ function usePreciseLocation() {
   console.log("Requesting precise GPS location...");
   setLoadingState();
   IsTimezoneMismatch = false; // User intentionally requesting location
+  IsUserInitiatedLocation = true; // User clicked button to fetch GPS location
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
 
   // Allow testing permission denial via URL hash parameter
@@ -1538,6 +1662,8 @@ function usePreciseLocation() {
       CityNameInput.value("");
       LocaleTitle = "Precise Location";
 
+      updateUrlHash();
+
       // Get timezone using existing GeoNames function
       getTzUsingLatLong(Latitude, Longitude);
 
@@ -1557,6 +1683,7 @@ function usePreciseLocation() {
 //  
 function setSilverado() {
   IsTimezoneMismatch = false; // User manually selected location
+  IsUserInitiatedLocation = true; // User clicked preset button
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Silverado, CA, USA");
   LocaleTitle = "Silverado";
@@ -1589,6 +1716,7 @@ function setSilverado() {
   // Clear flag that's checked in updateTimeThisDay()
   IsSunRiseSetObtained = false;
 
+  updateUrlHash();
   updateTimeThisDay();
 }
 
@@ -1598,6 +1726,7 @@ function setSilverado() {
 //  
 function setLondon() {
   IsTimezoneMismatch = false; // User manually selected location
+  IsUserInitiatedLocation = true; // User clicked preset button
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("London, UK");
   LocaleTitle = "London";
@@ -1630,6 +1759,7 @@ function setLondon() {
   // Clear flag that's checked in updateTimeThisDay()
   IsSunRiseSetObtained = false;
 
+  updateUrlHash();
   updateTimeThisDay();
 }
 
@@ -1639,6 +1769,7 @@ function setLondon() {
 //  
 function setBerkeley() {
   IsTimezoneMismatch = false; // User manually selected location
+  IsUserInitiatedLocation = true; // User clicked preset button
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Berkeley, CA, USA");
   LocaleTitle = "Berkeley";
@@ -1671,6 +1802,7 @@ function setBerkeley() {
   // Clear flag that's checked in updateTimeThisDay()
   IsSunRiseSetObtained = false;
 
+  updateUrlHash();
   updateTimeThisDay();
 }
 
@@ -1680,6 +1812,7 @@ function setBerkeley() {
 //  
 function setKansasCity() {
   IsTimezoneMismatch = false; // User manually selected location
+  IsUserInitiatedLocation = true; // User clicked preset button
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Kansas City, MO, USA");
   LocaleTitle = "Kansas City";
@@ -1712,8 +1845,7 @@ function setKansasCity() {
   // Clear flag that's checked in updateTimeThisDay()
   IsSunRiseSetObtained = false;
 
-  console.log("Kansas City date test");
-  //tempTest = true;
+  updateUrlHash();
   updateTimeThisDay();
 }
 
@@ -1723,6 +1855,7 @@ function setKansasCity() {
 //  
 function setMelbourne() {
   IsTimezoneMismatch = false; // User manually selected location
+  IsUserInitiatedLocation = true; // User clicked preset button
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Melbourne, AU");
   LocaleTitle = "Melbourne";
@@ -1755,6 +1888,7 @@ function setMelbourne() {
   // Clear flag that's checked in updateTimeThisDay()
   IsSunRiseSetObtained = false;
   //tempTest = true; 
+  updateUrlHash();
   updateTimeThisDay();
 }
 
@@ -1762,6 +1896,7 @@ function setMelbourne() {
 // Set location and timezone to San Diego
 function setSanDiego() {
   IsTimezoneMismatch = false; // User manually selected location
+  IsUserInitiatedLocation = true; // User clicked preset button
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("San Diego, CA, USA");
   LocaleTitle = "San Diego";
@@ -1793,6 +1928,7 @@ function setSanDiego() {
   // Clear flag that's checked in updateTimeThisDay()
   IsSunRiseSetObtained = false;
 
+  updateUrlHash();
   updateTimeThisDay();
 }
 
@@ -1908,6 +2044,7 @@ function processLongInputEvent() {
     CityNameInput.value("");
     LocaleTitle = "Entered Location";
     IsSunRiseSetObtained = false;
+    updateUrlHash();
     updateTimeThisDay();
   }
 
@@ -1965,6 +2102,7 @@ function handleCitySubmit() {
 // Alternate way to set location, timezone, and IsDst using passed city name.
 function getLocationUsingCityName(passedCityName) {
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
+  IsUserInitiatedLocation = true; // User entered city name
   CityName = passedCityName;
 
   // url used for OpenStreetmap (Nominatim)
@@ -2175,6 +2313,11 @@ function gotCityTzData(data) {
     console.log('==tz based on GeoNames data==')
     console.log(`Time Zone Offset: ${timeZoneOffset} hours`);
 
+    // Only update URL for user-initiated location changes, not automatic IP-based locations
+    if (IsUserInitiatedLocation) {
+      updateUrlHash();
+      IsUserInitiatedLocation = false; // Reset flag after use
+    }
     clearLoadingState();
   }
   else {
