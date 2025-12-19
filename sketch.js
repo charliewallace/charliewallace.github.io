@@ -1519,8 +1519,17 @@ function handleLocationError(error) {
       break;
     case error.TIMEOUT:
       errorMsg = "Location request timed out";
-      alert("The location request timed out. Please try again.");
-      break;
+      console.log("Location request timed out, falling back to IP location.");
+      // Show the timeout warning for a few seconds
+      var timeoutWarning = document.getElementById('timeout-warning');
+      if (timeoutWarning) {
+        timeoutWarning.classList.add('visible');
+        setTimeout(() => {
+          timeoutWarning.classList.remove('visible');
+        }, 4000); // Hide after 4 seconds
+      }
+      fetchIpLocation(); // Fallback to IP-based location
+      return; // Exit the function to avoid further processing
     default:
       errorMsg = "Location error occurred";
       alert("An unknown location error occurred.");
@@ -1659,8 +1668,8 @@ function usePreciseLocation() {
 
     // Error callback
     handleLocationError,
-    // Options: Add a 5-second timeout
-    { timeout: 5000 }
+    // Options: Request low accuracy and add a 5-second timeout
+    { enableHighAccuracy: false, timeout: 5000 }
   );
 }
 
