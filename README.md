@@ -15,6 +15,7 @@ segments based on your location, thus indicating sunrise and sunset times.
 - **VPN Detection**: Detects when timezone doesn't match browser timezone and prompts user to
       grant browser permission to access location. 
 - **Precise Location Option**: Optional GPS coordinates for exact sunrise/sunset times
+- **URL Location Sharing**: Share locations via URL - bookmarkable and shareable links with coordinates
 - **Multiple Locations**: Quick-select buttons for major cities
 - **Manual Entry**: Enter custom lat/long or city name
 - **GMT Time Display**: Optional GMT hour labels on day spiral
@@ -32,6 +33,20 @@ Visit [https://www.dayspiral.com](https://charliewallace.github.io)
    ```
 3. Open [http://localhost:8080](http://localhost:8080) in your browser
 
+## Location Sharing & Bookmarks
+
+The app supports URL-based location persistence. When you select a location (GPS, city lookup, preset, or manual coordinates), the location details are automatically saved in the URL hash. This enables:
+
+- **Bookmarking**: Save your favorite locations as browser bookmarks
+- **Sharing**: Send URLs to others to show them a specific location
+- **Quick Access**: Return to saved locations without re-entering coordinates
+
+**Example URLs:**
+- Boston: `http://localhost:8080/#lat=42.359&lon=-71.058&tz=-5&city=boston`
+- London: `http://localhost:8080/#lat=51.507&lon=-0.127&tz=0&city=London`
+
+**Note:** IP-based approximate locations are NOT saved to the URL automatically - only user-selected locations are persisted. This ensures your approximate location isn't inadvertently shared when copying URLs.
+
 ## Technologies
 
 - **p5.js**: Canvas rendering and animation
@@ -42,5 +57,5 @@ Visit [https://www.dayspiral.com](https://charliewallace.github.io)
 
 ## Credits
 
-Created by Charlie Wallace of Carlsbad, CA, copyright 2025.
+Created by Charlie Wallace of Carlsbad, CA, copyright 2026.
 For artwork by Charlie Wallace, see [coolweird.com](https://www.coolweird.com)

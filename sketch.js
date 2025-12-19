@@ -86,9 +86,7 @@ var LastMillisec;
 
 var HourDigitColor;
 
-// for monitoring window size
-var Mywidth, Myheight;
-var TheHeight, TheWidth;
+
 
 var SecondsSoFar;
 var MsFromStartToResetTime;
@@ -99,7 +97,6 @@ var LastLat, LastLong;
 var LatLocal, LngLocal;
 var TzOffset, TzOffsetLocal;
 var LastTz;
-var IsSunRiseSetObtained;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
 var IsPreciseLocation = false; // true if using GPS location
@@ -118,7 +115,7 @@ var SunsetMinString;
 var SunsetAmpmString;
 var SunsetHourString;
 
-var IsDay;  // true when sun is up. Not used 240201 
+
 var DayState;
 var ISec, IMin, IHour;
 var IDow;
@@ -138,18 +135,6 @@ var LatInputTimestampMs;  // ms since pgm start when input happened
 
 var LngInput;
 var LngInputTimestampMs;  // ms since pgm start when input happened
-
-var ResetToLocalButton;
-
-var MelbourneButton;
-var SanDiegoButton;
-var KansasCityButton;
-var LondonButton;
-var BerkeleyButton;
-var SilveradoButton;
-
-
-
 
 
 var GmtDisplayButton;
@@ -182,7 +167,7 @@ var CityName;
 var LocaleTitle;
 var PrevLocaleTitle;
 var LocaleTitleLocal; // Stores the IP-based location name for fallback
-//var tempTest = true;  // used only for testing
+
 
 // tracking for orientation/fullscreen attention cue
 var WasMobileLandscapeLastCheck = false;
