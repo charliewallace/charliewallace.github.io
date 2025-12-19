@@ -2424,14 +2424,6 @@ function draw() {
   }
 
 
-  if (NewLatitude != 99999 || NewLongitude != 99999) {
-    // We are partway through update of location via web service call
-    // caused by the user entering a city name.
-    // The new lat/long have been fetched but we're still waiting 
-    // for the new time zone.
-    // If we draw now, we'll have incorrect draw.
-    return; // bail out
-  }
 
   // Draw the clock background
   // we redo this below after successfully getting the lat/long
