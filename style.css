@@ -167,7 +167,8 @@ body {
   color: var(--text-muted);
 }
 
-#vpn-warning {
+#vpn-warning,
+#timeout-warning {
   display: none;
   font-size: 0.75rem;
   color: var(--warning-color);
@@ -177,6 +178,10 @@ body {
   margin-bottom: 8px;
   max-width: 240px;
   line-height: 1.3;
+}
+
+#timeout-warning.visible {
+  display: block;
 }
 
 #vpn-warning.visible {

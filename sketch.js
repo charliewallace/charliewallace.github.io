@@ -200,19 +200,20 @@ function fetchIpLocation() {
       // Extract city and region if available
       var city = data.city;
       var region = data.region;
-      var locationString = "Approximate Location";
 
       if (city) {
-        locationString = "Near " + city; // Add "Near" prefix for IP-based location
+        // Per code review, ensure "Near " prefix is added for IP-based location.
+        LocaleTitle = "Near " + city;
         if (region) {
           // Optional: could add region too, but keeping it short for now
-          // locationString += ", " + region;
+          // LocaleTitle += ", " + region;
         }
+      } else {
+        LocaleTitle = "Approximate Location";
       }
 
-      // CityNameInput.value(locationString); // Keep empty as per user request
-      LocaleTitle = locationString;
-      LocaleTitleLocal = locationString; // Save for fallback
+      // CityNameInput.value(LocaleTitle); // Keep empty as per user request
+      LocaleTitleLocal = LocaleTitle; // Save for fallback
 
       // Check for timezone mismatch (VPN detection)
       var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1519,8 +1520,17 @@ function handleLocationError(error) {
       break;
     case error.TIMEOUT:
       errorMsg = "Location request timed out";
-      alert("The location request timed out. Please try again.");
-      break;
+      console.log("Location request timed out, falling back to IP location.");
+      // Show the timeout warning for a few seconds
+      var timeoutWarning = document.getElementById('timeout-warning');
+      if (timeoutWarning) {
+        timeoutWarning.classList.add('visible');
+        setTimeout(() => {
+          timeoutWarning.classList.remove('visible');
+        }, 4000); // Hide after 4 seconds
+      }
+      fetchIpLocation(); // Fallback to IP-based location
+      return; // Exit the function to avoid further processing
     default:
       errorMsg = "Location error occurred";
       alert("An unknown location error occurred.");
@@ -1658,7 +1668,9 @@ function usePreciseLocation() {
     },
 
     // Error callback
-    handleLocationError
+    handleLocationError,
+    // Options: Request low accuracy and add a 5-second timeout
+    { enableHighAccuracy: false, timeout: 5000 }
   );
 }
 
@@ -2427,7 +2439,7 @@ function draw() {
   if (NewLatitude != 99999 || NewLongitude != 99999) {
     // We are partway through update of location via web service call
     // caused by the user entering a city name.
-    // The new lat/long have been fetched but we're still waiting 
+    // The new lat/long have been fetched but we're still waiting
     // for the new time zone.
     // If we draw now, we'll have incorrect draw.
     return; // bail out
