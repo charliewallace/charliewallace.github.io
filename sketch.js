@@ -1618,6 +1618,13 @@ function usePreciseLocation() {
     return;
   }
 
+  // Options for getCurrentPosition call below, designed for speed over accuracy.
+  const options = {
+    enableHighAccuracy: false,
+    timeout: 10000,
+    maximumAge: 120000 // Allow a location up to 2 minutes old
+  };
+
   navigator.geolocation.getCurrentPosition(
     // Success callback
     function (position) {
@@ -1658,7 +1665,10 @@ function usePreciseLocation() {
     },
 
     // Error callback
-    handleLocationError
+    handleLocationError,
+
+    // Options, see above
+    options
   );
 }
 
