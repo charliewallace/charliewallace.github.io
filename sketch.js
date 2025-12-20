@@ -200,19 +200,20 @@ function fetchIpLocation() {
       // Extract city and region if available
       var city = data.city;
       var region = data.region;
-      var locationString = "Approximate Location";
 
       if (city) {
-        locationString = "Near " + city; // Add "Near" prefix for IP-based location
+        // Per code review, ensure "Near " prefix is added for IP-based location.
+        LocaleTitle = "Near " + city;
         if (region) {
           // Optional: could add region too, but keeping it short for now
-          // locationString += ", " + region;
+          // LocaleTitle += ", " + region;
         }
+      } else {
+        LocaleTitle = "Approximate Location";
       }
 
-      // CityNameInput.value(locationString); // Keep empty as per user request
-      LocaleTitle = locationString;
-      LocaleTitleLocal = locationString; // Save for fallback
+      // CityNameInput.value(LocaleTitle); // Keep empty as per user request
+      LocaleTitleLocal = LocaleTitle; // Save for fallback
 
       // Check for timezone mismatch (VPN detection)
       var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
