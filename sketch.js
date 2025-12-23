@@ -351,6 +351,7 @@ function oneTimeInit() {
 
   // --- NEW MODAL BUTTONS ---
   select('#btn-about').mousePressed(() => openModal('modal-about'));
+  select('#btn-about-desktop').mousePressed(() => openModal('modal-about'));
   select('#btn-details').mousePressed(openDetailsModal);
   select('#btn-lookup-city').mousePressed(() => openModal('modal-city'));
   select('#btn-manual-coords').mousePressed(openManualCoordsModal);
