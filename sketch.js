@@ -497,7 +497,29 @@ function oneTimeInit() {
   // Watchdog to ensure UI stays in sync if events are missed (robust fallback)
   setInterval(onFullScreenChange, 500);
 
+  // ==== Initialize About Modal Content (Static) ====
+  var aboutDescEl = document.getElementById('about-description');
+  if (aboutDescEl) {
+    var descText = 'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM. The darker part of the spiral indicates night.';
+    // Get version and attribution from desktop elements if possible, or use defaults
+    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.3 ©2025 by Charlie Wallace';
+    var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
+    var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
+
+    // To revise the contact form see
+    //   https://docs.google.com/forms/d/1hq7Dh8_8xkXrNdjJgcGIx47aLDTvX6pujLPpMV21gY4/edit
+    aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
+      '<p style="margin-top: 15px; font-weight: bold;">' + versionVal + '</p>' +
+      '<p style="margin-top: 5px;">' +
+      '<a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">' + linkText + '</a>' +
+      '<span style="margin: 0 10px; color: #666;">|</span>' +
+      '<a href="https://forms.gle/3zAVfRJFH6Kj5drR8" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Contact Me</a>' +
+      '</p>' +
+      '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
+  }
+
   // ==== Initial Location Fetch (Moved here) ====
+
 
   // First, check if location is in the URL hash
   if (parseUrlLocation()) {
@@ -710,19 +732,8 @@ function updateUIElements() {
     descEl.textContent = descText;
   }
 
-  // Sync the About modal text (mobile)
-  var aboutDescEl = document.getElementById('about-description');
-  if (aboutDescEl) {
-    // Get version and attribution from desktop elements if possible, or use defaults
-    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.3 ©2025 by Charlie Wallace';
-    var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
-    var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
+  // About modal text is now static and set in oneTimeInit()
 
-    aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
-      '<p style="margin-top: 15px; font-weight: bold;">' + versionVal + '</p>' +
-      '<p style="margin-top: 5px;"><a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none;">' + linkText + '</a></p>' +
-      '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
-  }
 
   // Update locale title
   var localeEl = document.getElementById('locale-title');
