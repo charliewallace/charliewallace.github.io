@@ -724,7 +724,23 @@ function onFullScreenChange(e) {
   // Update button text based on new state
   var fsBtn = document.getElementById('btn-fullscreen');
   if (fsBtn) {
+    // transition to full screen mode
     fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
+
+    if (!IsDesktop) {
+      // We just transitioned into full screen mode on mobile
+      // Show the manual coords button just in case it was hidden
+      var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      manualCoordsBtn.style.display = "block";
+    }
+    else {
+      // We just transitioned out of full screen mode on mobile
+      // Hide the manual coords button if we are not in precise location mode
+      if (!IsPreciseLocation) {
+        var manualCoordsBtn = document.getElementById('btn-manual-coords');
+        manualCoordsBtn.style.display = "none";
+      }
+    }
   }
 
 
@@ -1099,7 +1115,7 @@ function reInit() {
 
   if (!isMobileLandscape && WasMobileLandscapeLastCheck) {
     // We just transitioned out of mobile landscape.
-    // Show the manual coords button if it was hidden
+    // Show the manual coords button just in case it was hidden
     var manualCoordsBtn = document.getElementById('btn-manual-coords');
     manualCoordsBtn.style.display = "block";
 
