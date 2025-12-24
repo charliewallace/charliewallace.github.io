@@ -564,6 +564,13 @@ function parseUrlLocation() {
   var lon = params.get('lon');
   var tz = params.get('tz');
   var city = params.get('city');
+  var zen = params.get('zen');
+
+  if (zen === '1') {
+    IsZenMode = true;
+    document.body.classList.add('zen-mode');
+    BkColor = 0; // Black
+  }
 
   // Fallback to comma separated if not key-value
   if (!lat && hash.includes(',')) {
@@ -643,6 +650,12 @@ function updateUrlHash() {
   var hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
   if (city) {
     hash += `&city=${encodeURIComponent(city)}`;
+  }
+
+  if (IsZenMode) {
+    hash += "&zen=1";
+  } else {
+    hash += "&zen=0";
   }
 
   console.log("  📝 Generated hash:", hash);
@@ -1618,6 +1631,8 @@ function toggleZenMode() {
     document.body.classList.remove('zen-mode');
     BkColor = 34; // Dark Gray (#222)
   }
+
+  updateUrlHash();
 }
 
 //-----------------------------------------------------------------
