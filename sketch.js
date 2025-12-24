@@ -1131,9 +1131,9 @@ function reInit() {
   if (isMobileLandscape && !WasMobileLandscapeLastCheck) {
     // We just transitioned into mobile landscape.
     // Hide the manual coords button if the screen is too small
-    alert("window height = " + window.innerHeight.toString());
+    //alert("window height = " + window.innerHeight.toString());
 
-    if (window.innerHeight < 400 && !IsPreciseLocation) {
+    if (window.innerHeight < 300 && !IsPreciseLocation) {
       //alert("window height < 400, hide manual coords button");
       var manualCoordsBtn = document.getElementById('btn-manual-coords');
       manualCoordsBtn.style.display = "none";
