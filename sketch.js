@@ -173,6 +173,7 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 var WasMobileLandscapeLastCheck = false;
 
 var IsZenMode = false;
+var WasFullScreenLastCheck = false;
 
 
 // ================================================================
@@ -621,6 +622,7 @@ function parseUrlLocation() {
       // transition to true
       // Just in case manual coords button was hidden, show it.
       var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      //alert("showing manual coords button on transition to precise location");
       manualCoordsBtn.style.display = "block";
     }
     IsPreciseLocation = true; // Treating URL location as precise/intentional
@@ -716,6 +718,8 @@ function toggleFullScreen() {
 }
 
 // Handle fullscreen change events (from button or ESC key)
+// NOTE: This is called both when we transition into and out of full screen mode, plus
+//  every 500 ms as a watchdog
 function onFullScreenChange(e) {
   // Check if we are currently in full screen mode
   // Use robust helper to be sure
@@ -724,16 +728,17 @@ function onFullScreenChange(e) {
   // Update button text based on new state
   var fsBtn = document.getElementById('btn-fullscreen');
   if (fsBtn) {
-    // transition to full screen mode
+    // transition to/from full screen mode
     fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
 
-    if (!IsDesktop) {
+    if (!IsDesktop && fs && !WasFullScreenLastCheck) {
       // We just transitioned into full screen mode on mobile
       // Show the manual coords button just in case it was hidden
       var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      //alert("showing manual coords button on transition to full screen mode on mobile");
       manualCoordsBtn.style.display = "block";
     }
-    else {
+    else if (!IsDesktop && !fs && WasFullScreenLastCheck) {
       // We just transitioned out of full screen mode on mobile
       // Hide the manual coords button if we are not in precise location mode
       if (!IsPreciseLocation) {
@@ -754,6 +759,7 @@ function onFullScreenChange(e) {
       fsBtn.classList.remove('toggled-on');
     }
   }
+  WasFullScreenLastCheck = fs; // save state for next check
 }
 
 // Update HTML UI elements with current data
@@ -1117,6 +1123,7 @@ function reInit() {
     // We just transitioned out of mobile landscape.
     // Show the manual coords button just in case it was hidden
     var manualCoordsBtn = document.getElementById('btn-manual-coords');
+    //alert("showing manual coords button on transition out of mobile landscape");
     manualCoordsBtn.style.display = "block";
 
   }
@@ -1124,7 +1131,10 @@ function reInit() {
   if (isMobileLandscape && !WasMobileLandscapeLastCheck) {
     // We just transitioned into mobile landscape.
     // Hide the manual coords button if the screen is too small
-    if (window.innerHeight < 300 && !IsPreciseLocation) {
+    alert("window height = " + window.innerHeight.toString());
+
+    if (window.innerHeight < 400 && !IsPreciseLocation) {
+      //alert("window height < 400, hide manual coords button");
       var manualCoordsBtn = document.getElementById('btn-manual-coords');
       manualCoordsBtn.style.display = "none";
     }
@@ -1707,6 +1717,7 @@ function usePreciseLocation() {
         // transition to true
         // Just in case manual coords button was hidden, show it.
         var manualCoordsBtn = document.getElementById('btn-manual-coords');
+        //alert("showing manual coords button on transition to precise location");
         manualCoordsBtn.style.display = "block";
       }
 
