@@ -293,6 +293,8 @@ body {
   pointer-events: none;
   align-items: flex-end;
   text-align: right;
+  gap: 8px;
+  /* Spacing between Presets and Footer Row */
 }
 
 .preset-buttons {
@@ -303,6 +305,29 @@ body {
   width: max-content;
   margin-left: auto;
   pointer-events: auto;
+  margin-bottom: 8px;
+  /* Lift up to clear Zen button area */
+}
+
+.footer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.footer-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+#btn-zen {
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  height: fit-content;
+  min-width: 30px;
 }
 
 /* --- Button Styles --- */
@@ -504,6 +529,10 @@ body {
   display: block;
 }
 
+.desktop-only-inline {
+  display: inline;
+}
+
 .mobile-only {
   display: none;
 }
@@ -516,6 +545,10 @@ screen and (max-height: 600px) {
 
   /* Toggle Visibility */
   .desktop-only {
+    display: none !important;
+  }
+
+  .desktop-only-inline {
     display: none !important;
   }
 
