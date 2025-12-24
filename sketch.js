@@ -617,6 +617,12 @@ function parseUrlLocation() {
     }
     LocaleTitleLocal = LocaleTitle;
 
+    if (!IsPreciseLocation) {
+      // transition to true
+      // Just in case manual coords button was hidden, show it.
+      var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      manualCoordsBtn.style.display = "block";
+    }
     IsPreciseLocation = true; // Treating URL location as precise/intentional
     IsTimezoneMismatch = false;
 
@@ -1091,8 +1097,22 @@ function reInit() {
   var isLandscape = (window.innerWidth > window.innerHeight);
   var isMobileLandscape = (!IsDesktop && isLandscape);
 
+  if (!isMobileLandscape && WasMobileLandscapeLastCheck) {
+    // We just transitioned out of mobile landscape.
+    // Show the manual coords button if it was hidden
+    var manualCoordsBtn = document.getElementById('btn-manual-coords');
+    manualCoordsBtn.style.display = "block";
+
+  }
+
   if (isMobileLandscape && !WasMobileLandscapeLastCheck) {
     // We just transitioned into mobile landscape.
+    // Hide the manual coords button if the screen is too small
+    if (window.innerHeight < 300 && !IsPreciseLocation) {
+      var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      manualCoordsBtn.style.display = "none";
+    }
+
     // If not already in fullscreen, draw attention to the button.
     if (!isFullScreen()) {
       var fsBtn = document.getElementById('btn-fullscreen');
@@ -1666,6 +1686,14 @@ function usePreciseLocation() {
     // Success callback
     function (position) {
       console.log("GPS location obtained:", position.coords);
+
+      if (!IsPreciseLocation) {
+        // transition to true
+        // Just in case manual coords button was hidden, show it.
+        var manualCoordsBtn = document.getElementById('btn-manual-coords');
+        manualCoordsBtn.style.display = "block";
+      }
+
       IsPreciseLocation = true;
 
       // Get precise coordinates
