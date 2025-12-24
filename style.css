@@ -4,7 +4,7 @@
 
 /* --- CSS Variables --- */
 :root {
-  --bg-color: #000;
+  --bg-color: #222;
   --text-color: #fff;
   --text-muted: #aaa;
   --text-dim: #888;
@@ -796,6 +796,61 @@ screen and (max-height: 600px) {
   display: inline-block;
   vertical-align: middle;
   color: #ffffff;
-  color: #ffffff;
+}
 
+/* ===================================================
+   Zen Mode
+   =================================================== */
+body.zen-mode {
+  background-color: #000 !important;
+}
+
+/* Hide UI containers */
+body.zen-mode #top-left-container,
+body.zen-mode #bottom-left-container {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+/* Hide specific elements in Top Right but keep Layout */
+body.zen-mode #top-right-container>*:not(#location-info) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+/* Hide details in Location Info, keep Title and Time */
+body.zen-mode #location-info>*:not(#locale-title):not(#time-display) {
+  display: none;
+}
+
+/* Hide Bottom Right Presets & Footer Info, Keep Zen Button */
+body.zen-mode #bottom-right-container .preset-buttons,
+body.zen-mode #bottom-right-container .footer-row .footer-info,
+body.zen-mode #btn-about {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+/* Dim Visible Elements */
+body.zen-mode #locale-title {
+  color: #444;
+  text-shadow: none;
+}
+
+body.zen-mode #time-display {
+  color: #444;
+}
+
+body.zen-mode #btn-zen {
+  background: transparent;
+  border-color: #333;
+  color: #333;
+}
+
+body.zen-mode #btn-zen:hover {
+  color: #555;
+  border-color: #555;
 }

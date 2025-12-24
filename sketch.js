@@ -172,6 +172,8 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 // tracking for orientation/fullscreen attention cue
 var WasMobileLandscapeLastCheck = false;
 
+var IsZenMode = false;
+
 
 // ================================================================
 // Fetch approximate location from IP geolocation API
@@ -422,6 +424,8 @@ function oneTimeInit() {
     fsBtn.mousePressed(toggleFullScreen);
   }
 
+  select('#btn-zen').mousePressed(toggleZenMode);
+
   // get local time zone of the user's browser ============.
   // ATTN: by convention, this returns positive value when
   //   it should be negative. Returns minutes, must convert to hours.
@@ -456,7 +460,7 @@ function oneTimeInit() {
   LocaleTitle = "Local Time"
   PrevLocaleTitle = "";
 
-  BkColor = 0;
+  BkColor = 34; // Default Dark Gray (#222)
   LastMillisec = 0;
   HourDigitColor = color(25, 25, 25); //0xe8, 0xe0, 0x22);
 
@@ -1599,6 +1603,21 @@ function handleNetworkError(err) {
   clearLoadingState();
   if (typeof CityNameInput !== 'undefined') CityNameInput.value('');
   if (typeof PrevLocaleTitle !== 'undefined') LocaleTitle = PrevLocaleTitle;
+}
+
+
+//-----------------------------------------------------------------
+// Toggle Zen Mode
+function toggleZenMode() {
+  IsZenMode = !IsZenMode;
+
+  if (IsZenMode) {
+    document.body.classList.add('zen-mode');
+    BkColor = 0; // Black
+  } else {
+    document.body.classList.remove('zen-mode');
+    BkColor = 34; // Dark Gray (#222)
+  }
 }
 
 //-----------------------------------------------------------------
