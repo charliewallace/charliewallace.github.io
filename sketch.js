@@ -257,6 +257,7 @@ function fetchIpLocation() {
     })
     .catch(error => {
       clearLoadingState();
+      exitZenMode(); // Ensure UI is visible to show details of fallback
       console.log("IP geolocation failed:", error);
       console.log("Using fallback location (Melbourne)");
 
@@ -506,7 +507,7 @@ function oneTimeInit() {
   if (aboutDescEl) {
     var descText = 'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM. The darker part of the spiral indicates night.';
     // Get version and attribution from desktop elements if possible, or use defaults
-    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.3 ©2025 by Charlie Wallace';
+    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.7 ©2026 by Charlie Wallace';
     var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
     var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
 
@@ -1534,6 +1535,7 @@ function setGmtDisplay()  // Toggling mode button
 // Handler for location errors
 function handleLocationError(error) {
   console.log("GPS location error:", error.message);
+  exitZenMode(); // Ensure UI is visible to show error details
 
   // Show user-friendly message based on error type
   var errorMsg = "";
@@ -1599,10 +1601,18 @@ function handleLocationError(error) {
   }
 }
 
+// Helper to force exit Zen Mode (e.g. on error)
+function exitZenMode() {
+  if (IsZenMode) {
+    toggleZenMode();
+  }
+}
+
 // -----------------------------------------------------------------
 // Unified handler for network and CORS errors during API calls
 function handleNetworkError(err) {
   console.log("Network/CORS error:", err);
+  exitZenMode(); // Ensure UI is visible to show error details
   var errorMsg = "Network error: Could not reach the location service. This may be due to a CORS issue, ad blocker, or network loss.";
 
   // Try to be more specific if possible
@@ -1644,25 +1654,6 @@ function usePreciseLocation() {
   IsTimezoneMismatch = false; // User intentionally requesting location
   IsUserInitiatedLocation = true; // User clicked button to fetch GPS location
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
-
-  // Allow testing permission denial via URL hash parameter
-  // TODO: REMOVE THIS TEST CODE
-  var urlHash = window.location.hash.toLowerCase();
-  if (urlHash === '#testdenyloc' || urlHash === '#simulatedenyloc') {
-    console.log("🧪 TEST MODE: Simulating location permission denial");
-    // Create a mock error object
-    var mockError = {
-      code: 1, // PERMISSION_DENIED
-      message: "Simulated permission denial"
-    };
-    // Add constants to the mock error since the switch statement expects them
-    mockError.PERMISSION_DENIED = 1;
-    mockError.POSITION_UNAVAILABLE = 2;
-    mockError.TIMEOUT = 3;
-
-    handleLocationError(mockError);
-    return;
-  }
 
   // Options for getCurrentPosition call below, designed for speed over accuracy.
   const options = {
