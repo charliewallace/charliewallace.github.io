@@ -120,7 +120,7 @@ body {
 #app-version {
   font-size: 0.65rem;
   color: var(--text-dim);
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .button-group {
@@ -583,6 +583,12 @@ screen and (max-height: 600px) {
     /* Lowered to fill corner space */
   }
 
+  @media (orientation: portrait) {
+    #bottom-left-container {
+      max-width: calc(100% - 24px);
+    }
+  }
+
   .button-row {
     display: flex !important;
     /* Override .mobile-only block */
@@ -633,6 +639,23 @@ screen and (max-height: 600px) {
   #vpn-warning,
   #precise-hint {
     font-size: 0.75rem;
+    margin-bottom: 0;
+  }
+
+  #precise-hint {
+    margin-top: -2px;
+    /* Pull up to bump warning */
+  }
+
+  #btn-reset-loc {
+    margin-top: -4px;
+    /* Pull up to bump hints */
+  }
+
+  @media (orientation: portrait) {
+    #vpn-warning {
+      max-width: 100%;
+    }
   }
 
 
@@ -670,13 +693,25 @@ screen and (max-height: 600px) {
   }
 
   /* Constrain tip message width to prevent overlap */
-  #precise-hint,
-  #vpn-warning {
+  #precise-hint {
     max-width: 130px;
     /* Approx width of Fetch Location button */
     white-space: normal;
     line-height: 1.2;
     font-size: 0.65rem;
+    margin-bottom: 0;
+    margin-top: -2px;
+  }
+
+  #vpn-warning {
+    max-width: 180px;
+    /* Even narrower */
+    margin-left: -8px;
+    /* Shift slightly left */
+    white-space: normal;
+    line-height: 1.2;
+    font-size: 0.65rem;
+    margin-bottom: 0;
   }
 
   /* Loc Details: Two-column grid for landscape to save vertical space */
