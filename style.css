@@ -836,21 +836,21 @@ body.zen-mode #btn-about {
 
 /* Dim Visible Elements */
 body.zen-mode #locale-title {
-  color: #444;
+  color: #666;
   text-shadow: none;
 }
 
 body.zen-mode #time-display {
-  color: #444;
+  color: #666;
 }
 
 body.zen-mode #btn-zen {
   background: transparent;
-  border-color: #333;
-  color: #333;
+  border-color: #555;
+  color: #555;
 }
 
 body.zen-mode #btn-zen:hover {
-  color: #555;
-  border-color: #555;
+  color: #777;
+  border-color: #777;
 }
