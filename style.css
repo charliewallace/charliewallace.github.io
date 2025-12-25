@@ -461,7 +461,7 @@ body {
 
 .modal-body {
   font-size: 0.9rem;
-  color: var(--text-muted);
+  color: var(--text-color);
   line-height: 1.4;
 }
 
@@ -473,7 +473,7 @@ body {
 
 .help-text {
   font-size: 0.8rem;
-  color: var(--text-dim);
+  color: #fff;
   margin-bottom: 10px;
   font-style: italic;
 }
@@ -503,6 +503,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.form-row label {
+  color: #fff;
 }
 
 .preset-grid {
@@ -605,6 +609,13 @@ screen and (max-height: 600px) {
   .ui-btn {
     font-size: 0.9rem;
     padding: 7px 11px;
+  }
+
+  #btn-details,
+  #btn-more-locs,
+  #btn-lookup-city,
+  #btn-manual-coords {
+    color: #fff;
   }
 
   /* Specific Tweaks - INCREASED SIZE */
