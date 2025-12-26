@@ -520,6 +520,8 @@ function oneTimeInit() {
       '<a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">' + linkText + '</a>' +
       '<span style="margin: 0 10px; color: #666;">|</span>' +
       '<a href="https://forms.gle/3zAVfRJFH6Kj5drR8" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Contact Me</a>' +
+      '<span style="margin: 0 10px; color: #666;">|</span>' +
+      '<a href="#" onclick="showReadme(); return false;" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Readme</a>' +
       '</p>' +
       '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
   }
@@ -897,6 +899,32 @@ function closeAllModals() {
   var errEl = document.getElementById('city-error-msg');
   if (errEl) errEl.textContent = '';
 }
+
+// --- Readme Modal Helper ---
+window.showReadme = function () {
+  openModal('modal-readme');
+  var readmeContentEl = document.getElementById('readme-content');
+  readmeContentEl.innerHTML = '<p>Loading README...</p>';
+
+  // Fetch from local README.md
+  fetch('README.md')
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to fetch README.md');
+      return response.text();
+    })
+    .then(text => {
+      // Use marked to parse the markdown
+      if (typeof marked !== 'undefined') {
+        readmeContentEl.innerHTML = marked.parse(text);
+      } else {
+        readmeContentEl.innerHTML = '<pre style="white-space: pre-wrap; color: black;">' + text + '</pre>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading README:', error);
+      readmeContentEl.innerHTML = '<p style="color: red;">Error loading README.md. Please check your internet connection or try again later.</p>';
+    });
+};
 
 
 // --- Helper for Manual Coords Modal ---

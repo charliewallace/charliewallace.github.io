@@ -28,6 +28,9 @@
 
     gtag('config', 'G-N0L8F40M22');
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
 </head>
 
 <body>
@@ -212,6 +215,19 @@
           </div>
         </div>
         <button class="ui-btn btn-close-modal">Cancel</button>
+      </div>
+
+      <!-- Readme Modal -->
+      <div id="modal-readme" class="modal-content large hidden">
+        <h2>Readme</h2>
+        <div class="modal-body markdown-body" id="readme-content"
+          style="max-height: 70vh; overflow-y: auto; background: white; color: black; padding: 20px; border-radius: 4px;">
+          <!-- Content injected via JS -->
+          Loading...
+        </div>
+        <div class="modal-actions">
+          <button class="ui-btn btn-close-modal">Close</button>
+        </div>
       </div>
 
     </div>

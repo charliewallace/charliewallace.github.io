@@ -452,7 +452,12 @@ body {
   display: none;
 }
 
-.modal-content h2 {
+.modal-content.large {
+  max-width: 800px;
+  width: 95%;
+}
+
+.modal-content>h2 {
   margin: 0;
   font-size: 1.2rem;
   color: var(--text-color);
@@ -739,7 +744,7 @@ screen and (max-height: 600px) {
     max-width: 500px;
   }
 
-  .modal-content h2 {
+  .modal-content>h2 {
     font-size: 1.1rem;
   }
 
