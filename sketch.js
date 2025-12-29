@@ -506,7 +506,15 @@ function oneTimeInit() {
   // ==== Initialize About Modal Content (Static) ====
   var aboutDescEl = document.getElementById('about-description');
   if (aboutDescEl) {
-    var descText = 'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM. The darker part of the spiral indicates night.';
+    var descText = 'To show night and day you need a 24-hour clock; ' +
+      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
+      'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
+      'The darker part of the spiral indicates night.';
+
+    //OLD description
+    //'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM.' + 
+    //' The darker part of the spiral indicates night.';
+
     // Get version and attribution from desktop elements if possible, or use defaults
     var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.7 ©2026 by Charlie Wallace';
     var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
@@ -773,7 +781,8 @@ function updateUIElements() {
   }
 
   // Update description based on mode
-  var descText = 'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM. The darker part of the spiral indicates night.';
+  var descText = 'To show night and day you need a 24-hour clock; ' +
+    'using a spiral is a way to squeeze 24 hours into a 12-hour clock face.';
 
   var descEl = document.getElementById('app-description');
   if (descEl) {
