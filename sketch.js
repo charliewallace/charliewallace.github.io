@@ -384,41 +384,23 @@ function oneTimeInit() {
   GmtDisplayButton = select('#btn-gmt');
   GmtDisplayButton.mousePressed(setGmtDisplay);
 
-  //    Location buttons
-  SilveradoButton = select('#btn-loc-silverado');
-  SilveradoButton.mousePressed(setSilverado);
+  //    Location buttons - Removed old inline buttons, now using unified modal bindings below
 
-  BerkeleyButton = select('#btn-loc-berkeley');
-  BerkeleyButton.mousePressed(setBerkeley);
-
-  SanDiegoButton = select('#btn-loc-sandiego');
-  SanDiegoButton.mousePressed(setSanDiego);
-
-  LondonButton = select('#btn-loc-london');
-  LondonButton.mousePressed(setLondon);
-
-  KansasCityButton = select('#btn-loc-kc');
-  KansasCityButton.mousePressed(setKansasCity);
-
-  MelbourneButton = select('#btn-loc-melbourne');
-  MelbourneButton.mousePressed(setMelbourne);
-
-  //     Input fields setup
-  TzInput = select('#input-tz');
+  //     Input fields setup - Point to Unified Modal Inputs
+  //     We do NOT bind .input() events because we use explicit submit buttons now.
+  TzInput = select('#input-tz-unified');
   TzInput.value("100")
-  TzInput.input(tzInputEvent);
+  // TzInput.input(tzInputEvent); // Disable auto-update
 
-  LatInput = select('#input-lat');
-  LatInput.input(latInputEvent);
+  LatInput = select('#input-lat-unified');
+  // LatInput.input(latInputEvent); // Disable auto-update
 
-  LngInput = select('#input-lng');
-  LngInput.input(longInputEvent);
+  LngInput = select('#input-lng-unified');
+  // LngInput.input(longInputEvent); // Disable auto-update
 
   //    City Name Input
-  CityNameInput = select('#input-city');
-  //    City Submit Button
-  CitySubmitButton = select('#btn-city-submit');
-  CitySubmitButton.mousePressed(handleCitySubmit);
+  CityNameInput = select('#input-city-modal-unified');
+  //    City Submit Button (Unified handled below)
 
   //    Full Screen Button
   var fsBtn = select('#btn-fullscreen');
@@ -427,6 +409,46 @@ function oneTimeInit() {
   }
 
   select('#btn-zen').mousePressed(toggleZenMode);
+  // Desktop specific bindings
+  var zenDesktop = select('#btn-zen-desktop');
+  if (zenDesktop) zenDesktop.mousePressed(toggleZenMode);
+
+  var fsDesktop = select('#btn-fullscreen-desktop');
+  if (fsDesktop) fsDesktop.mousePressed(toggleFullScreen);
+
+  // NEW: GPS OK Button
+  var gpsBtn = select('#btn-gps-ok');
+  if (gpsBtn) gpsBtn.mousePressed(() => {
+    // If yellow/warning, it means we want to fetch precise. 
+    // If not, maybe just re-fetch?
+    usePreciseLocation();
+  });
+
+  // NEW: Setup Button
+  var setupBtn = select('#btn-setup');
+  if (setupBtn) setupBtn.mousePressed(() => {
+    alert("Setup - Future Feature");
+  });
+
+  // NEW: Select Different Location Button
+  var selectLocBtn = select('#btn-select-loc');
+  if (selectLocBtn) selectLocBtn.mousePressed(() => openModal('modal-select-location'));
+
+  // NEW: Location Details Desktop Button (opens same details modal)
+  var detailsDesktopBtn = select('#btn-details-desktop');
+  if (detailsDesktopBtn) detailsDesktopBtn.mousePressed(openDetailsModal);
+
+  // NEW: Unified Modal Bindings
+  select('#btn-city-submit-unified').mousePressed(handleCitySubmitUnified);
+  select('#btn-coords-submit-unified').mousePressed(handleCoordsSubmitUnified);
+
+  // Bind unified presets
+  select('#btn-loc-silverado-u').mousePressed(() => { setSilverado(); closeAllModals(); });
+  select('#btn-loc-berkeley-u').mousePressed(() => { setBerkeley(); closeAllModals(); });
+  select('#btn-loc-sandiego-u').mousePressed(() => { setSanDiego(); closeAllModals(); });
+  select('#btn-loc-london-u').mousePressed(() => { setLondon(); closeAllModals(); });
+  select('#btn-loc-kc-u').mousePressed(() => { setKansasCity(); closeAllModals(); });
+  select('#btn-loc-melbourne-u').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
   // get local time zone of the user's browser ============.
   // ATTN: by convention, this returns positive value when
@@ -758,6 +780,18 @@ function onFullScreenChange(e) {
     }
   }
 
+  // NEW: Update Desktop Fullscreen Button
+  var fsBtnDesktop = document.getElementById('btn-fullscreen-desktop');
+  if (fsBtnDesktop) {
+    fsBtnDesktop.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
+    if (fs) {
+      fsBtnDesktop.classList.add('toggled-on');
+    } else {
+      fsBtnDesktop.classList.remove('toggled-on');
+    }
+  }
+
+
 
 
   // Toggle the active class for visual feedback
@@ -798,20 +832,54 @@ function updateUIElements() {
     if (IsLoadingLocation) {
       // Check for mobile portrait mode to use shorter string
       if (!IsDesktop && window.innerHeight > window.innerWidth) {
-        localeEl.textContent = "Waiting for loc...";
+        localeEl.textContent = "Loading...";
       } else {
-        localeEl.textContent = "Waiting for location...";
+        localeEl.textContent = "Loading Location...";
       }
-    } else if (Latitude != 99999 && Longitude != 99999) {
+    } else {
       localeEl.textContent = LocaleTitle;
+    }
+  }
+
+  // NEW: Update Location Description (Desktop)
+  var locDescEl = document.getElementById('location-description');
+  if (locDescEl) {
+    if (IsLoadingLocation) {
+      locDescEl.textContent = "Finding you...";
+    } else {
+      locDescEl.textContent = LocaleTitle;
     }
   }
 
   // Update time display
   var timeEl = document.getElementById('time-display');
-  if (timeEl && TimeString) {
-    var amPmString = IsAM ? ' AM' : ' PM';
-    timeEl.textContent = TimeString + amPmString;
+  if (timeEl) {
+    if (IsLoadingLocation) {
+      // keep empty or show dots?
+    } else if (TimeString) {
+      timeEl.textContent = TimeString;
+    }
+  }
+
+  // NEW: Large Time Display
+  var timeLargeEl = document.getElementById('time-display-large');
+  if (timeLargeEl) {
+    if (TimeString) {
+      timeLargeEl.textContent = TimeString;
+    }
+  }
+
+  // NEW: Update GPS OK Button State
+  var gpsBtn = document.getElementById('btn-gps-ok');
+  if (gpsBtn) {
+    if (IsPreciseLocation) {
+      // Hide button if location is precise
+      gpsBtn.style.display = 'none';
+    } else {
+      // Show and set yellow
+      gpsBtn.style.display = 'block';
+      gpsBtn.classList.add('warning-bg');
+    }
   }
 
   // Update date display
@@ -2181,8 +2249,48 @@ function processLongInputEvent() {
 // handler for the Submit button that enters a city name
 // The entered city name may contain additional fields such as state/province and 
 // country, comma separated.
+function handleCitySubmitUnified() {
+  var input = select('#input-city-modal-unified');
+  var city = input.value();
+  if (city && city.length > 1) {
+    getLatLongFromCity(city, 'city-error-msg-unified');
+    closeAllModals(); // Close immediately or wait? Usually wait for success but let's close for UX
+  } else {
+    select('#city-error-msg-unified').html("Please enter a valid city name.");
+  }
+}
+
+function handleCoordsSubmitUnified() {
+  var lat = parseFloat(select('#input-lat-unified').value());
+  var lng = parseFloat(select('#input-lng-unified').value());
+  var tz = parseFloat(select('#input-tz-unified').value());
+
+  if (isNaN(lat) || isNaN(lng)) {
+    // error handling?
+    alert("Invalid Coordinates");
+    return;
+  }
+
+  Latitude = lat;
+  Longitude = lng;
+
+  if (!isNaN(tz)) {
+    TzOffset = tz;
+  }
+
+  IsPreciseLocation = true; // Manual entry is precise
+  IsUserInitiatedLocation = true;
+  LocaleTitle = "Manual Location";
+
+  updateTimeThisDay();
+  updateUrlHash();
+  closeAllModals();
+}
+
+// Handle City Submit (Desktop Inline - Leftover, can fail gracefully if element missing)
 function handleCitySubmit() {
-  CityName = CityNameInput.value();
+  if (!CityNameInput) return; // Guard
+  var city = CityNameInput.value();
   PrevLocaleTitle = LocaleTitle;
 
   //LocaleTitle = CityNameInput.value(); << need to extract just the city

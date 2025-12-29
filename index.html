@@ -40,98 +40,86 @@
     <!-- UI Overlay Layer -->
     <div id="ui-layer">
 
-      <!-- Top Left: Controls -->
+      <!-- Top Left: Controls & Info -->
       <div id="top-left-container" class="ui-corner">
         <h1 id="app-title">Day Spiral Clock</h1>
+        <div id="app-version-desktop" class="desktop-only version-text">v0.3.5 ©2026 C.Wallace</div>
         <div id="app-description">
           <!-- Content injected via JS -->
         </div>
 
         <div class="button-group">
-
           <button id="btn-about-desktop" class="ui-btn desktop-only">About</button>
-          <button id="btn-gmt" class="ui-btn">Show GMT</button>
-          <button id="btn-fullscreen" class="ui-btn">Full Screen</button>
         </div>
       </div>
 
-      <!-- Top Right: Info Display -->
+      <!-- Top Right: Time & Location Controls -->
       <div id="top-right-container" class="ui-corner">
-        <div id="location-info">
-          <div id="locale-title">Local Time</div>
-          <div id="time-display"></div>
-
-          <!-- Desktop: Detailed Info -->
-          <div class="desktop-only">
-            <div id="date-display"></div>
-            <div id="day-display"></div>
-            <div id="dst-display"></div>
-            <div id="sunrise-display"></div>
-            <div id="sunset-display"></div>
-          </div>
+        <div class="top-row-group desktop-only-flex">
+          <button id="btn-gps-ok" class="ui-btn">GPS OK?</button>
+          <div id="time-display-large"></div>
         </div>
 
-        <!-- Mobile: Details Button -->
+        <!-- Mobile Time Display -->
+        <div id="time-display" class="mobile-only"></div>
+
+        <div id="location-info">
+          <!-- Mobile Title: Local Time or City -->
+          <div id="locale-title" class="mobile-only">Local Time</div>
+
+          <!-- Desktop Location Description -->
+          <div id="location-description" class="desktop-only text-right"></div>
+        </div>
+
+        <!-- Desktop Buttons Stack -->
+        <div class="desktop-button-stack desktop-only">
+          <button id="btn-details-desktop" class="ui-btn">Location Details</button>
+          <button id="btn-select-loc" class="ui-btn">Select Different Loc</button>
+        </div>
+
+        <!-- Mobile Buttons -->
         <button id="btn-details" class="ui-btn mobile-only">Loc Details</button>
         <button id="btn-more-locs" class="ui-btn mobile-only">More Locations</button>
       </div>
 
-      <!-- Bottom Left: Location Inputs -->
+      <!-- Bottom Left: View Controls -->
       <div id="bottom-left-container" class="ui-corner">
-        <div id="vpn-warning">⚠️ Loc inaccurate, due to VPN? Click below for correct sunrise/set, loc not saved.</div>
-        <div id="precise-hint"><span class="hint-arrow">↓</span> For precise sunrise/sunset times. Location is not
-          saved.</div>
-        <button id="btn-reset-loc" class="ui-btn">Fetch Current Location</button>
+        <!-- Mobile Specifics -->
+        <div id="vpn-warning" class="mobile-only">⚠️ Loc inaccurate, due to VPN? Click below for correct sunrise/set,
+          loc not saved.</div>
+        <div id="precise-hint" class="mobile-only"><span class="hint-arrow">↓</span> For precise sunrise/sunset times.
+          Location is not saved.</div>
+        <button id="btn-reset-loc" class="ui-btn mobile-only">Fetch Current Location</button>
 
-        <!-- Desktop: Inline Inputs -->
-        <div class="desktop-only">
-          <div class="input-prompt">Enter city or lat/long:</div>
-          <div class="input-row">
-            <input type="text" id="input-city" placeholder="City Name">
-            <button id="btn-city-submit" class="ui-btn small">Go</button>
-          </div>
-          <div class="coord-inputs">
-            <div class="coord-row">
-              <label>Lat:</label>
-              <input type="text" id="input-lat" class="coord-input">
-            </div>
-            <div class="coord-row">
-              <label>Lng:</label>
-              <input type="text" id="input-lng" class="coord-input">
-            </div>
-            <div class="coord-row">
-              <label>TZ:</label>
-              <input type="text" id="input-tz" class="coord-input">
-            </div>
-          </div>
+        <!-- Desktop: Zen & Full Screen -->
+        <div class="desktop-only button-group-bottom">
+          <button id="btn-fullscreen-desktop" class="ui-btn">Full Screen</button>
+          <button id="btn-zen-desktop" class="ui-btn">Zen</button>
         </div>
 
-        <!-- Mobile: Popup Buttons -->
+        <!-- Mobile: Inputs/Buttons -->
         <div class="mobile-only button-row">
           <button id="btn-manual-coords" class="ui-btn">Manual Lat/Long</button>
           <button id="btn-lookup-city" class="ui-btn">Lookup City</button>
         </div>
       </div>
 
-      <!-- Bottom Right: Preset Location Buttons -->
+      <!-- Bottom Right: Settings & Footer -->
       <div id="bottom-right-container" class="ui-corner">
-        <!-- Desktop: Inline Presets -->
-        <div class="preset-buttons desktop-only">
-          <button id="btn-loc-silverado" class="ui-btn preset">Silverado</button>
-          <button id="btn-loc-berkeley" class="ui-btn preset">Berkeley</button>
-          <button id="btn-loc-sandiego" class="ui-btn preset">San Diego</button>
-          <button id="btn-loc-london" class="ui-btn preset">London</button>
-          <button id="btn-loc-kc" class="ui-btn preset">Kansas City</button>
-          <button id="btn-loc-melbourne" class="ui-btn preset">Melbourne</button>
+
+        <!-- Desktop: GMT & Setup -->
+        <div class="desktop-only button-group-bottom-right">
+          <button id="btn-gmt" class="ui-btn">Show GMT</button>
+          <button id="btn-setup" class="ui-btn">Setup</button>
         </div>
 
-        <!-- Mobile: More Locations Button -->
+        <!-- Mobile: Footer Elements -->
         <button id="btn-about" class="ui-btn mobile-only">About</button>
 
-        <div class="footer-row">
+        <div class="footer-row mobile-only">
           <div class="footer-info">
             <a id="link-website" href="http://coolweird.com" target="_blank">Coolweird.com</a>
-            <div id="app-version">v0.3.1 ©2026 <span class="desktop-only-inline">by</span> Charlie Wallace</div>
+            <div id="app-version">v0.3.2 ©2026 Charlie Wallace</div>
           </div>
           <button id="btn-zen" class="ui-btn">Zen</button>
         </div>
@@ -160,7 +148,67 @@
         <button class="ui-btn btn-close-modal">OK</button>
       </div>
 
-      <!-- City Lookup Modal -->
+      <!-- New Unified Select Location Modal -->
+      <div id="modal-select-location" class="modal-content large hidden">
+        <h2>Select Location</h2>
+        <div class="modal-body">
+
+          <div class="location-section">
+            <h3>City Lookup</h3>
+            <div class="input-row">
+              <input type="text" id="input-city-modal-unified" placeholder="City Name" class="modal-input">
+              <button id="btn-city-submit-unified" class="ui-btn">Go</button>
+            </div>
+            <div id="city-error-msg-unified" class="error-msg"></div>
+          </div>
+
+          <hr>
+
+          <div class="location-section">
+            <h3>Preset Locations</h3>
+            <div class="preset-grid">
+              <button id="btn-loc-silverado-u" class="ui-btn preset-modal">Silverado</button>
+              <button id="btn-loc-berkeley-u" class="ui-btn preset-modal">Berkeley</button>
+              <button id="btn-loc-sandiego-u" class="ui-btn preset-modal">San Diego</button>
+              <button id="btn-loc-london-u" class="ui-btn preset-modal">London</button>
+              <button id="btn-loc-kc-u" class="ui-btn preset-modal">Kansas City</button>
+              <button id="btn-loc-melbourne-u" class="ui-btn preset-modal">Melbourne</button>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="location-section">
+            <h3>Manual Coordinates</h3>
+            <div class="coord-form">
+              <div class="form-row">
+                <label>Latitude:</label>
+                <input type="text" id="input-lat-unified" class="modal-input small">
+              </div>
+              <div class="form-row">
+                <label>Longitude:</label>
+                <input type="text" id="input-lng-unified" class="modal-input small">
+              </div>
+              <div class="form-row">
+                <label>Time Zone:</label>
+                <input type="text" id="input-tz-unified" class="modal-input small">
+              </div>
+              <p class="help-text" style="color:#aaa; font-style:italic;">Use negative hour offset for cities west of
+                London.</p>
+              <div class="modal-actions-inline">
+                <button id="btn-coords-submit-unified" class="ui-btn">Apply Coordinates</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-actions">
+          <button class="ui-btn btn-close-modal">Close</button>
+        </div>
+      </div>
+
+
+      <!-- City Lookup Modal (Keep for Mobile) -->
       <div id="modal-city" class="modal-content hidden">
         <h2>Lookup City</h2>
         <div class="modal-body">
@@ -174,7 +222,7 @@
         </div>
       </div>
 
-      <!-- Manual Lat/Long Modal -->
+      <!-- Manual Lat/Long Modal (Keep for Mobile) -->
       <div id="modal-coords" class="modal-content hidden">
         <h2>Manual Coordinates</h2>
         <div class="modal-body">
@@ -201,7 +249,7 @@
         </div>
       </div>
 
-      <!-- More Locations Modal -->
+      <!-- More Locations Modal (Keep for Mobile) -->
       <div id="modal-locations" class="modal-content hidden">
         <h2>Select Location</h2>
         <div class="modal-body">

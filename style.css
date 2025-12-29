@@ -468,6 +468,10 @@ body {
   font-size: 0.9rem;
   color: var(--text-color);
   line-height: 1.4;
+  overflow-y: auto;
+  /* Enable scrolling */
+  max-height: 60vh;
+  /* Constrain height */
 }
 
 .modal-actions {
@@ -533,9 +537,38 @@ body {
   min-height: 1.2em;
 }
 
+/* --- New Unified Modal Styles --- */
+.location-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: #ddd;
+  border-bottom: 1px solid #444;
+  padding-bottom: 4px;
+}
+
+.location-section {
+  padding: 5px 0;
+}
+
+.modal-actions-inline {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+#modal-select-location hr {
+  border: 0;
+  border-top: 1px solid #333;
+  margin: 10px 0;
+}
+
 /* --- Visibility Classes --- */
 .desktop-only {
   display: block;
+}
+
+.desktop-only-flex {
+  display: flex !important;
 }
 
 .desktop-only-inline {
@@ -554,6 +587,10 @@ screen and (max-height: 600px) {
 
   /* Toggle Visibility */
   .desktop-only {
+    display: none !important;
+  }
+
+  .desktop-only-flex {
     display: none !important;
   }
 
@@ -770,58 +807,115 @@ screen and (max-height: 600px) {
    =================================================== */
 @media screen and (min-width: 951px) and (min-height: 601px) {
   #top-left-container {
-    max-width: 320px;
+    max-width: 350px;
   }
 
   #app-title {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     min-height: auto;
-    /* Allow content to dictate height */
-    margin-bottom: 4px;
+    margin-bottom: 2px;
+  }
+
+  .version-text {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
   }
 
   #app-description {
-    font-size: 0.95rem;
-    /* ~10% increase from 0.85rem */
-    max-width: 250px;
-    /* Constrain width for line-wrapping and to avoid clock */
-    margin: 8px 0 20px 0;
-    /* Better vertical centering between title and buttons */
-    line-height: 1.5;
+    font-size: 0.9rem;
+    max-width: 280px;
+    margin: 4px 0 10px 0;
+    line-height: 1.4;
     display: block;
-    /* Ensure visible */
   }
 
-  #locale-title {
+  /* --- TOP RIGHT RE-ORG --- */
+  /* --- TOP RIGHT RE-ORG --- */
+  #top-right-container {
+    max-width: 400px;
+    align-items: flex-end;
+  }
+
+  .top-row-group {
+    display: flex;
+    flex-direction: row;
+    /* Ensure row to put button left of time */
+    align-items: center;
+    /* Center vertical */
+    gap: 15px;
+    margin-bottom: 5px;
+    justify-content: flex-end;
+    /* Push to right */
+    width: 100%;
+  }
+
+  #time-display-large {
+    font-size: 3rem;
+    font-weight: 300;
+    color: #fff;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #btn-gps-ok {
+    font-size: 0.9rem;
+    height: fit-content;
+    white-space: nowrap;
+  }
+
+  /* Yellow background for GPS button when not precise/warn */
+  #btn-gps-ok.warning-bg {
+    background-color: var(--warning-color);
+    /* Bright Yellow */
+    color: #000;
+    /* Black text for contrast */
+    border-color: #e6b000;
+    font-weight: 600;
+  }
+
+  #location-description {
     font-size: 1.1rem;
+    color: var(--text-color);
+    margin-bottom: 15px;
   }
 
-  #btn-reset-loc {
-    width: 80%;
-    /* Reduce width to avoid clock collision on resize */
+  .desktop-button-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    width: 100%;
   }
 
-  /* Refine Location Info Typography & Spacing */
-  #location-info {
-    gap: 4px;
-    /* Uniform spacing */
+  #btn-details-desktop,
+  #btn-select-loc {
+    width: auto;
+    min-width: 140px;
   }
 
-  #time-display {
-    font-size: 1.1rem;
-    /* Match Location Title */
-    font-weight: 400;
-    /* Non-bold */
+  /* --- BOTTOM CORNERS --- */
+  .button-group-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  /* Match app description font size (approx 10% increase) */
-  #date-display,
-  #day-display,
-  #dst-display,
-  #sunrise-display,
-  #sunset-display {
-    font-size: 0.95rem;
-    line-height: 1.5;
+  .button-group-bottom-right {
+    display: flex;
+    flex-direction: column;
+    /* Stack vertically */
+    gap: 8px;
+    align-items: flex-end;
+    pointer-events: auto;
+    /* Enable clicks */
+  }
+
+  #btn-fullscreen-desktop,
+  #btn-zen-desktop,
+  #btn-gmt,
+  #btn-setup {
+    min-width: 100px;
   }
 }
 
@@ -902,6 +996,28 @@ body.zen-mode #btn-zen {
 }
 
 body.zen-mode #btn-zen:hover {
+  color: #777;
+  border-color: #777;
+}
+
+/* Ensure Desktop Zen button stays visible */
+body.zen-mode .desktop-only.button-group-bottom {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+body.zen-mode #btn-fullscreen-desktop {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.zen-mode #btn-zen-desktop {
+  background: transparent;
+  border-color: #555;
+  color: #555;
+}
+
+body.zen-mode #btn-zen-desktop:hover {
   color: #777;
   border-color: #777;
 }
