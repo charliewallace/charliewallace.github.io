@@ -175,6 +175,9 @@ var WasMobileLandscapeLastCheck = false;
 var IsZenMode = false;
 var WasFullScreenLastCheck = false;
 
+// Robust tracking of browser timezone
+var BrowserTzOffset;
+
 
 // ================================================================
 // Fetch approximate location from IP geolocation API
@@ -386,16 +389,16 @@ function oneTimeInit() {
 
   //    Location buttons - Removed old inline buttons, now using unified modal bindings below
 
-  //     Input fields setup - Point to Unified Modal Inputs
+  //     Input fields setup - Point to Shared Manual Modal Inputs
   //     We do NOT bind .input() events because we use explicit submit buttons now.
-  TzInput = select('#input-tz-unified');
+  TzInput = select('#input-tz-modal');
   TzInput.value("100")
   // TzInput.input(tzInputEvent); // Disable auto-update
 
-  LatInput = select('#input-lat-unified');
+  LatInput = select('#input-lat-modal');
   // LatInput.input(latInputEvent); // Disable auto-update
 
-  LngInput = select('#input-lng-unified');
+  LngInput = select('#input-lng-modal');
   // LngInput.input(longInputEvent); // Disable auto-update
 
   //    City Name Input
@@ -440,7 +443,23 @@ function oneTimeInit() {
 
   // NEW: Unified Modal Bindings
   select('#btn-city-submit-unified').mousePressed(handleCitySubmitUnified);
-  select('#btn-coords-submit-unified').mousePressed(handleCoordsSubmitUnified);
+
+  // "Manual Location" button in Select Modal -> Opens Manual Coords Modal
+  select('#btn-open-manual-loc').mousePressed(() => {
+    closeAllModals();
+    openModal('modal-coords'); // Uses existing manually-coords modal
+  });
+
+  // "Your Location" button in Select Modal -> Auto Locate
+  select('#btn-use-your-loc').mousePressed(() => {
+    closeAllModals();
+    usePreciseLocation();
+  });
+
+  // Unified Manual Coords Submit (from the Manual Modal)
+  var coordsSubmitBtn = select('#btn-coords-submit-modal');
+  if (coordsSubmitBtn) coordsSubmitBtn.mousePressed(handleCoordsSubmitUnified); // Reuse unified handler
+
 
   // Bind unified presets
   select('#btn-loc-silverado-u').mousePressed(() => { setSilverado(); closeAllModals(); });
@@ -455,8 +474,12 @@ function oneTimeInit() {
   //   it should be negative. Returns minutes, must convert to hours.
   // ATTN: the returned gmt offset takes daylight savings
   //   into account.  
-  TzOffset = (-new Date().getTimezoneOffset()) / 60;
-  TzOffsetLocal = TzOffset;
+
+  // Use a constant for the browser's actual local timezone to avoid overwrites
+  BrowserTzOffset = (-new Date().getTimezoneOffset()) / 60;
+
+  TzOffset = BrowserTzOffset;
+  TzOffsetLocal = BrowserTzOffset;
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
   if (TzOffset > 0) {
@@ -864,7 +887,35 @@ function updateUIElements() {
   // NEW: Large Time Display
   var timeLargeEl = document.getElementById('time-display-large');
   if (timeLargeEl) {
-    if (TimeString) {
+    if (IsLoadingLocation) {
+      timeLargeEl.textContent = "..."; // Blank out or show placeholder during loading
+    } else if (TimeString) {
+      // Calculate target time based on Time Zone Offset difference
+      let now = new Date();
+      // TzOffset and TzOffsetLocal are in hours.
+      let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
+      let offsetDiffHours = TzOffset - localTz;
+      let targetTime = new Date(now.getTime() + (offsetDiffHours * 3600000));
+
+      let h = targetTime.getHours();
+      let m = targetTime.getMinutes();
+      let s = targetTime.getSeconds();
+
+      let ampm = h >= 12 ? 'PM' : 'AM';
+      let h12 = h % 12;
+      h12 = h12 ? h12 : 12; // hour '0' should be '12'
+
+      let mStr = nf(m, 2, 0); // Use p5 nf() for zero padding
+      let sStr = nf(s, 2, 0);
+
+      let formattedTime = `${h12}:${mStr}:${sStr} ${ampm}`;
+
+      timeLargeEl.textContent = formattedTime;
+
+      // Also update mobile time display
+      if (timeEl) timeEl.textContent = formattedTime;
+
+    } else { // Fallback if TimeString is not available or loading
       timeLargeEl.textContent = TimeString;
     }
   }
@@ -1535,10 +1586,13 @@ function updateTimeThisDay() {
 
   // if time zone GMT offset differs from local,
   //  adjust the hour and day-of-week accordingly.
-  if (TzOffset != TzOffsetLocal) {
+  // Always use the robust BrowserTzOffset if available, else fall back to TzOffsetLocal
+  let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
+
+  if (TzOffset != localTz) {
 
     // Here is the new simpler logic for tz correction
-    let TzDiffHours = TzOffset - TzOffsetLocal;
+    let TzDiffHours = TzOffset - localTz;
     let TzDiffMs = TzDiffHours * 60 * 60 * 1000;
 
     // Rotate the date by the time zone difference
@@ -1549,16 +1603,37 @@ function updateTimeThisDay() {
     IHour = currDate.getHours();
   }
 
+  // LOGGING for Debug
+  // console.log(`TimeUpdate: LocalTz=${TzOffsetLocal} TargetTz=${TzOffset} IHour=${IHour}`);
+
   // now that we have the new adjusted day of week, check if it changed
   if (IDow != IDowPrevious) {
     // we have started a new day, so need to recompute the sunrise/sunset
     IsSunRiseSetObtained = false;
   }
 
-  // get the current time ==========================
-  IMin = minute();
-  ISec = second();
-  IMsSinceDayStart = millis();
+
+  // Helper to get ms since midnight for interpolation 
+  function msSinceMidnight(d) {
+    var midnight = new Date(d);
+    midnight.setHours(0, 0, 0, 0);
+    return d - midnight;
+  }
+
+  // get the current time from the (possibly shifted) date object =========
+  IMin = currDate.getMinutes();
+  ISec = currDate.getSeconds();
+  IMsSinceDayStart = msSinceMidnight(currDate);
+  // Custom helper or calculation needed for ms since day start? 
+  // Actually IMsSinceDayStart was used for interpolation. 
+  // Let's rely on standard p5 millis() for animation smoothness, 
+  // BUT we need an offset if we want smooth hands in another timezone.
+  // For now, let's keep IMsSinceDayStart based on local millis for smooth animation, 
+  // but we might see a jump if we strictly use IMin/ISec. 
+  // Standard way:
+  // We want the fractional second.
+  let ms = currDate.getMilliseconds();
+  //================================================
   //================================================
 
   var hoursSoFar = IHour;  // range 0-23
@@ -2253,17 +2328,20 @@ function handleCitySubmitUnified() {
   var input = select('#input-city-modal-unified');
   var city = input.value();
   if (city && city.length > 1) {
-    getLatLongFromCity(city, 'city-error-msg-unified');
-    closeAllModals(); // Close immediately or wait? Usually wait for success but let's close for UX
+    getLocationUsingCityName(city);
+    closeAllModals();
   } else {
     select('#city-error-msg-unified').html("Please enter a valid city name.");
   }
 }
 
 function handleCoordsSubmitUnified() {
-  var lat = parseFloat(select('#input-lat-unified').value());
-  var lng = parseFloat(select('#input-lng-unified').value());
-  var tz = parseFloat(select('#input-tz-unified').value());
+  // Use IDs from #modal-coords (shared mobile/desktop manual modal)
+  var lat = parseFloat(select('#input-lat-modal').value());
+  var lng = parseFloat(select('#input-lng-modal').value());
+  var tz = parseFloat(select('#input-tz-modal').value());
+
+  // Debug Alert - REMOVED
 
   if (isNaN(lat) || isNaN(lng)) {
     // error handling?
@@ -2271,15 +2349,22 @@ function handleCoordsSubmitUnified() {
     return;
   }
 
+  console.log("Submit Manual Coords: Lat=" + lat + " Lng=" + lng + " Tz=" + tz);
+
   Latitude = lat;
+  LastLat = lat;
+
   Longitude = lng;
+  LastLong = lng;
 
   if (!isNaN(tz)) {
     TzOffset = tz;
+    LastTz = tz;
   }
 
   IsPreciseLocation = true; // Manual entry is precise
   IsUserInitiatedLocation = true;
+  IsLoadingLocation = false; // Ensure not loading
   LocaleTitle = "Manual Location";
 
   updateTimeThisDay();
@@ -2338,7 +2423,7 @@ function getLocationUsingCityName(passedCityName) {
   CityName = passedCityName;
 
   // url used for OpenStreetmap (Nominatim)
-  let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
+  let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(CityName)}`;
 
   // Make a GET request to the Nominatim API (OpenStreetMap)
   // ATTN: the gotCityLocationDataOpenStMap() fcn will be called a bit later, when the  
@@ -2404,6 +2489,13 @@ function gotCityLocationDataOpenStMap(data) {
     console.log(data[0]);
 
     let result = data[0]; // Take the first result
+
+    // Extract formatted name for display (e.g. "Boston, Massachusetts, United States")
+    // Use just the first part for LocaleTitle
+    if (result.display_name) {
+      let parts = splitTokens(result.display_name, ',');
+      if (parts.length > 0) LocaleTitle = trim(parts[0]);
+    }
 
     // Extract latitude, longitude, and time zone offset
     let lat = result.lat;
@@ -2622,7 +2714,19 @@ function getTzUsingLatLong(lat, lon) {
     loadJSON(timezoneUrl, gotCityTzData, handleNetworkError);
   }
 
+
 }
+
+// Global error handler for JSON requests
+function handleNetworkError(response) {
+  console.log("Network Error details:", response);
+  alert("Network Error: Could not fetch location data. Please check your connection.");
+  clearLoadingState();
+  if (typeof PrevLocaleTitle !== 'undefined' && PrevLocaleTitle) {
+    LocaleTitle = PrevLocaleTitle;
+  }
+}
+
 
 
 
@@ -2656,6 +2760,8 @@ function getTimeZoneOffset(lat, lon) {
 // ==240122a
 // 
 function draw() {
+  // Ensure time variables are updated every frame
+  updateTimeThisDay();
 
   // handle delayed processing of position & gmt offset fields
   if (TzInputTimestampMs > 0 && millis() - TzInputTimestampMs > InputFieldProcessingTimeout) {

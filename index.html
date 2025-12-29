@@ -145,21 +145,11 @@
       </div>
 
       <!-- New Unified Select Location Modal -->
-      <div id="modal-select-location" class="modal-content large hidden">
+      <div id="modal-select-location" class="modal-content compact hidden">
         <h2>Select Location</h2>
         <div class="modal-body">
 
-          <div class="location-section">
-            <h3>City Lookup</h3>
-            <div class="input-row">
-              <input type="text" id="input-city-modal-unified" placeholder="City Name" class="modal-input">
-              <button id="btn-city-submit-unified" class="ui-btn">Go</button>
-            </div>
-            <div id="city-error-msg-unified" class="error-msg"></div>
-          </div>
-
-          <hr>
-
+          <!-- Section 1: Presets (Prioritized) -->
           <div class="location-section">
             <h3>Preset Locations</h3>
             <div class="preset-grid">
@@ -172,29 +162,24 @@
             </div>
           </div>
 
-          <hr>
+          <hr class="separator">
 
+          <!-- Section 2: City Lookup -->
           <div class="location-section">
-            <h3>Manual Coordinates</h3>
-            <div class="coord-form">
-              <div class="form-row">
-                <label>Latitude:</label>
-                <input type="text" id="input-lat-unified" class="modal-input small">
-              </div>
-              <div class="form-row">
-                <label>Longitude:</label>
-                <input type="text" id="input-lng-unified" class="modal-input small">
-              </div>
-              <div class="form-row">
-                <label>Time Zone:</label>
-                <input type="text" id="input-tz-unified" class="modal-input small">
-              </div>
-              <p class="help-text" style="color:#aaa; font-style:italic;">Use negative hour offset for cities west of
-                London.</p>
-              <div class="modal-actions-inline">
-                <button id="btn-coords-submit-unified" class="ui-btn">Apply Coordinates</button>
-              </div>
+            <h3>City Lookup</h3>
+            <div class="input-row">
+              <input type="text" id="input-city-modal-unified" placeholder="City Name" class="modal-input">
+              <button id="btn-city-submit-unified" class="ui-btn">Go</button>
             </div>
+            <div id="city-error-msg-unified" class="error-msg"></div>
+          </div>
+
+          <hr class="separator">
+
+          <!-- Section 3: Navigation Buttons -->
+          <div class="location-section button-row-split">
+            <button id="btn-open-manual-loc" class="ui-btn secondary">Manual Lat/Long</button>
+            <button id="btn-use-your-loc" class="ui-btn secondary">Your Location</button>
           </div>
 
         </div>
