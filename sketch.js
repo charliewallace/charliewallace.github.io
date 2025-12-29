@@ -178,12 +178,16 @@ var WasFullScreenLastCheck = false;
 // Robust tracking of browser timezone
 var BrowserTzOffset;
 
+// Track if we are showing the user's own location (auto/IP/GPS) vs a remote manual location
+var IsDisplayingUserLocation = true;
+
 
 // ================================================================
 // Fetch approximate location from IP geolocation API
 function fetchIpLocation() {
   console.log("Fetching approximate location from IP...");
   setLoadingState();
+  IsDisplayingUserLocation = true; // We are tracking user location
   IsPreciseLocation = false;
   IsUserInitiatedLocation = false; // IP location is automatic, not user-initiated
   // Using ipapi.co (free, no API key required)
@@ -923,13 +927,14 @@ function updateUIElements() {
   // NEW: Update GPS OK Button State
   var gpsBtn = document.getElementById('btn-gps-ok');
   if (gpsBtn) {
-    if (IsPreciseLocation) {
-      // Hide button if location is precise
-      gpsBtn.style.display = 'none';
-    } else {
+    // Show only if we are displaying the USER's location AND it is NOT precise (i.e. IP-based)
+    if (IsDisplayingUserLocation && !IsPreciseLocation) {
       // Show and set yellow
       gpsBtn.style.display = 'block';
       gpsBtn.classList.add('warning-bg');
+    } else {
+      // Hide button (either precise, or viewing a remote city)
+      gpsBtn.style.display = 'none';
     }
   }
 
@@ -1821,7 +1826,7 @@ function handleLocationError(error) {
       break;
     case error.TIMEOUT:
       errorMsg = "Location request timed out";
-      alert("The location request timed out. Please try again.");
+      alert("The location request timed out. This can happen if the browser permission prompt was not answered quickly enough. Please try again and click 'Allow' when the popup appears.");
       break;
     default:
       errorMsg = "Location error occurred";
@@ -1922,6 +1927,9 @@ function toggleZenMode() {
 function usePreciseLocation() {
   console.log("Requesting precise GPS location...");
   setLoadingState();
+
+  IsDisplayingUserLocation = true; // We are tracking user location
+
   IsTimezoneMismatch = false; // User intentionally requesting location
   IsUserInitiatedLocation = true; // User clicked button to fetch GPS location
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
@@ -1929,7 +1937,7 @@ function usePreciseLocation() {
   // Options for getCurrentPosition call below, designed for speed over accuracy.
   const options = {
     enableHighAccuracy: false,
-    timeout: 10000,
+    timeout: 30000,
     maximumAge: 120000 // Allow a location up to 2 minutes old
   };
 
@@ -1996,6 +2004,7 @@ function usePreciseLocation() {
 function setSilverado() {
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
+  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Silverado, CA, USA");
   LocaleTitle = "Silverado";
@@ -2039,6 +2048,7 @@ function setSilverado() {
 function setLondon() {
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
+  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("London, UK");
   LocaleTitle = "London";
@@ -2082,6 +2092,7 @@ function setLondon() {
 function setBerkeley() {
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
+  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Berkeley, CA, USA");
   LocaleTitle = "Berkeley";
@@ -2125,6 +2136,7 @@ function setBerkeley() {
 function setKansasCity() {
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
+  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Kansas City, MO, USA");
   LocaleTitle = "Kansas City";
@@ -2168,6 +2180,7 @@ function setKansasCity() {
 function setMelbourne() {
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
+  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("Melbourne, AU");
   LocaleTitle = "Melbourne";
@@ -2209,6 +2222,7 @@ function setMelbourne() {
 function setSanDiego() {
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
+  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
   CityNameInput.value("San Diego, CA, USA");
   LocaleTitle = "San Diego";
@@ -2409,6 +2423,7 @@ function handleCoordsSubmitUnified() {
 
   IsPreciseLocation = true; // Manual entry is precise
   IsUserInitiatedLocation = true;
+  IsDisplayingUserLocation = false; // Manually entered location
   IsLoadingLocation = false; // Ensure not loading
   LocaleTitle = "Manual Location";
 
@@ -2465,6 +2480,7 @@ function handleCitySubmit() {
 function getLocationUsingCityName(passedCityName) {
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
   IsUserInitiatedLocation = true; // User entered city name
+  IsDisplayingUserLocation = false; // Looking up a specific city
   CityName = passedCityName;
 
   // url used for OpenStreetmap (Nominatim)
