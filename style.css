@@ -1073,3 +1073,46 @@ body.zen-mode #btn-zen-desktop:hover {
   color: #777;
   border-color: #777;
 }
+
+/* ----------------------------------------------------- */
+/* DETAILS MODAL GRID                                    */
+/* ----------------------------------------------------- */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  text-align: left;
+}
+
+.details-column h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  color: #ccc;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+.details-column p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+.details-column .label {
+  color: #888;
+  font-size: 0.8em;
+  display: block;
+}
+
+.details-column .value {
+  color: #fff;
+  font-weight: bold;
+}
+
+/* On very small screens, stack them */
+@media (max-width: 500px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}

@@ -1086,30 +1086,75 @@ function openManualCoordsModal() {
   select('#coords-error-msg').html(''); // Clear error message when opening
 }
 
+// Open the details modal and populate with live data
 function openDetailsModal() {
-  var content = '';
-  if (Latitude != 99999) {
-    content += '<p><strong>Place:</strong> ' + (LocaleTitle || 'Entered Location') + '</p>';
-    content += '<p><strong>Latitude:</strong> ' + Latitude + '</p>';
-    content += '<p><strong>Longitude:</strong> ' + Longitude + '</p>';
+  var content = document.getElementById('details-content');
 
-    // Add a visual separator for clarity
-    content += '<hr style="border:0; border-top:1px solid #444; margin:10px 0;">';
+  if (content) {
+    // Generate Time Zone String
+    var tzStr = (TzOffset >= 0 ? "+" : "") + TzOffset;
+    var dstStr = (typeof IsDst !== 'undefined') ? (IsDst ? "Active" : "Standard Time") : "Unknown";
 
-    content += '<p><strong>Time at this location:</strong> <span id="modal-time-display">' + TimeString + (IsAM ? ' AM' : ' PM') + '</span></p>';
-    content += '<p><strong>Date at this location:</strong> <span id="modal-date-display">' + DateString + '</span></p>';
-    content += '<p><strong>Day:</strong> ' + (typeof IDow !== 'undefined' ? getDayStringLong(IDow) : '') + '</p>';
-    content += '<p><strong>DST:</strong> ' + (IsDst ? 'Yes' : 'No') + '</p>';
+    // 2-Column Grid Layout
+    content.innerHTML = `
+      <div class="details-grid">
+        <!-- Column 1: Time & Date -->
+        <div class="details-column">
+          <h3>Current Time</h3>
+          <p>
+            <span class="label">Time</span>
+            <span class="value" id="modal-time-display">${TimeString} ${IsAM ? 'AM' : 'PM'}</span>
+          </p>
+          <p>
+            <span class="label">Date</span>
+            <span class="value" id="modal-date-display">${DateString}</span>
+          </p>
+          <p>
+            <span class="label">Sunrise</span>
+            <span class="value">${getFormattedTime(SunriseHour, SunriseMin)}</span>
+          </p>
+          <p>
+            <span class="label">Sunset</span>
+            <span class="value">${getFormattedTime(SunsetHour, SunsetMin)}</span>
+          </p>
+        </div>
 
-    if (SunriseHour >= 0) {
-      content += '<p><strong>Sunrise:</strong> ' + SunriseHourString + ':' + SunriseMinString + SunriseAmpmString + '</p>';
-      content += '<p><strong>Sunset:</strong> ' + SunsetHourString + ':' + SunsetMinString + SunsetAmpmString + '</p>';
-    }
-  } else {
-    content = '<p>Location not set.</p>';
+        <!-- Column 2: Location Data -->
+        <div class="details-column">
+          <h3>Location</h3>
+          <p>
+            <span class="label">City / Name</span>
+            <span class="value">${LocaleTitle}</span>
+          </p>
+          <p>
+            <span class="label">Coordinates</span>
+            <span class="value">${Latitude}, ${Longitude}</span>
+          </p>
+          <p>
+            <span class="label">Time Zone Offset</span>
+            <span class="value">GMT ${tzStr}</span>
+          </p>
+           <p>
+            <span class="label">Daylight Savings</span>
+            <span class="value">${dstStr}</span>
+          </p>
+        </div>
+      </div>
+    `;
   }
-  document.getElementById('details-content').innerHTML = content;
   openModal('modal-details');
+}
+
+// Helper to format HH:MM for sunrise/sunset display
+function getFormattedTime(h, m) {
+  if (h == -1) return "Always Light (Midnight Sun)";
+  if (h == -2) return "Always Dark";
+
+  let ampm = h >= 12 ? "PM" : "AM";
+  let h12 = h % 12;
+  h12 = h12 ? h12 : 12;
+  let mStr = nf(m, 2, 0);
+  return `${h12}:${mStr} ${ampm}`;
 }
 
 function handleCitySubmitModal() {
