@@ -172,7 +172,7 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 // tracking for orientation/fullscreen attention cue
 var WasMobileLandscapeLastCheck = false;
 
-var IsZenMode = false;
+var IsFocusMode = false;
 var WasFullScreenLastCheck = false;
 
 // Robust tracking of browser timezone
@@ -265,7 +265,7 @@ function fetchIpLocation() {
     })
     .catch(error => {
       clearLoadingState();
-      exitZenMode(); // Ensure UI is visible to show details of fallback
+      exitFocusMode(); // Ensure UI is visible to show details of fallback
       console.log("IP geolocation failed:", error);
       console.log("Using fallback location (Melbourne)");
 
@@ -415,10 +415,10 @@ function oneTimeInit() {
     fsBtn.mousePressed(toggleFullScreen);
   }
 
-  select('#btn-zen').mousePressed(toggleZenMode);
+  select('#btn-zen').mousePressed(toggleFocusMode);
   // Desktop specific bindings
-  var zenDesktop = select('#btn-zen-desktop');
-  if (zenDesktop) zenDesktop.mousePressed(toggleZenMode);
+  var focusDesktop = select('#btn-zen-desktop');
+  if (focusDesktop) focusDesktop.mousePressed(toggleFocusMode);
 
   var fsDesktop = select('#btn-fullscreen-desktop');
   if (fsDesktop) fsDesktop.mousePressed(toggleFullScreen);
@@ -625,11 +625,12 @@ function parseUrlLocation() {
   var lon = params.get('lon');
   var tz = params.get('tz');
   var city = params.get('city');
+  var focus = params.get('focus');
   var zen = params.get('zen');
 
-  if (zen === '1') {
-    IsZenMode = true;
-    document.body.classList.add('zen-mode');
+  if (focus === '1' || zen === '1') {
+    IsFocusMode = true;
+    document.body.classList.add('focus-mode');
     BkColor = 0; // Black
   }
 
@@ -720,10 +721,10 @@ function updateUrlHash() {
     hash += `&city=${encodeURIComponent(city)}`;
   }
 
-  if (IsZenMode) {
-    hash += "&zen=1";
+  if (IsFocusMode) {
+    hash += "&focus=1";
   } else {
-    hash += "&zen=0";
+    hash += "&focus=0";
   }
 
   console.log("  📝 Generated hash:", hash);
@@ -1004,6 +1005,14 @@ function updateUIElements() {
       preciseHint.classList.remove('visible');
     }
   }
+
+  // Update Focus Mode button labels
+  var focusBtnMobile = document.getElementById('btn-zen');
+  var focusBtnDesktop = document.getElementById('btn-zen-desktop');
+  var label = IsFocusMode ? "Show All" : "Focus Mode";
+
+  if (focusBtnMobile) focusBtnMobile.textContent = label;
+  if (focusBtnDesktop) focusBtnDesktop.textContent = label;
 }
 
 // --- LOADING STATE HELPER FUNCTIONS ---
@@ -1875,10 +1884,10 @@ function handleLocationError(error) {
   }
 }
 
-// Helper to force exit Zen Mode (e.g. on error)
-function exitZenMode() {
-  if (IsZenMode) {
-    toggleZenMode();
+// Helper to force exit Focus Mode (e.g. on error)
+function exitFocusMode() {
+  if (IsFocusMode) {
+    toggleFocusMode();
   }
 }
 
@@ -1886,7 +1895,7 @@ function exitZenMode() {
 // Unified handler for network and CORS errors during API calls
 function handleNetworkError(err) {
   console.log("Network/CORS error:", err);
-  exitZenMode(); // Ensure UI is visible to show error details
+  exitFocusMode(); // Ensure UI is visible to show error details
   var errorMsg = "Network error: Could not reach the location service. This may be due to a CORS issue, ad blocker, or network loss.";
 
   // Try to be more specific if possible
@@ -1904,15 +1913,15 @@ function handleNetworkError(err) {
 
 
 //-----------------------------------------------------------------
-// Toggle Zen Mode
-function toggleZenMode() {
-  IsZenMode = !IsZenMode;
+// Toggle Focus Mode
+function toggleFocusMode() {
+  IsFocusMode = !IsFocusMode;
 
-  if (IsZenMode) {
-    document.body.classList.add('zen-mode');
+  if (IsFocusMode) {
+    document.body.classList.add('focus-mode');
     BkColor = 0; // Black
   } else {
-    document.body.classList.remove('zen-mode');
+    document.body.classList.remove('focus-mode');
     BkColor = 34; // Dark Gray (#222)
   }
 

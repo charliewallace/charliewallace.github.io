@@ -974,102 +974,102 @@ screen and (max-height: 600px) {
 }
 
 /* ===================================================
-   Zen Mode
+   Focus Mode
    =================================================== */
-body.zen-mode {
+body.focus-mode {
   background-color: #000 !important;
 }
 
-/* Hide UI containers - EXEMPT Bottom Left so Zen button stays */
-body.zen-mode #top-left-container {
+/* Hide UI containers - EXEMPT Bottom Left so Focus button stays */
+body.focus-mode #top-left-container {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
 
 /* Hide Bottom Left content EXCEPT the Zen button container */
-body.zen-mode #bottom-left-container>*:not(.button-group-bottom) {
+body.focus-mode #bottom-left-container>*:not(.button-group-bottom) {
   opacity: 0;
   pointer-events: none;
 }
 
 /* For mobile specific handling */
-body.zen-mode #btn-reset-loc,
-body.zen-mode #precise-hint,
-body.zen-mode #vpn-warning {
+body.focus-mode #btn-reset-loc,
+body.focus-mode #precise-hint,
+body.focus-mode #vpn-warning {
   opacity: 0;
 }
 
 /* Hide specific elements in Top Right but keep Layout */
 /* We want to keep Top Row Group (Time) visible but dim */
-body.zen-mode #top-right-container>*:not(.top-row-group) {
+body.focus-mode #top-right-container>*:not(.top-row-group) {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
 
-body.zen-mode .top-row-group>#btn-gps-ok {
+body.focus-mode .top-row-group>#btn-gps-ok {
   opacity: 0;
   pointer-events: none;
 }
 
-body.zen-mode #time-display-large {
+body.focus-mode #time-display-large {
   color: #444;
   /* Dimmed Time */
   transition: color 0.5s ease;
 }
 
 /* Hide details in Location Info, keep Title and Time */
-body.zen-mode #location-info>*:not(#locale-title):not(#time-display) {
+body.focus-mode #location-info>*:not(#locale-title):not(#time-display) {
   display: none;
 }
 
 /* Hide Bottom Right Presets & Footer Info, AND Desktop Buttons */
-body.zen-mode #bottom-right-container>* {
+body.focus-mode #bottom-right-container>* {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
 
 /* Dim Visible Elements */
-body.zen-mode #locale-title {
+body.focus-mode #locale-title {
   color: #666;
   text-shadow: none;
 }
 
-body.zen-mode #time-display {
+body.focus-mode #time-display {
   color: #666;
 }
 
-body.zen-mode #btn-zen {
+body.focus-mode #btn-zen {
   background: transparent;
   border-color: #555;
   color: #555;
 }
 
-body.zen-mode #btn-zen:hover {
+body.focus-mode #btn-zen:hover {
   color: #777;
   border-color: #777;
 }
 
-/* Ensure Desktop Zen button stays visible */
-body.zen-mode .desktop-only.button-group-bottom {
+/* Ensure Desktop Focus button stays visible */
+body.focus-mode .desktop-only.button-group-bottom {
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
-body.zen-mode #btn-fullscreen-desktop {
+body.focus-mode #btn-fullscreen-desktop {
   opacity: 0;
   pointer-events: none;
 }
 
-body.zen-mode #btn-zen-desktop {
+body.focus-mode #btn-zen-desktop {
   background: transparent;
   border-color: #555;
   color: #555;
 }
 
-body.zen-mode #btn-zen-desktop:hover {
+body.focus-mode #btn-zen-desktop:hover {
   color: #777;
   border-color: #777;
 }
