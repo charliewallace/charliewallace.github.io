@@ -558,7 +558,8 @@ function oneTimeInit() {
     var descText = 'To show night and day you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
       'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
-      'The darker part of the spiral indicates night.';
+      'The darker part of the spiral indicates night. ' +
+      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
 
     //OLD description
     //'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM.' + 
@@ -844,7 +845,8 @@ function updateUIElements() {
 
   // Update description based on mode
   var descText = 'To show night and day you need a 24-hour clock; ' +
-    'using a spiral is a way to squeeze 24 hours into a 12-hour clock face.';
+    'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ' +
+    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
 
   var descEl = document.getElementById('app-description');
   if (descEl) {
