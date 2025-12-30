@@ -40,9 +40,9 @@ The app supports URL-based location persistence. When you select a location (GPS
 - **Quick Access**: Return to saved locations without re-entering coordinates
 
 **Example URLs:**
-- Boston: `https://www.dayspiral.com/#lat=42.359&lon=-71.058&tz=-5&city=boston`
-- London: `https://www.dayspiral.com/#lat=51.507&lon=-0.127&tz=0&city=London`
-- Focus Mode: `https://www.dayspiral.com/#focus=1`
+- Boston: [https://www.dayspiral.com/#lat=42.359&lon=-71.058&tz=-5&city=boston](https://www.dayspiral.com/#lat=42.359&lon=-71.058&tz=-5&city=boston)
+- London: [https://www.dayspiral.com/#lat=51.507&lon=-0.127&tz=0&city=London](https://www.dayspiral.com/#lat=51.507&lon=-0.127&tz=0&city=London)
+- Focus Mode: [https://www.dayspiral.com/#focus=1](https://www.dayspiral.com/#focus=1)
 
 **Note:** IP-based approximate locations are NOT saved to the URL automatically - only user-selected locations are persisted. This ensures your approximate location isn't inadvertently shared when copying URLs.
 
