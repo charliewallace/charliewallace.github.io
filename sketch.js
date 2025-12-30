@@ -1105,7 +1105,6 @@ function openDetailsModal() {
       <div class="details-grid">
         <!-- Column 1: Time & Date -->
         <div class="details-column">
-          <h3>Current Time</h3>
           <p>
             <span class="label">Time</span>
             <span class="value" id="modal-time-display">${TimeString} ${IsAM ? 'AM' : 'PM'}</span>
@@ -1126,7 +1125,6 @@ function openDetailsModal() {
 
         <!-- Column 2: Location Data -->
         <div class="details-column">
-          <h3>Location</h3>
           <p>
             <span class="label">City / Name</span>
             <span class="value">${LocaleTitle}</span>
