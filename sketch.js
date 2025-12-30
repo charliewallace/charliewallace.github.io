@@ -65,6 +65,8 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
+const APP_VERSION = "v0.3.6 ©2026 Charlie Wallace";
+
 console.log("📦 Day Spiral Clock loaded");
 var WebsiteLink;
 var CityNameInput;
@@ -565,8 +567,12 @@ function oneTimeInit() {
     //'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM.' + 
     //' The darker part of the spiral indicates night.';
 
-    // Get version and attribution from desktop elements if possible, or use defaults
-    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.7 ©2026 by Charlie Wallace';
+    // Populate all version text elements
+    var versionEls = document.querySelectorAll('.version-text');
+    versionEls.forEach(el => el.textContent = APP_VERSION);
+
+    // Get version and attribution from constant
+    var versionVal = APP_VERSION;
     var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
     var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
 
