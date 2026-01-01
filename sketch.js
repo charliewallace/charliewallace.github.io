@@ -2751,20 +2751,41 @@ function gotReverseGeocodeData(data) {
     // Order of local importance: hamlet, village, town, city, county, state, country
     let hierarchy = ['hamlet', 'village', 'town', 'city', 'county', 'state', 'country'];
 
+    // Gather all parts first
+    let activeParts = {};
     for (let key of hierarchy) {
       if (addr[key]) {
         // Skip country if it's the USA
         if (key === 'country' && (addr[key] === 'United States' || addr.country_code === 'us')) {
           continue;
         }
-        parts.push(addr[key]);
+        activeParts[key] = addr[key];
       }
     }
 
-    if (parts.length > 0) {
-      LocaleTitle = parts.join(", ");
-    } else if (data.display_name) {
-      // Fallback if no specific address parts found
+    // Function to construct LocaleTitle from activeParts
+    const constructTitle = (partsObj) => {
+      let tempParts = [];
+      for (let key of hierarchy) {
+        if (partsObj[key]) tempParts.push(partsObj[key]);
+      }
+      return tempParts.join(", ");
+    };
+
+    LocaleTitle = constructTitle(activeParts);
+
+    // If too long, remove parts by priority: hamlet, village, town, county, country
+    let removalPriority = ['hamlet', 'village', 'town', 'county', 'country'];
+    for (let key of removalPriority) {
+      if (LocaleTitle.length <= 45) break;
+      if (activeParts[key]) {
+        delete activeParts[key];
+        LocaleTitle = constructTitle(activeParts);
+      }
+    }
+
+    // Fallback if still too long or no parts found
+    if (LocaleTitle.length === 0 && data.display_name) {
       LocaleTitle = data.display_name.split(',')[0];
     }
 
