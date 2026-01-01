@@ -357,18 +357,8 @@ function oneTimeInit() {
   // ==== Bind to existing HTML elements ======
   // NOTE: CSS handles all positioning now (responsive design)
 
-  //     misc buttons
-  ResetToLocalButton = select('#btn-reset-loc');
-  ResetToLocalButton.mousePressed(usePreciseLocation);
-
-
   // --- NEW MODAL BUTTONS ---
   select('#btn-about').mousePressed(() => openModal('modal-about'));
-  select('#btn-about-desktop').mousePressed(() => openModal('modal-about'));
-  select('#btn-details').mousePressed(openDetailsModal);
-  select('#btn-lookup-city').mousePressed(() => openModal('modal-city'));
-  select('#btn-manual-coords').mousePressed(openManualCoordsModal);
-  select('#btn-more-locs').mousePressed(() => openModal('modal-locations'));
 
   // --- MODAL CLOSE BUTTONS ---
   selectAll('.btn-close-modal').forEach(btn => {
@@ -418,19 +408,15 @@ function oneTimeInit() {
   }
 
   select('#btn-zen').mousePressed(toggleFocusMode);
-  // Desktop specific bindings
-  var focusDesktop = select('#btn-zen-desktop');
-  if (focusDesktop) focusDesktop.mousePressed(toggleFocusMode);
 
-  var fsDesktop = select('#btn-fullscreen-desktop');
-  if (fsDesktop) fsDesktop.mousePressed(toggleFullScreen);
-
-  // NEW: GPS OK Button
-  var gpsBtn = select('#btn-gps-ok');
-  if (gpsBtn) gpsBtn.mousePressed(() => {
-    // If yellow/warning, it means we want to fetch precise. 
-    // If not, maybe just re-fetch?
-    usePreciseLocation();
+  // NEW: GPS OK Button(s)
+  var gpsBtns = [select('#btn-gps-ok'), select('#btn-gps-ok-mobile')];
+  gpsBtns.forEach(btn => {
+    if (btn) btn.mousePressed(() => {
+      // If yellow/warning, it means we want to fetch precise. 
+      // If not, maybe just re-fetch?
+      usePreciseLocation();
+    });
   });
 
   // NEW: Setup Button
@@ -443,9 +429,9 @@ function oneTimeInit() {
   var selectLocBtn = select('#btn-select-loc');
   if (selectLocBtn) selectLocBtn.mousePressed(() => openModal('modal-select-location'));
 
-  // NEW: Location Details Desktop Button (opens same details modal)
-  var detailsDesktopBtn = select('#btn-details-desktop');
-  if (detailsDesktopBtn) detailsDesktopBtn.mousePressed(openDetailsModal);
+  // NEW: Location Details Button (opens same details modal)
+  var detailsBtn = select('#btn-details-desktop');
+  if (detailsBtn) detailsBtn.mousePressed(openDetailsModal);
 
   // NEW: Unified Modal Bindings
   select('#btn-city-submit-unified').mousePressed(handleCitySubmitUnified);
@@ -685,13 +671,6 @@ function parseUrlLocation() {
     }
     LocaleTitleLocal = LocaleTitle;
 
-    if (!IsPreciseLocation) {
-      // transition to true
-      // Just in case manual coords button was hidden, show it.
-      var manualCoordsBtn = document.getElementById('btn-manual-coords');
-      //alert("showing manual coords button on transition to precise location");
-      manualCoordsBtn.style.display = "block";
-    }
     IsPreciseLocation = true; // Treating URL location as precise/intentional
     IsTimezoneMismatch = false;
 
@@ -798,33 +777,10 @@ function onFullScreenChange(e) {
     // transition to/from full screen mode
     fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
 
-    if (!IsDesktop && fs && !WasFullScreenLastCheck) {
-      // We just transitioned into full screen mode on mobile
-      // Show the manual coords button just in case it was hidden
-      var manualCoordsBtn = document.getElementById('btn-manual-coords');
-      //alert("showing manual coords button on transition to full screen mode on mobile");
-      manualCoordsBtn.style.display = "block";
-    }
-    else if (!IsDesktop && !fs && WasFullScreenLastCheck) {
-      // We just transitioned out of full screen mode on mobile
-      // Hide the manual coords button if we are not in precise location mode
-      if (!IsPreciseLocation) {
-        var manualCoordsBtn = document.getElementById('btn-manual-coords');
-        manualCoordsBtn.style.display = "none";
-      }
-    }
+
   }
 
-  // NEW: Update Desktop Fullscreen Button
-  var fsBtnDesktop = document.getElementById('btn-fullscreen-desktop');
-  if (fsBtnDesktop) {
-    fsBtnDesktop.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
-    if (fs) {
-      fsBtnDesktop.classList.add('toggled-on');
-    } else {
-      fsBtnDesktop.classList.remove('toggled-on');
-    }
-  }
+
 
 
 
@@ -933,19 +889,21 @@ function updateUIElements() {
     }
   }
 
-  // NEW: Update GPS OK Button State
-  var gpsBtn = document.getElementById('btn-gps-ok');
-  if (gpsBtn) {
-    // Show only if we are displaying the USER's location AND it is NOT precise (i.e. IP-based)
-    if (IsDisplayingUserLocation && !IsPreciseLocation) {
-      // Show and set yellow
-      gpsBtn.style.display = 'block';
-      gpsBtn.classList.add('warning-bg');
-    } else {
-      // Hide button (either precise, or viewing a remote city)
-      gpsBtn.style.display = 'none';
+  // NEW: Update GPS OK Button(s) State
+  // Only add/remove the warning-bg class, let CSS handle visibility
+  var gpsBtnDesktop = document.getElementById('btn-gps-ok');
+  var gpsBtnMobile = document.getElementById('btn-gps-ok-mobile');
+  [gpsBtnDesktop, gpsBtnMobile].forEach(btn => {
+    if (btn) {
+      if (IsDisplayingUserLocation && !IsPreciseLocation) {
+        btn.classList.add('warning-bg');
+        btn.classList.add('gps-show');
+      } else {
+        btn.classList.remove('warning-bg');
+        btn.classList.remove('gps-show');
+      }
     }
-  }
+  });
 
   // Update date display
   var dateEl = document.getElementById('date-display');
@@ -1004,23 +962,11 @@ function updateUIElements() {
     }
   }
 
-  // Update precise location hint visibility
-  var preciseHint = document.getElementById('precise-hint');
-  if (preciseHint) {
-    if (!IsPreciseLocation && !IsTimezoneMismatch && Latitude != 99999) {
-      preciseHint.classList.add('visible');
-    } else {
-      preciseHint.classList.remove('visible');
-    }
-  }
-
   // Update Focus Mode button labels
-  var focusBtnMobile = document.getElementById('btn-zen');
-  var focusBtnDesktop = document.getElementById('btn-zen-desktop');
+  var focusBtn = document.getElementById('btn-zen');
   var label = IsFocusMode ? "Show All" : "Focus Mode";
 
-  if (focusBtnMobile) focusBtnMobile.textContent = label;
-  if (focusBtnDesktop) focusBtnDesktop.textContent = label;
+  if (focusBtn) focusBtn.textContent = label;
 }
 
 // --- LOADING STATE HELPER FUNCTIONS ---
@@ -1340,25 +1286,14 @@ function reInit() {
   var isLandscape = (window.innerWidth > window.innerHeight);
   var isMobileLandscape = (!IsDesktop && isLandscape);
 
-  if (!isMobileLandscape && WasMobileLandscapeLastCheck) {
-    // We just transitioned out of mobile landscape.
-    // Show the manual coords button just in case it was hidden
-    var manualCoordsBtn = document.getElementById('btn-manual-coords');
-    //alert("showing manual coords button on transition out of mobile landscape");
-    manualCoordsBtn.style.display = "block";
 
-  }
 
   if (isMobileLandscape && !WasMobileLandscapeLastCheck) {
     // We just transitioned into mobile landscape.
     // Hide the manual coords button if the screen is too small
     //alert("window height = " + window.innerHeight.toString());
 
-    if (window.innerHeight < 300 && !IsPreciseLocation) {
-      //alert("window height < 400, hide manual coords button");
-      var manualCoordsBtn = document.getElementById('btn-manual-coords');
-      manualCoordsBtn.style.display = "none";
-    }
+
 
     // If not already in fullscreen, draw attention to the button.
     if (!isFullScreen()) {
@@ -1826,7 +1761,7 @@ function setGmtDisplay()  // Toggling mode button
 // Handler for location errors
 function handleLocationError(error) {
   console.log("GPS location error:", error.message);
-  exitZenMode(); // Ensure UI is visible to show error details
+  exitFocusMode(); // Ensure UI is visible to show error details
 
   // Show user-friendly message based on error type
   var errorMsg = "";
@@ -1960,14 +1895,6 @@ function usePreciseLocation() {
     // Success callback
     function (position) {
       console.log("GPS location obtained:", position.coords);
-
-      if (!IsPreciseLocation) {
-        // transition to true
-        // Just in case manual coords button was hidden, show it.
-        var manualCoordsBtn = document.getElementById('btn-manual-coords');
-        //alert("showing manual coords button on transition to precise location");
-        manualCoordsBtn.style.display = "block";
-      }
 
       IsPreciseLocation = true;
 
@@ -2777,7 +2704,7 @@ function gotReverseGeocodeData(data) {
     // If too long, remove parts by priority: hamlet, village, town, county, country
     let removalPriority = ['hamlet', 'village', 'town', 'county', 'country'];
     for (let key of removalPriority) {
-      if (LocaleTitle.length <= 45) break;
+      if (LocaleTitle.length <= 35) break;
       if (activeParts[key]) {
         delete activeParts[key];
         LocaleTitle = constructTitle(activeParts);

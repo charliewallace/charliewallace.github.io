@@ -43,87 +43,58 @@
       <!-- Top Left: Controls & Info -->
       <div id="top-left-container" class="ui-corner">
         <h1 id="app-title">Day Spiral Clock</h1>
-        <div id="app-version-desktop" class="desktop-only version-text"></div>
-        <div id="app-description">
+        <div id="app-version" class="version-text"></div>
+        <div id="app-description" class="desktop-only">
           <!-- Content injected via JS -->
         </div>
 
         <div class="button-group">
-          <button id="btn-about-desktop" class="ui-btn desktop-only">About</button>
+          <button id="btn-about" class="ui-btn">About</button>
+          <button id="btn-gps-ok-mobile" class="ui-btn mobile-only">GPS OK?</button>
         </div>
       </div>
 
       <!-- Top Right: Time & Location Controls -->
       <div id="top-right-container" class="ui-corner">
-        <div class="top-row-group desktop-only-flex">
-          <button id="btn-gps-ok" class="ui-btn">GPS OK?</button>
-          <div id="time-display-large"></div>
+        <div class="top-row-group">
+          <button id="btn-gps-ok" class="ui-btn desktop-only">GPS OK?</button>
+          <div id="time-display-large" class="desktop-only"></div>
+          <div id="time-display" class="mobile-only"></div>
         </div>
-
-        <!-- Mobile Time Display -->
-        <div id="time-display" class="mobile-only"></div>
 
         <div id="location-info">
-          <!-- Mobile Title: Local Time or City -->
-          <div id="locale-title" class="mobile-only">Local Time</div>
-
           <!-- Desktop Location Description -->
           <div id="location-description" class="desktop-only text-right"></div>
+          <!-- Mobile Title: Local Time or City -->
+          <div id="locale-title" class="mobile-only">Local Time</div>
         </div>
 
-        <!-- Desktop Buttons Stack -->
-        <div class="desktop-button-stack desktop-only">
+        <!-- Unified Buttons Stack -->
+        <div class="button-stack">
           <button id="btn-details-desktop" class="ui-btn">Location Details</button>
           <button id="btn-select-loc" class="ui-btn">Select Different Loc</button>
         </div>
 
         <!-- VPN Warning Overlay -->
         <div id="vpn-warning" class="warning-msg">
-          Timezone mismatch detected! Your IP-based location may be inaccurate (e.g. due to a VPN).
-          Click 'GPS OK?' or select a location manually for accurate times.
+          Timezone mismatch detected! IP-based location may be inaccurate.
+          Click 'GPS OK?' or select a location manually.
         </div>
-
-        <!-- Mobile Buttons -->
-        <button id="btn-details" class="ui-btn mobile-only">Loc Details</button>
-        <button id="btn-more-locs" class="ui-btn mobile-only">More Locations</button>
       </div>
 
       <!-- Bottom Left: View Controls -->
       <div id="bottom-left-container" class="ui-corner">
-        <!-- Mobile Specifics - Removed Obsolete Hints -->
-        <button id="btn-reset-loc" class="ui-btn mobile-only">Fetch Current Location</button>
-
-        <!-- Desktop: Zen & Full Screen -->
-        <div class="desktop-only button-group-bottom">
-          <button id="btn-fullscreen-desktop" class="ui-btn">Full Screen</button>
-          <button id="btn-zen-desktop" class="ui-btn">Focus Mode</button>
-        </div>
-
-        <!-- Mobile: Inputs/Buttons -->
-        <div class="mobile-only button-row">
-          <button id="btn-manual-coords" class="ui-btn">Manual Lat/Long</button>
-          <button id="btn-lookup-city" class="ui-btn">Lookup City</button>
+        <div class="button-group-bottom">
+          <button id="btn-fullscreen" class="ui-btn">Full Screen</button>
+          <button id="btn-zen" class="ui-btn">Focus Mode</button>
         </div>
       </div>
 
       <!-- Bottom Right: Settings & Footer -->
       <div id="bottom-right-container" class="ui-corner">
-
-        <!-- Desktop: GMT & Setup -->
-        <div class="desktop-only button-group-bottom-right">
+        <div class="button-group-bottom-right">
           <button id="btn-gmt" class="ui-btn">Show GMT</button>
-          <button id="btn-setup" class="ui-btn">Setup</button>
-        </div>
-
-        <!-- Mobile: Footer Elements -->
-        <button id="btn-about" class="ui-btn mobile-only">About</button>
-
-        <div class="footer-row mobile-only">
-          <div class="footer-info">
-            <a id="link-website" href="http://coolweird.com" target="_blank">Coolweird.com</a>
-            <div id="app-version" class="version-text"></div>
-          </div>
-          <button id="btn-zen" class="ui-btn">Focus Mode</button>
+          <button id="btn-setup" class="ui-btn desktop-only">Setup</button>
         </div>
       </div>
 

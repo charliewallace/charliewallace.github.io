@@ -75,13 +75,25 @@ body {
   pointer-events: none;
 }
 
+/* --- Visibility Classes --- */
+.mobile-only {
+  display: none;
+  /* Hidden by default, shown in mobile media query */
+}
+
+/* GPS button visibility controlled by JavaScript + CSS */
+#btn-gps-ok:not(.gps-show),
+#btn-gps-ok-mobile:not(.gps-show) {
+  display: none !important;
+}
+
 /* --- Corner Containers --- */
 .ui-corner {
   position: absolute;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 /* --- Top Left --- */
@@ -98,7 +110,7 @@ body {
   margin: 0 0 4px 0;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
   /* Enforce min-height to match Right Side (Info + Time) for button alignment */
-  min-height: 3.8rem;
+  min-height: 1.2rem;
   display: flex;
   align-items: flex-start;
   /* Top align the text */
@@ -120,6 +132,7 @@ body {
 #app-version {
   font-size: 0.65rem;
   color: var(--text-dim);
+  margin-top: -4px;
   margin-bottom: 0;
 }
 
@@ -143,8 +156,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 2px;
-  /* Reduced from 8px to pull Right Buttons UP on mobile */
+  margin-bottom: 4px;
 }
 
 #locale-title {
@@ -185,15 +197,15 @@ body {
   display: block;
 }
 
-#precise-hint {
-  display: none;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+.button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
 }
 
-#precise-hint.visible {
-  display: block;
+#precise-hint {
+  display: none;
 }
 
 
@@ -203,10 +215,6 @@ body {
   bottom: 12px;
   left: 12px;
   max-width: 260px;
-}
-
-#btn-reset-loc {
-  margin-bottom: 12px;
 }
 
 .input-prompt {
@@ -350,6 +358,12 @@ body {
   background: var(--btn-bg-hover);
   border-color: #999;
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.ui-btn.warning-bg {
+  background-color: #ffcc00 !important;
+  color: #000 !important;
+  border-color: #aa8800 !important;
 }
 
 .ui-btn:hover {
@@ -629,7 +643,7 @@ screen and (max-height: 600px) {
   }
 
   .mobile-only {
-    display: block !important;
+    display: block;
   }
 
   /* Hide description on mobile (shown in About modal instead) */
@@ -661,38 +675,29 @@ screen and (max-height: 600px) {
     }
   }
 
-  .button-row {
+  .button-group-bottom,
+  .button-group-bottom-right {
     display: flex !important;
-    /* Override .mobile-only block */
-    flex-direction: column;
     gap: 8px;
-    margin-top: 4px;
-    align-items: flex-start;
-    width: 100%;
+  }
+
+  .button-group-bottom {
+    flex-direction: column;
+  }
+
+  .button-group-bottom-right {
+    flex-direction: column;
+    align-items: flex-end;
   }
 
   #bottom-right-container {
     align-items: flex-end;
-    /* Ensure buttons are clickable */
-    pointer-events: none;
-  }
-
-  #btn-more-locs,
-  #btn-about {
     pointer-events: auto;
-    /* Re-enable clicks for specific buttons */
   }
 
-  /* Button Sizing for Touch - INCREASED SIZE (~10%) */
   .ui-btn {
     font-size: 0.9rem;
     padding: 7px 11px;
-  }
-
-  #btn-details,
-  #btn-more-locs,
-  #btn-lookup-city,
-  #btn-manual-coords {
     color: #fff;
   }
 
@@ -700,28 +705,30 @@ screen and (max-height: 600px) {
   #app-title {
     font-size: 1.3rem;
     /* Increased ~20% from 1.1rem */
-    min-height: 2.5rem;
+    min-height: 1.4rem;
     /* Reduced to pull buttons UP */
   }
 
   #locale-title {
-    font-size: 1.05rem;
-  }
-
-  #vpn-warning,
-  #precise-hint {
     font-size: 0.75rem;
+    /* Reduced for limited horizontal space */
+  }
+
+  #time-display {
+    font-size: 1.3rem;
+    /* Match app title size */
+    font-weight: 400;
+    /* Non-bold */
+    color: var(--text-color);
+  }
+
+  #vpn-warning {
+    font-size: 0.65rem;
+    /* Reduced to fit mobile */
     margin-bottom: 0;
-  }
-
-  #precise-hint {
-    margin-top: -2px;
-    /* Pull up to bump warning */
-  }
-
-  #btn-reset-loc {
-    margin-top: -4px;
-    /* Pull up to bump hints */
+    max-width: 160px;
+    /* Constrain width on mobile */
+    padding: 4px 8px;
   }
 
   @media (orientation: portrait) {
@@ -730,14 +737,11 @@ screen and (max-height: 600px) {
     }
   }
 
-
-
   #app-version {
+    display: block !important;
     font-size: 0.7rem;
-  }
-
-  #link-website {
-    font-size: 0.75rem;
+    margin-top: -8px;
+    color: var(--text-muted);
   }
 
   .input-prompt {
@@ -746,10 +750,33 @@ screen and (max-height: 600px) {
 }
 
 /* ===================================================
+   RESPONSIVE: Mobile Portrait Specific
+   =================================================== */
+@media screen and (max-width: 950px) and (orientation: portrait) {
+
+  /* In portrait, hide desktop GPS button, show mobile GPS button */
+  #btn-gps-ok {
+    display: none !important;
+  }
+
+  #btn-gps-ok-mobile.gps-show {
+    display: block !important;
+  }
+}
+
+/* ===================================================
    RESPONSIVE: Mobile Landscape Specific
    =================================================== */
 @media screen and (max-width: 950px) and (orientation: landscape) {
 
+  /* In landscape, hide the mobile GPS button, show desktop GPS button */
+  #btn-gps-ok-mobile {
+    display: none !important;
+  }
+
+  #btn-gps-ok.gps-show {
+    display: block !important;
+  }
 
   #top-left-container {
     max-width: 250px;
@@ -989,17 +1016,25 @@ body.focus-mode #top-left-container {
   transition: opacity 0.5s ease;
 }
 
-/* Hide Bottom Left content EXCEPT the Zen button container */
+/* Hide Full Screen button in Focus Mode */
+body.focus-mode #btn-fullscreen {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+/* Hide Bottom Left content (if any other children exist) */
 body.focus-mode #bottom-left-container>*:not(.button-group-bottom) {
   opacity: 0;
   pointer-events: none;
 }
 
 /* For mobile specific handling */
-body.focus-mode #btn-reset-loc,
+body.focus-mode #btn-gps-ok-mobile,
 body.focus-mode #precise-hint,
 body.focus-mode #vpn-warning {
   opacity: 0;
+  pointer-events: none;
 }
 
 /* Hide specific elements in Top Right but keep Layout */
