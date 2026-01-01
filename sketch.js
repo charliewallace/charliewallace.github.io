@@ -1992,7 +1992,12 @@ function usePreciseLocation() {
       LastLong = Longitude;
 
       CityNameInput.value("");
-      LocaleTitle = "Precise Location";
+      // LocaleTitle = "Precise Location"; // Temporarily set until reverse geocode returns
+
+      // Get reverse geocoding info from Nominatim
+      let revGeoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${Latitude}&lon=${Longitude}`;
+      console.log("Reverse geocoding URL:", revGeoUrl);
+      loadJSON(revGeoUrl, gotReverseGeocodeData, handleNetworkError);
 
       updateUrlHash();
 
@@ -2733,6 +2738,39 @@ function gotCityTzData(data) {
     NewLatitude = 99999; // allow draw() to resume
     NewLongitude = 99999;
     clearLoadingState();
+  }
+}
+
+// Helper for reverse geocoding results from Nominatim
+function gotReverseGeocodeData(data) {
+  console.log("Reverse Geocode Data:", data);
+  if (data && data.address) {
+    let addr = data.address;
+    let parts = [];
+
+    // Order of local importance: hamlet, village, town, city, county, state, country
+    let hierarchy = ['hamlet', 'village', 'town', 'city', 'county', 'state', 'country'];
+
+    for (let key of hierarchy) {
+      if (addr[key]) {
+        // Skip country if it's the USA
+        if (key === 'country' && (addr[key] === 'United States' || addr.country_code === 'us')) {
+          continue;
+        }
+        parts.push(addr[key]);
+      }
+    }
+
+    if (parts.length > 0) {
+      LocaleTitle = parts.join(", ");
+    } else if (data.display_name) {
+      // Fallback if no specific address parts found
+      LocaleTitle = data.display_name.split(',')[0];
+    }
+
+    console.log("Updated LocaleTitle from reverse geocode:", LocaleTitle);
+    updateUrlHash();
+    updateUIElements();
   }
 }
 
