@@ -1338,8 +1338,10 @@ function setup() {
 // This is run at startup and also when window size changes
 function reInit() {
   // Update environment state
-  IsDesktop = (IsWindows || (window.navigator.platform.indexOf("Mac") === 0)) && (window.innerWidth > 950);
-  console.log("📐 reInit: IsDesktop=" + IsDesktop + " Width=" + window.innerWidth);
+  // Mobile/Compact mode is width <= 950 OR height <= 600.
+  // Desktop/Regular mode is width > 950 AND height > 600.
+  IsDesktop = (window.innerWidth > 950) && (window.innerHeight > 600);
+  console.log("📐 reInit: IsDesktop=" + IsDesktop + " Width=" + window.innerWidth + " Height=" + window.innerHeight);
 
   // On phones, height looks ok, but width is too big
   TheHeight = window.innerHeight; //*0.8; //height * 0.7;
@@ -1372,18 +1374,12 @@ function reInit() {
   // No more .position() calls needed here
 
   // --- Fullscreen Attention Cue Logic ---
+  // Mobile Landscape is when we are in compact/mobile mode AND width > height
   var isLandscape = (window.innerWidth > window.innerHeight);
   var isMobileLandscape = (!IsDesktop && isLandscape);
 
-
-
   if (isMobileLandscape && !WasMobileLandscapeLastCheck) {
     // We just transitioned into mobile landscape.
-    // Hide the manual coords button if the screen is too small
-    //alert("window height = " + window.innerHeight.toString());
-
-
-
     // If not already in fullscreen, draw attention to the button.
     if (!isFullScreen()) {
       var fsBtn = document.getElementById('btn-fullscreen');
@@ -1396,15 +1392,16 @@ function reInit() {
         fsBtn.classList.add('fs-highlight-pulse');
       }
     }
-  } else if (!isLandscape) {
-    // If we leave landscape, we can clear the highlight immediately
+  } else if (!isMobileLandscape || isFullScreen()) {
+    // If we leave mobile landscape or we enter fullscreen, clear the highlight
     var fsBtn = document.getElementById('btn-fullscreen');
     if (fsBtn) {
       fsBtn.classList.remove('fs-highlight-pulse');
     }
   }
 
-  // Update tracking var (only when NOT in fullscreen to avoid FS-toggle logic glitches)
+  // Update tracking var
+  // We only track the transition when NOT in fullscreen to avoid loop glitches
   if (!isFullScreen()) {
     WasMobileLandscapeLastCheck = isMobileLandscape;
   }
