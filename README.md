@@ -19,12 +19,13 @@ segments based on your location, thus indicating sunrise and sunset times.
 - **Multiple Locations**: Quick-select buttons for major cities
 - **Manual Entry**: Enter custom lat/long or city name
 - **GMT Time Display**: Optional GMT hour labels on day spiral
-- **Zen**: Minimalist mode that hides UI controls for a cleaner visualization; toggled by the "Zen" button (changes to "Show Interface" when active). Saved in URL for convenience.
+- **Full Screen Mode**: Toggle full-screen view for an immersive experience, especially useful on mobile.
+- **Zen Mode**: Minimalist mode that hides UI controls for a cleaner visualization; toggled by the "Zen" button (changes to "Show Interface" when active). Saved in URL for convenience.
 - **Contact & Feedback**: Integrated contact form for user feedback and inquiries.
 
 ## Suggested Use Case
 
-Have an old tablet? Convert it into a wall clock with a spiral face! Zen is suggested for a simpler look. All that's needed is internet access and a web browser.  You can create a bookmark with `zen=1` in the URL and set it as the home screen for a minimalist clock experience.
+Have an old tablet? Convert it into a wall clock with a spiral face! Zen Mode is suggested for a simpler look. All that's needed is internet access and a web browser. You can create a bookmark with `zen=1` in the URL and set it as the home screen for a minimalist clock experience.
 
 ## Available online
 
