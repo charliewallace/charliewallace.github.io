@@ -65,7 +65,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.3.8 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.3.9 ©2026 Charlie Wallace";
 
 console.log("📦 Day Spiral Clock loaded");
 var WebsiteLink;

@@ -897,10 +897,7 @@ screen and (max-height: 600px) {
   .top-row-group {
     display: flex;
     flex-direction: row;
-    /* Ensure row to put button left of time */
     align-items: center;
-    /* Center vertical */
-    gap: 15px;
     margin-bottom: 5px;
     justify-content: flex-end;
     /* Push to right */
@@ -1045,7 +1042,7 @@ body.focus-mode #top-right-container>*:not(.top-row-group) {
   transition: opacity 0.5s ease;
 }
 
-body.focus-mode .top-row-group>#btn-gps-ok {
+body.focus-mode #btn-gps-ok {
   opacity: 0;
   pointer-events: none;
 }
