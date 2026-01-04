@@ -76,6 +76,10 @@ body {
 }
 
 /* --- Visibility Classes --- */
+.hidden {
+  display: none !important;
+}
+
 .mobile-only {
   display: none;
   /* Hidden by default, shown in mobile media query */
