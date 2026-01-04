@@ -19,12 +19,12 @@ segments based on your location, thus indicating sunrise and sunset times.
 - **Multiple Locations**: Quick-select buttons for major cities
 - **Manual Entry**: Enter custom lat/long or city name
 - **GMT Time Display**: Optional GMT hour labels on day spiral
-- **Focus Mode**: Minimalist mode that hides UI controls for a cleaner visualization; toggled by the "Focus Mode" button (changes to "Show All" when active). Saved in URL for convenience.
+- **Zen**: Minimalist mode that hides UI controls for a cleaner visualization; toggled by the "Zen" button (changes to "Show Interface" when active). Saved in URL for convenience.
 - **Contact & Feedback**: Integrated contact form for user feedback and inquiries.
 
 ## Suggested Use Case
 
-Have an old tablet? Convert it into a wall clock with a spiral face! Focus Mode is suggested for a simpler look. All that's needed is internet access and a web browser.  You can create a bookmark with `focus=1` in the URL and set it as the home screen for a minimalist clock experience.
+Have an old tablet? Convert it into a wall clock with a spiral face! Zen is suggested for a simpler look. All that's needed is internet access and a web browser.  You can create a bookmark with `zen=1` in the URL and set it as the home screen for a minimalist clock experience.
 
 ## Available online
 
@@ -33,7 +33,7 @@ Visit [dayspiral.com](https://www.dayspiral.com)
 
 ## Location Sharing & Bookmarks
 
-The app supports URL-based location persistence. When you select a location (GPS, city lookup, preset, or manual coordinates), the location details are automatically saved in the URL hash. Focus Mode too! This enables:
+The app supports URL-based location persistence. When you select a location (GPS, city lookup, preset, or manual coordinates), the location details are automatically saved in the URL hash. Zen too! This enables:
 
 - **Bookmarking**: Save your favorite locations as browser bookmarks
 - **Sharing**: Send URLs to others to show them a specific location
@@ -42,7 +42,7 @@ The app supports URL-based location persistence. When you select a location (GPS
 **Example URLs:**
 - Boston: [https://www.dayspiral.com/#lat=42.359&lon=-71.058&tz=-5&city=boston](https://www.dayspiral.com/#lat=42.359&lon=-71.058&tz=-5&city=boston)
 - London: [https://www.dayspiral.com/#lat=51.507&lon=-0.127&tz=0&city=London](https://www.dayspiral.com/#lat=51.507&lon=-0.127&tz=0&city=London)
-- Focus Mode: [https://www.dayspiral.com/#focus=1](https://www.dayspiral.com/#focus=1)
+- Zen: [https://www.dayspiral.com/#zen=1](https://www.dayspiral.com/#zen=1)
 
 **Note:** IP-based approximate locations are NOT saved to the URL automatically - only user-selected locations are persisted. This ensures your approximate location isn't inadvertently shared when copying URLs.
 

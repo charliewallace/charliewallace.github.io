@@ -102,6 +102,8 @@ var LastTz;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
 var IsPreciseLocation = false; // true if using GPS location
+var IsRequestingPrecise = false; // true if a GPS request is currently in flight
+var LocationFetchSerial = 0; // Incrementing ID to track async location requests
 var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 
@@ -174,7 +176,7 @@ var LocaleTitleLocal; // Stores the IP-based location name for fallback
 // tracking for orientation/fullscreen attention cue
 var WasMobileLandscapeLastCheck = false;
 
-var IsFocusMode = false;
+var IsZenMode = false;
 var WasFullScreenLastCheck = false;
 
 // Robust tracking of browser timezone
@@ -187,7 +189,9 @@ var IsDisplayingUserLocation = true;
 // ================================================================
 // Fetch approximate location from IP geolocation API
 function fetchIpLocation() {
-  console.log("Fetching approximate location from IP...");
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] Fetching approximate location from IP...`);
+  IsRequestingPrecise = false; // Cancel any pending GPS request results
   setLoadingState();
   IsDisplayingUserLocation = true; // We are tracking user location
   IsPreciseLocation = false;
@@ -196,7 +200,11 @@ function fetchIpLocation() {
   fetch('https://ipapi.co/json/')
     .then(response => response.json())
     .then(data => {
-      console.log("IP Geolocation data:", data);
+      if (requestId !== LocationFetchSerial) {
+        console.log(`[${requestId}] IP location fetch results ignored (stale/cancelled).`);
+        return;
+      }
+      console.log(`[${requestId}] IP Geolocation data:`, data);
 
       // Extract and validate coordinates
       Latitude = parseFloat(data.latitude);
@@ -263,11 +271,12 @@ function fetchIpLocation() {
       // Only user-initiated actions should update URL (GPS, presets, city lookup)
 
       // Get timezone using existing GeoNames function
-      getTzUsingLatLong(Latitude, Longitude);
+      getTzUsingLatLong(Latitude, Longitude, requestId);
     })
-    .catch(error => {
+    .then(null, error => {
+      if (requestId !== LocationFetchSerial) return;
       clearLoadingState();
-      exitFocusMode(); // Ensure UI is visible to show details of fallback
+      exitZenMode(); // Ensure UI is visible to show details of fallback
       console.log("IP geolocation failed:", error);
       console.log("Using fallback location (Melbourne)");
 
@@ -407,7 +416,7 @@ function oneTimeInit() {
     fsBtn.mousePressed(toggleFullScreen);
   }
 
-  select('#btn-zen').mousePressed(toggleFocusMode);
+  select('#btn-zen').mousePressed(toggleZenMode);
 
   // NEW: GPS OK Button(s)
   var gpsBtns = [select('#btn-gps-ok'), select('#btn-gps-ok-mobile')];
@@ -415,7 +424,7 @@ function oneTimeInit() {
     if (btn) btn.mousePressed(() => {
       // If yellow/warning, it means we want to fetch precise. 
       // If not, maybe just re-fetch?
-      usePreciseLocation();
+      usePreciseLocation(false);
     });
   });
 
@@ -445,7 +454,7 @@ function oneTimeInit() {
   // "Your Location" button in Select Modal -> Auto Locate
   select('#btn-use-your-loc').mousePressed(() => {
     closeAllModals();
-    usePreciseLocation();
+    usePreciseLocation(false);
   });
 
   // Unified Manual Coords Submit (from the Manual Modal)
@@ -508,7 +517,7 @@ function oneTimeInit() {
 
   // init to unique value to allow detection when set properly
   Latitude = 99999;  // an illegal value
-  longitude = 99999;
+  Longitude = 99999;
   NewLatitude = 99999;
   NewLongitude = 99999;
   LastLat = 99999;
@@ -589,16 +598,69 @@ function oneTimeInit() {
   // Check if we have permission? 
   if (navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
-      if (result.state === 'granted') {
-        console.log("Location permission already granted, using precise.");
-        usePreciseLocation();
-      } else if (result.state === 'prompt') {
-        console.log("Location permission prompt, defaulting to IP.");
-        fetchIpLocation();
-      } else {
-        console.log("Location permission denied, defaulting to IP.");
-        fetchIpLocation();
+      // Logic for initial check
+      function checkPerm(state) {
+        if (state === 'granted') {
+          console.log("Location permission already granted, using precise.");
+          usePreciseLocation(true);
+        } else if (state === 'prompt') {
+          console.log("Location permission prompt, defaulting to IP.");
+          fetchIpLocation();
+        } else {
+          console.log("Location permission denied, defaulting to IP.");
+          fetchIpLocation();
+        }
       }
+
+      checkPerm(result.state);
+
+      // Listen for permission changes (e.g. user resets permission via URL bar)
+      result.onchange = function () {
+        console.log("Location permission changed to:", result.state);
+        // If it was reset to prompt or denied, we should revert to IP
+        if (result.state !== 'granted') {
+          // If we were using precise or waiting for it, fall back
+          if (IsPreciseLocation || IsRequestingPrecise) {
+            console.log("Permission retracted, reverting to IP location.");
+            IsRequestingPrecise = false; // Stop any GPS success callback from proceeding
+            IsPreciseLocation = false;
+            IsUserInitiatedLocation = false; // Back to automatic mode
+            NewLatitude = 99999; // Clear any pending fetch flags
+            NewLongitude = 99999;
+
+            // Revert to cached local values immediately if we have them
+            if (LatLocal !== 99999 && LngLocal !== 99999) {
+              console.log("Instantly restoring cached approximate location.");
+              Latitude = LatLocal;
+              Longitude = LngLocal;
+              if (LocaleTitleLocal) LocaleTitle = LocaleTitleLocal;
+              IsDisplayingUserLocation = true; // Ensure we are back in local mode
+
+              // Update UI input fields to match restored location
+              LatInput.value(str(Latitude));
+              LngInput.value(str(Longitude));
+              // Note: TzOffset is left as is, getTzUsingLatLong will refresh it if needed
+              clearLoadingState(); // Instant revert complete
+            } else {
+              // If no cache, we have to fetch
+              fetchIpLocation();
+            }
+
+            // Now update URL and UI (Latitude/Longitude are now local or we are "Finding you...")
+            updateUrlHash();
+            updateUIElements();
+
+            // Recalculate times to match the restored location
+            IsSunRiseSetObtained = false;
+            updateTimeThisDay();
+          }
+        } else {
+          // If it was granted (unlikely to happen mid-session without prompt, but possible)
+          if (!IsPreciseLocation) {
+            usePreciseLocation(true);
+          }
+        }
+      };
     });
   } else {
     fetchIpLocation();
@@ -618,17 +680,23 @@ function parseUrlLocation() {
   var lon = params.get('lon');
   var tz = params.get('tz');
   var city = params.get('city');
-  var focus = params.get('focus');
-  var zen = params.get('zen');
+  var zen = params.get('zen') || params.get('focus');
 
-  if (focus === '1' || zen === '1') {
-    IsFocusMode = true;
-    document.body.classList.add('focus-mode');
+  if (zen === '1') {
+    IsZenMode = true;
+    document.body.classList.add('zen-mode');
     BkColor = 0; // Black
   }
 
+  // Helper to validate coordinate strings from URL
+  function isValidCoord(val) {
+    if (!val || val === "undefined" || val === "NaN") return false;
+    let n = parseFloat(val);
+    return !isNaN(n) && n !== 99999;
+  }
+
   // Fallback to comma separated if not key-value
-  if (!lat && hash.includes(',')) {
+  if (!isValidCoord(lat) && hash.includes(',')) {
     var parts = hash.split(',');
     if (parts.length >= 2) {
       lat = parts[0];
@@ -638,7 +706,7 @@ function parseUrlLocation() {
     }
   }
 
-  if (lat && lon) {
+  if (isValidCoord(lat) && isValidCoord(lon)) {
     console.log("Parsed URL location:", { lat, lon, tz, city });
     IsUserInitiatedLocation = true; // URL location is intentional (someone shared it)
     Latitude = parseFloat(lat);
@@ -691,35 +759,51 @@ function updateUrlHash() {
   console.log("  TzOffset:", TzOffset);
   console.log("  LocaleTitle:", LocaleTitle);
 
-  if (Latitude == 99999 || Longitude == 99999) {
-    console.log("  ❌ Early return: Latitude or Longitude is 99999");
+  if (typeof Latitude === 'undefined' || typeof Longitude === 'undefined' ||
+    Latitude === 99999 || Longitude === 99999 ||
+    isNaN(Latitude) || isNaN(Longitude)) {
+    console.log("  ❌ Early return: Latitude or Longitude is invalid:", { Latitude, Longitude });
     return;
   }
 
-  var city = LocaleTitle || "";
-  // Don't include "Approximate Location" or "Precise Location" as city name in URL if possible
-  if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
-    city = "";
+  // PRIVACY: Only include coordinates in the URL if it's a PRECISE location 
+  // OR a manually selected remote location. 
+  // If it's just an IP-based local fetch, we don't save it to the URL.
+  var hash = "";
+
+  if (IsPreciseLocation || !IsDisplayingUserLocation) {
+    var city = LocaleTitle || "";
+    // Don't include "Approximate Location" or "Precise Location" as city name in URL if possible
+    if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
+      city = "";
+    }
+
+    // Ensure we have valid coords before generating hash
+    if (Latitude !== 99999 && Longitude !== 99999) {
+      hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
+      if (city) {
+        hash += `&city=${encodeURIComponent(city)}`;
+      }
+    }
   }
 
-  var hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
-  if (city) {
-    hash += `&city=${encodeURIComponent(city)}`;
-  }
-
-  if (IsFocusMode) {
-    hash += "&focus=1";
-  } else {
-    hash += "&focus=0";
+  if (IsZenMode) {
+    hash += (hash ? "&" : "") + "zen=1";
+  } else if (hash) {
+    hash += "&zen=0";
   }
 
   console.log("  📝 Generated hash:", hash);
 
-  // Update without triggering hashchange if we were listening for it (we aren't yet)
-  // window.location.hash = hash; 
-  // Using history.replaceState to avoid adding to browser history on every update
-  var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "#" + hash;
-  console.log("  🌐 New URL:", newUrl);
+  // Update without triggering hashchange
+  var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+  if (hash) {
+    newUrl += "#" + hash;
+  } else {
+    console.log("  🧹 Hash is empty, clearing URL hash.");
+  }
+
+  console.log("  🌐 Final URL to set:", newUrl);
   window.history.replaceState({ path: newUrl }, '', newUrl);
   console.log("  ✅ URL updated successfully");
 }
@@ -890,15 +974,20 @@ function updateUIElements() {
   }
 
   // NEW: Update GPS OK Button(s) State
-  // Only add/remove the warning-bg class, let CSS handle visibility
+  // We only show the button when we are in user location mode but NOT YET precise.
   var gpsBtnDesktop = document.getElementById('btn-gps-ok');
   var gpsBtnMobile = document.getElementById('btn-gps-ok-mobile');
   [gpsBtnDesktop, gpsBtnMobile].forEach(btn => {
     if (btn) {
       if (IsDisplayingUserLocation && !IsPreciseLocation) {
-        btn.classList.add('warning-bg');
+        // Show button (yellow) if we are in user mode but don't have GPS yet
         btn.classList.add('gps-show');
+        btn.classList.add('warning-bg');
       } else {
+        // Hide if looking at a manual/preset location OR if already precise
+        if (btn.classList.contains('gps-show')) {
+          console.log(`Hiding GPS button. IsDisplayingUserLocation=${IsDisplayingUserLocation}, IsPreciseLocation=${IsPreciseLocation}`);
+        }
         btn.classList.remove('warning-bg');
         btn.classList.remove('gps-show');
       }
@@ -962,11 +1051,11 @@ function updateUIElements() {
     }
   }
 
-  // Update Focus Mode button labels
-  var focusBtn = document.getElementById('btn-zen');
-  var label = IsFocusMode ? "Show All" : "Focus Mode";
+  // Update Zen Mode button labels
+  var zenBtn = document.getElementById('btn-zen');
+  var label = IsZenMode ? "Show Interface" : "Zen";
 
-  if (focusBtn) focusBtn.textContent = label;
+  if (zenBtn) zenBtn.textContent = label;
 }
 
 // --- LOADING STATE HELPER FUNCTIONS ---
@@ -1761,7 +1850,7 @@ function setGmtDisplay()  // Toggling mode button
 // Handler for location errors
 function handleLocationError(error) {
   console.log("GPS location error:", error.message);
-  exitFocusMode(); // Ensure UI is visible to show error details
+  exitZenMode(); // Ensure UI is visible to show error details
 
   // Show user-friendly message based on error type
   var errorMsg = "";
@@ -1803,6 +1892,7 @@ function handleLocationError(error) {
     if (LocaleTitleLocal) {
       LocaleTitle = LocaleTitleLocal;
     }
+    IsPreciseLocation = false; // We are back to IP/approximate location
 
     // Restore timezone
     getTzUsingLatLong(Latitude, Longitude);
@@ -1810,6 +1900,7 @@ function handleLocationError(error) {
     // Recalculate times
     IsSunRiseSetObtained = false;
     updateTimeThisDay();
+    updateUIElements();
 
     // Clear mismatch flag since we are back to IP location
     // (or keep it if we want to warn about VPN still? 
@@ -1824,13 +1915,14 @@ function handleLocationError(error) {
     console.log("No fallback location available. Trying IP location.");
     fetchIpLocation();
     IsPreciseLocation = false;
+    updateUIElements();
   }
 }
 
-// Helper to force exit Focus Mode (e.g. on error)
-function exitFocusMode() {
-  if (IsFocusMode) {
-    toggleFocusMode();
+// Helper to force exit Zen Mode (e.g. on error)
+function exitZenMode() {
+  if (IsZenMode) {
+    toggleZenMode();
   }
 }
 
@@ -1838,7 +1930,7 @@ function exitFocusMode() {
 // Unified handler for network and CORS errors during API calls
 function handleNetworkError(err) {
   console.log("Network/CORS error:", err);
-  exitFocusMode(); // Ensure UI is visible to show error details
+  exitZenMode(); // Ensure UI is visible to show error details
   var errorMsg = "Network error: Could not reach the location service. This may be due to a CORS issue, ad blocker, or network loss.";
 
   // Try to be more specific if possible
@@ -1856,15 +1948,15 @@ function handleNetworkError(err) {
 
 
 //-----------------------------------------------------------------
-// Toggle Focus Mode
-function toggleFocusMode() {
-  IsFocusMode = !IsFocusMode;
+// Toggle Zen Mode
+function toggleZenMode() {
+  IsZenMode = !IsZenMode;
 
-  if (IsFocusMode) {
-    document.body.classList.add('focus-mode');
+  if (IsZenMode) {
+    document.body.classList.add('zen-mode');
     BkColor = 0; // Black
   } else {
-    document.body.classList.remove('focus-mode');
+    document.body.classList.remove('zen-mode');
     BkColor = 34; // Dark Gray (#222)
   }
 
@@ -1874,14 +1966,16 @@ function toggleFocusMode() {
 //-----------------------------------------------------------------
 // Handler for the Use Precise Location button
 // Requests browser GPS coordinates (will show permission prompt)
-function usePreciseLocation() {
-  console.log("Requesting precise GPS location...");
+function usePreciseLocation(isAuto = false) {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] Requesting precise GPS location (isAuto=${isAuto})...`);
+  IsRequestingPrecise = true;
   setLoadingState();
 
   IsDisplayingUserLocation = true; // We are tracking user location
 
   IsTimezoneMismatch = false; // User intentionally requesting location
-  IsUserInitiatedLocation = true; // User clicked button to fetch GPS location
+  IsUserInitiatedLocation = !isAuto; // Trigger URL update only if NOT auto-fetch
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
 
   // Options for getCurrentPosition call below, designed for speed over accuracy.
@@ -1894,7 +1988,12 @@ function usePreciseLocation() {
   navigator.geolocation.getCurrentPosition(
     // Success callback
     function (position) {
-      console.log("GPS location obtained:", position.coords);
+      if (requestId !== LocationFetchSerial) {
+        console.log(`[${requestId}] GPS callback ignored (stale/cancelled).`);
+        return;
+      }
+      IsRequestingPrecise = false;
+      console.log(`[${requestId}] GPS location obtained:`, position.coords);
 
       IsPreciseLocation = true;
 
@@ -1923,13 +2022,15 @@ function usePreciseLocation() {
 
       // Get reverse geocoding info from Nominatim
       let revGeoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${Latitude}&lon=${Longitude}`;
-      console.log("Reverse geocoding URL:", revGeoUrl);
-      loadJSON(revGeoUrl, gotReverseGeocodeData, handleNetworkError);
+      console.log(`[${requestId}] Reverse geocoding URL:`, revGeoUrl);
+      loadJSON(revGeoUrl, (data) => gotReverseGeocodeData(data, requestId), handleNetworkError);
 
-      updateUrlHash();
+      if (IsUserInitiatedLocation) {
+        updateUrlHash();
+      }
 
       // Get timezone using existing GeoNames function
-      getTzUsingLatLong(Latitude, Longitude);
+      getTzUsingLatLong(Latitude, Longitude, requestId);
 
       // Location changed, recalculate sunrise/sunset
       IsSunRiseSetObtained = false;
@@ -1937,7 +2038,11 @@ function usePreciseLocation() {
     },
 
     // Error callback
-    handleLocationError,
+    function (error) {
+      if (requestId !== LocationFetchSerial) return;
+      IsRequestingPrecise = false;
+      handleLocationError(error);
+    },
 
     // Options, see above
     options
@@ -1949,6 +2054,8 @@ function usePreciseLocation() {
 // Set location and timezone to Silverado
 //  
 function setSilverado() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] setSilverado()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
   IsDisplayingUserLocation = false; // Manually selected location
@@ -1993,6 +2100,8 @@ function setSilverado() {
 // Set location and timezone to London England
 //  
 function setLondon() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] setLondon()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
   IsDisplayingUserLocation = false; // Manually selected location
@@ -2004,7 +2113,7 @@ function setLondon() {
   Latitude = 51.507;
   Longitude = -0.127;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude);
+  getTzUsingLatLong(Latitude, Longitude, requestId);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2037,6 +2146,8 @@ function setLondon() {
 // Set location and timezone to Berkeley
 //  
 function setBerkeley() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] setBerkeley()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
   IsDisplayingUserLocation = false; // Manually selected location
@@ -2048,7 +2159,7 @@ function setBerkeley() {
   Latitude = 37.871;
   Longitude = -122.273;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude);
+  getTzUsingLatLong(Latitude, Longitude, requestId);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2081,6 +2192,8 @@ function setBerkeley() {
 // Set location and timezone to Kansas City, MO
 //  
 function setKansasCity() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] setKansasCity()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
   IsDisplayingUserLocation = false; // Manually selected location
@@ -2092,7 +2205,7 @@ function setKansasCity() {
   Latitude = 39.099;
   Longitude = -94.578;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude);
+  getTzUsingLatLong(Latitude, Longitude, requestId);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2125,6 +2238,8 @@ function setKansasCity() {
 // Set location and timezone to Melbourne
 //  
 function setMelbourne() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] setMelbourne()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
   IsDisplayingUserLocation = false; // Manually selected location
@@ -2136,7 +2251,7 @@ function setMelbourne() {
   Latitude = -37.813;
   Longitude = 144.963;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude);
+  getTzUsingLatLong(Latitude, Longitude, requestId);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2167,6 +2282,8 @@ function setMelbourne() {
 // ========================================
 // Set location and timezone to San Diego
 function setSanDiego() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] setSanDiego()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
   IsDisplayingUserLocation = false; // Manually selected location
@@ -2178,7 +2295,7 @@ function setSanDiego() {
   Latitude = 32.715;
   Longitude = -117.161;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude);
+  getTzUsingLatLong(Latitude, Longitude, requestId);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2331,10 +2448,12 @@ function processLongInputEvent() {
 // The entered city name may contain additional fields such as state/province and 
 // country, comma separated.
 function handleCitySubmitUnified() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] handleCitySubmitUnified()`);
   var input = select('#input-city-modal-unified');
   var city = input.value();
   if (city && city.length > 1) {
-    getLocationUsingCityName(city);
+    getLocationUsingCityName(city, requestId);
     closeAllModals();
   } else {
     select('#city-error-msg-unified').html("Please enter a valid city name.");
@@ -2342,6 +2461,8 @@ function handleCitySubmitUnified() {
 }
 
 function handleCoordsSubmitUnified() {
+  const requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] handleCoordsSubmitUnified()`);
   // Use IDs from #modal-coords (shared mobile/desktop manual modal)
   var lat = parseFloat(select('#input-lat-modal').value());
   var lng = parseFloat(select('#input-lng-modal').value());
@@ -2369,8 +2490,8 @@ function handleCoordsSubmitUnified() {
   }
 
   IsPreciseLocation = true; // Manual entry is precise
-  IsUserInitiatedLocation = true;
   IsDisplayingUserLocation = false; // Manually entered location
+  IsUserInitiatedLocation = true;
   IsLoadingLocation = false; // Ensure not loading
   LocaleTitle = "Manual Location";
 
@@ -2424,7 +2545,9 @@ function handleCitySubmit() {
 
 // ==============
 // Alternate way to set location, timezone, and IsDst using passed city name.
-function getLocationUsingCityName(passedCityName) {
+function getLocationUsingCityName(passedCityName, requestId = 0) {
+  if (requestId === 0) requestId = ++LocationFetchSerial;
+  console.log(`[${requestId}] getLocationUsingCityName(${passedCityName})`);
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
   IsUserInitiatedLocation = true; // User entered city name
   IsDisplayingUserLocation = false; // Looking up a specific city
@@ -2487,7 +2610,11 @@ function gotCityLocationDataGeoNames(data)
 
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
-function gotCityLocationDataOpenStMap(data) {
+function gotCityLocationDataOpenStMap(data, requestId) {
+  if (requestId && requestId !== LocationFetchSerial) {
+    console.log(`[${requestId}] gotCityLocationDataOpenStMap: Ignoring stale callback.`);
+    return;
+  }
   //console.log("Entering gotCityLocationDataOpenStMap().");
 
   // Check if the response contains any results
@@ -2553,7 +2680,7 @@ function gotCityLocationDataOpenStMap(data) {
 
       // Make a GET request using Geonames to get timezone details.
       // The gotCityTzData() fcn will run a bit later when the response arrives.
-      loadJSON(timezoneUrl, gotCityTzData, handleNetworkError);
+      loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId), handleNetworkError);
     }
   }
   else {
@@ -2571,7 +2698,12 @@ function gotCityLocationDataOpenStMap(data) {
 // The response to the API call to get the city's time zone offset has arrived.
 // There is a time delay between this and the code above where
 // loadJSON is called.
-function gotCityTzData(data) {
+function gotCityTzData(data, requestId) {
+  if (requestId && requestId !== LocationFetchSerial) {
+    console.log(`[${requestId}] gotCityTzData: Ignoring stale callback.`);
+    // Note: We don't clear loading state here because a newer request is already in progress
+    return;
+  }
   console.log("Entering gotCityTzData().");
 
   // Check if the response contains any results
@@ -2645,10 +2777,10 @@ function gotCityTzData(data) {
     console.log('==tz based on GeoNames data==')
     console.log(`Time Zone Offset: ${timeZoneOffset} hours`);
 
-    // Only update URL for user-initiated location changes, not automatic IP-based locations
-    if (IsUserInitiatedLocation) {
+    // Only update URL for user-initiated location changes, or ALWAYS for precise locations
+    if (IsUserInitiatedLocation || (IsPreciseLocation && Latitude !== 99999)) {
       updateUrlHash();
-      IsUserInitiatedLocation = false; // Reset flag after use
+      // We don't reset flag here anymore to avoid race condition with reverse geocode callback
     }
     clearLoadingState();
   }
@@ -2669,7 +2801,12 @@ function gotCityTzData(data) {
 }
 
 // Helper for reverse geocoding results from Nominatim
-function gotReverseGeocodeData(data) {
+function gotReverseGeocodeData(data, requestId) {
+  if (requestId && requestId !== LocationFetchSerial) {
+    console.log(`[${requestId}] gotReverseGeocodeData: Ignoring stale callback.`);
+    return;
+  }
+
   console.log("Reverse Geocode Data:", data);
   if (data && data.address) {
     let addr = data.address;
@@ -2717,7 +2854,9 @@ function gotReverseGeocodeData(data) {
     }
 
     console.log("Updated LocaleTitle from reverse geocode:", LocaleTitle);
-    updateUrlHash();
+    if (IsUserInitiatedLocation || IsPreciseLocation) {
+      updateUrlHash();
+    }
     updateUIElements();
   }
 }
@@ -2727,8 +2866,8 @@ function gotReverseGeocodeData(data) {
 // a known lat/long
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
-function getTzUsingLatLong(lat, lon) {
-  console.log("Entering getTzUsingLatLong().");
+function getTzUsingLatLong(lat, lon, requestId) {
+  console.log(`[${requestId}] Entering getTzUsingLatLong().`);
   // Check if the response contains any results
   var isError = false;
 
@@ -2773,7 +2912,7 @@ function getTzUsingLatLong(lat, lon) {
     // Make a GET request using Geonames to get timezone details.
     // The gotCityTzData() fcn will run a bit later when the response arrives.
     // It sets the global time zone offset and also sets IsDst.
-    loadJSON(timezoneUrl, gotCityTzData, handleNetworkError);
+    loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId), handleNetworkError);
   }
 
 
