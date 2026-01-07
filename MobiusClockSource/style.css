@@ -1,0 +1,556 @@
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: white;
+            background-color: #808080;
+            /* Medium gray */
+            overflow: hidden;
+            /* Prevent scrollbars */
+            transition: background 0.8s ease;
+            /* Smooth transition for Zen Mode */
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        /* UI Layer - sits above the 3D canvas */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            /* Let clicks pass through to canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Floating Info Elements */
+        .ui-element {
+            pointer-events: auto;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        #bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        #version {
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+
+        .icon-btn {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #888;
+            color: white;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 20px;
+            margin-left: 10px;
+            transition: background 0.3s ease, transform 0.1s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        .icon-btn.active {
+            background: rgba(173, 255, 47, 0.6);
+            border-color: #ADFF2F;
+            color: black;
+        }
+
+        /* Desktop Controls using Grid for L-shape */
+        #controls-desktop {
+            display: grid;
+            grid-template-columns: auto auto auto;
+            grid-template-rows: auto auto;
+            gap: 10px;
+        }
+
+        #rotation-button {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        #fast-mode-button {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        #zen-button {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        #hours-button {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        /* Zen Mode Active State */
+        body.zen-active #top-bar,
+        body.zen-active #bottom-bar .ui-element:first-child,
+        /* Left side of bottom bar */
+        body.zen-active #settings-btn,
+        body.zen-active #fullscreen-btn,
+        body.zen-active #rotation-button,
+        body.zen-active #fast-mode-button,
+        body.zen-active #hours-button,
+        body.zen-active #mobile-hours,
+        body.zen-active #mobile-fast,
+        body.zen-active #mobile-rotate,
+        body.zen-active #mobile-explainer,
+        body.zen-active #mobile-info-overlay {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Ensure Zen button stays visible */
+        body.zen-active #zen-button,
+        body.zen-active #mobile-zen {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #digital-time {
+            position: absolute;
+            top: 20px;
+            right: 120px;
+            /* Moved further left */
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.2em;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #settings-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            font-size: 20px;
+            padding: 8px 12px;
+        }
+
+        #fullscreen-btn {
+            display: none;
+            /* Hidden by default (Desktop/Portrait) */
+        }
+
+        /* Settings Panel (Slide-in) */
+        #settings-panel {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            /* Hidden by default */
+            width: 300px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            /* Ensure above fullscreen button (1001) */
+            transition: right 0.3s ease-in-out;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            pointer-events: auto;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #settings-panel.open {
+            right: 0;
+        }
+
+        #settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        #settings-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 400;
+        }
+
+        #close-settings {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+        }
+
+        .settings-section {
+            margin-bottom: 20px;
+        }
+
+        .settings-section h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        /* Mobile Toolbar (Hidden on Desktop) */
+        #mobile-toolbar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            justify-content: space-around;
+            z-index: 50;
+            pointer-events: auto;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Modal Styles (Existing, slightly tweaked) */
+        #modal-explainer {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+
+        #modal-content {
+            background-color: #333;
+            color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #555;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        #modal-close-button {
+            background-color: #ADFF2F;
+            color: black;
+            font-weight: bold;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #mobile-info-overlay {
+            display: none;
+        }
+
+        /* Portrait Mobile Layout */
+        @media (max-width: 600px) and (orientation: portrait) {
+            #controls-desktop {
+                display: none;
+            }
+
+            #bottom-bar {
+                display: none;
+            }
+
+            #mobile-toolbar {
+                display: block;
+                pointer-events: none;
+                width: 100%;
+                height: 100%;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 50;
+                background: transparent !important;
+                backdrop-filter: none !important;
+            }
+
+            #digital-time {
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                right: 10px;
+                top: 15px;
+                font-size: 1.2em;
+                font-stretch: normal;
+            }
+
+            #settings-btn {
+                top: 50px;
+                right: 10px;
+            }
+
+            #title {
+                font-size: 1.1em;
+                max-width: 60%;
+            }
+
+            .mobile-btn-group {
+                position: absolute;
+                bottom: 20px;
+                display: flex;
+                gap: 5px;
+                pointer-events: auto;
+                padding: 0;
+                margin: 0;
+                /* Centering Fix */
+                left: 50%;
+                transform: translateX(-50%);
+                justify-content: center;
+                width: auto;
+            }
+
+            #mobile-controls-right {
+                flex-direction: row;
+            }
+
+            #mobile-controls-right .icon-btn {
+                width: auto;
+                height: auto;
+                font-size: 14px;
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid #888;
+                border-radius: 20px;
+                padding: 8px 12px;
+                color: white;
+                margin: 0;
+            }
+
+            #fullscreen-btn {
+                display: none;
+            }
+
+            #mobile-info-overlay {
+                display: block;
+                position: fixed;
+                bottom: 50px;
+                left: 0;
+                width: 100%;
+                text-align: center;
+                font-size: 12px;
+                pointer-events: none;
+                z-index: 60;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+                background: #505050;
+                padding: 5px 0;
+            }
+
+            #mobile-info-overlay a {
+                pointer-events: auto;
+            }
+        }
+
+        /* Landscape Mobile Layout */
+        @media (max-height: 600px) and (orientation: landscape) {
+            #controls-desktop {
+                display: none;
+            }
+
+            #bottom-bar {
+                display: none;
+            }
+
+            #mobile-toolbar {
+                display: block;
+                pointer-events: none;
+                width: 100%;
+                height: 100%;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 50;
+                background: transparent !important;
+                backdrop-filter: none !important;
+            }
+
+            #digital-time {
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                position: fixed;
+                top: 15px;
+                right: 120px;
+                font-size: 1.2em;
+            }
+
+            .mobile-btn-group {
+                position: absolute;
+                display: flex;
+                pointer-events: auto;
+            }
+
+            #mobile-controls-right {
+                position: fixed !important;
+                right: 10px !important;
+                bottom: 15px;
+                display: grid;
+                grid-template-columns: auto auto auto;
+                grid-template-rows: auto auto;
+                gap: 10px;
+                flex-direction: row;
+                align-items: center;
+                width: auto;
+                left: auto;
+                transform: none;
+            }
+
+            #mobile-rotate {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            #mobile-fast {
+                grid-column: 2;
+                grid-row: 2;
+            }
+
+            #mobile-zen {
+                grid-column: 3;
+                grid-row: 2;
+            }
+
+            #mobile-hours {
+                grid-column: 3;
+                grid-row: 1;
+            }
+
+            #mobile-controls-right .icon-btn {
+                width: auto;
+                height: auto;
+                font-size: 14px;
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid #888;
+                border-radius: 20px;
+                padding: 8px 12px;
+                color: white;
+                margin-left: 0 !important;
+            }
+
+            #mobile-explainer {
+                position: fixed;
+                left: 10px;
+                bottom: 50px;
+                right: auto;
+                width: auto;
+                margin-left: 0;
+            }
+
+            #fullscreen-btn {
+                display: block;
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                width: auto;
+                left: auto;
+                transform: none;
+                border-radius: 20px;
+                font-size: 14px;
+                padding: 8px 16px;
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid #888;
+                z-index: 1001;
+            }
+
+            #settings-btn {
+                top: 55px;
+                right: 10px;
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid #888;
+                border-radius: 20px;
+                padding: 8px 12px;
+                width: auto;
+            }
+
+            #mobile-info-overlay {
+                display: block;
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                width: auto;
+                text-align: left;
+                font-size: 10px;
+                pointer-events: none;
+                z-index: 60;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+                background: rgba(0, 0, 0, 0.5);
+                padding: 5px 10px;
+                border-radius: 5px;
+                line-height: 1.3;
+            }
+
+            #mobile-info-overlay a {
+                pointer-events: auto;
+            }
+        }
+
+        /* Global Link Styles - Moved to end to ensure precedence */
+        .website-link,
+        .website-link:visited,
+        .website-link:hover,
+        .website-link:active {
+            color: #ADFF2F !important;
+            text-decoration: none;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        .website-link:hover {
+            text-decoration: underline;
+            opacity: 0.8;
+        }

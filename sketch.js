@@ -185,6 +185,14 @@ var BrowserTzOffset;
 // Track if we are showing the user's own location (auto/IP/GPS) vs a remote manual location
 var IsDisplayingUserLocation = true;
 
+// == NEW CONTROLLERS ==
+var timeKeeper;
+var locManager;
+var daySpiralRenderer;
+var mobiusRenderer;
+var activeRenderer;
+
+
 
 // ================================================================
 // Fetch approximate location from IP geolocation API
@@ -359,6 +367,22 @@ function oneTimeInit() {
   var cnv = createCanvas(window.innerWidth, window.innerHeight);
   cnv.parent('canvas-container');
 
+  // == INIT NEW CONTROLLERS ==
+  timeKeeper = new TimeKeeper();
+  locManager = new LocationManager();
+  locManager.init(); // Minimal init
+
+  daySpiralRenderer = new DaySpiralRenderer('canvas-container');
+  mobiusRenderer = new MobiusRenderer('mobius-container');
+
+  daySpiralRenderer.init();
+  mobiusRenderer.init();
+
+  activeRenderer = daySpiralRenderer; // Start with default
+  activeRenderer.activate();
+  activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
+
+
 
   // (Location fetch logic moved to end of function to ensure UI is ready)
 
@@ -441,6 +465,10 @@ function oneTimeInit() {
   // NEW: Location Details Button (opens same details modal)
   var detailsBtn = select('#btn-details-desktop');
   if (detailsBtn) detailsBtn.mousePressed(openDetailsModal);
+
+  // NEW: Clock Mode Button
+  select('#btn-clock-mode').mousePressed(toggleClockMode);
+
 
   // NEW: Unified Modal Bindings
   select('#btn-city-submit-unified').mousePressed(handleCitySubmitUnified);
@@ -885,18 +913,18 @@ function onFullScreenChange(e) {
 function updateUIElements() {
   // Update title based on mode
   var titleEl = document.getElementById('app-title');
-  if (titleEl) {
-    titleEl.textContent = 'Day Spiral Clock'; // Always Day Spiral
-  }
-
-  // Update description based on mode
-  var descText = 'To show night and day you need a 24-hour clock; ' +
-    'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ' +
-    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
-
   var descEl = document.getElementById('app-description');
-  if (descEl) {
-    descEl.textContent = descText;
+
+  if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
+    if (titleEl) titleEl.textContent = 'Mobius Clock';
+    // User requested hiding description for Mobius (it's in the About popup)
+    if (descEl) descEl.textContent = "";
+  } else {
+    if (titleEl) titleEl.textContent = 'Day Spiral Clock';
+    var descText = 'To show night and day you need a 24-hour clock; ' +
+      'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ' +
+      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
+    if (descEl) descEl.textContent = descText;
   }
 
   // About modal text is now static and set in oneTimeInit()
@@ -1435,6 +1463,11 @@ Date.prototype.dst = function () {
 function windowResized() {
   console.log("Resize Detected;")
   resizeCanvas(window.innerWidth, window.innerHeight);
+
+  if (activeRenderer) {
+    activeRenderer.resize(window.innerWidth, window.innerHeight);
+  }
+
   reInit();
   // Ensure fullscreen UI is synced on resize (often triggered by FS toggle)
   onFullScreenChange();
@@ -1661,6 +1694,9 @@ function calcSunRiseSet() {
 // ========================================================
 // Update time-related vars.
 function updateTimeThisDay() {
+  // Sync TimeKeeper
+  if (timeKeeper) timeKeeper.update();
+
 
   IDowPrevious = IDow; // save the previous day of week
 
@@ -2957,9 +2993,15 @@ function getTimeZoneOffset(lat, lon) {
 // The main draw routine that is called continuously
 // ==240122a
 // 
+// =====================================================================================
+// The main draw routine that is called continuously
+// 
 function draw() {
   // Ensure time variables are updated every frame
   updateTimeThisDay();
+
+  // Ensure UI elements (GPS button, descriptions) are updated
+  updateUIElements();
 
   // handle delayed processing of position & gmt offset fields
   if (TzInputTimestampMs > 0 && millis() - TzInputTimestampMs > InputFieldProcessingTimeout) {
@@ -2974,431 +3016,42 @@ function draw() {
     processLongInputEvent();
   }
 
-
-  if (NewLatitude != 99999 || NewLongitude != 99999) {
-    // We are partway through update of location via web service call
-    // caused by the user entering a city name.
-    // The new lat/long have been fetched but we're still waiting 
-    // for the new time zone.
-    // If we draw now, we'll have incorrect draw.
-    return; // bail out
+  // Sync Location Manager (Bridge)
+  if (typeof Latitude !== 'undefined') {
+    locManager.latitude = Latitude;
+    locManager.longitude = Longitude;
+    locManager.tzOffset = TzOffset;
+    // locManager.cityName = LocaleTitle; // Optional
   }
 
-  // Draw the clock background
-  // we redo this below after successfully getting the lat/long
-  background(BkColor);
-
-  fill(100);  // gray
-
-  noStroke();
-  ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
-
-  // NOTE: Title, description, version, and other UI text are now in HTML
-  // Update HTML elements with current data
-  updateUIElements();
-
-  // Draw outer clock face ================
-
-  // draw ellipse to fill entire face, will end up
-  // as background for the hour labels on outside.
-
-  strokeWeight(0)
-  fill(255); // background for the hour labels
-  ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
-
-  fill(120);  // Color of bkgnd behind spiral
-  ellipse(CenterX, CenterY, InnerFaceRadius * 2, InnerFaceRadius * 2);
-
-  // Draw the hour ticks
-  stroke(255)
-  strokeWeight(SpiralStrokeWeightSecondary * 0.8);
-  beginShape(POINTS);
-  for (var b = 0; b < 360; b += 30) {
-    var angle = radians(b);
-    var x = CenterX + cos(angle) * (InnerFaceRadius * 0.977);
-    var y = CenterY + sin(angle) * (InnerFaceRadius * 0.977);
-    vertex(x, y);
-  }
-  endShape();
-
-  noStroke();
-
-
-  // Draw hour labels =====================
-
-  CurrentFontSize = RefFontSize * FontScaleFactor;
-
-  // Specify font to be used
-  textSize(CurrentFontSize * 0.4);
-  textFont("Arial");
-  textAlign(CENTER, CENTER);
-
-  fill(HourDigitColor);   // Specify font color
-
-  textSize(CurrentFontSize * 0.98);
-
-  textStyle(BOLD);
-
-  numString = "12";
-  text(numString, TheWidth / 2, TheHeight / 2 - HourNumbersRadius);
-
-  numString = "1";
-  var xOffset1 = HourNumbersRadius * cos(2 * PI / 6);
-  var yOffset1 = HourNumbersRadius * sin(2 * PI / 6);
-  text(numString, TheWidth / 2 + xOffset1, TheHeight / 2 - yOffset1);
-
-  numString = "2";
-  var xOffset2 = HourNumbersRadius * cos(PI / 6);
-  var yOffset2 = HourNumbersRadius * sin(PI / 6);
-  text(numString, TheWidth / 2 + xOffset2, TheHeight / 2 - yOffset2);
-
-  numString = "3";
-  numHeight = CurrentFontSize;//f.getSize();
-  text(numString, TheWidth / 2 + HourNumbersRadius, TheHeight / 2);
-
-  numString = "4";
-  text(numString, TheWidth / 2 + xOffset2, TheHeight / 2 + yOffset2);
-
-  numString = "5";
-  text(numString, TheWidth / 2 + xOffset1, TheHeight / 2 + yOffset1);
-
-  numString = "6";
-  text(numString, TheWidth / 2, TheHeight / 2 + HourNumbersRadius);
-
-  numString = "7";
-  text(numString, TheWidth / 2 - xOffset1, TheHeight / 2 + yOffset1);
-
-  numString = "8";
-  text(numString, TheWidth / 2 - xOffset2, TheHeight / 2 + yOffset2);
-
-  numString = "9";
-  text(numString, TheWidth / 2 - HourNumbersRadius, TheHeight / 2);
-
-  numString = "10";
-  text(numString, TheWidth / 2 - xOffset2, TheHeight / 2 - yOffset2);
-
-  numString = "11";
-  text(numString, TheWidth / 2 - xOffset1, TheHeight / 2 - yOffset1);
-
-  // restore text style
-  textStyle(NORMAL);
-
-
-  //==========================================
-  // time calcs: sets IHour, IMin, ISec, and IMsSinceDayStart
-  //   <<< beware, IMsSinceDayStart is ms since start of day, not start of last sec!
-  // This also calculates the "DayState" that indicates
-  // if it's (1) before sunrise, (2) during daylight, or (3) after sunset
-  updateTimeThisDay();  // set baseMs to ms since start of this day  
-
-  var thisMillis = IMsSinceDayStart;
-  var msSinceLastDraw = thisMillis - LastMillisec;
-  LastMillisec = thisMillis;
-
-  // calc the current second including the fraction of upcoming second
-  var theSec = float(ISec)// + float(remainderMs)/1000; 
-  var currentSecDegree = theSec * 6;
-
-  var theMin = float(IMin) + theSec / 60;
-  var currentMinDegree = theMin * 6;
-
-  var theHour = float(IHour) + theMin / 60;
-  var currentHourDegree = theHour * 30;
-
-  // Angles for sin() and cos() start at 3 o'clock;
-  // subtract HALF_PI to make them start at the top
-  // These are angles in radians, used for hands
-  var secRads = map(theSec, 0, 60, 0, TWO_PI) - HALF_PI;
-  var minRads = map(theMin, 0, 60, 0, TWO_PI) - HALF_PI;
-
-  var hourRads = map(theHour, 0, 24, 0, TWO_PI * 2) - HALF_PI;
-
-  if (hourRads > TWO_PI) {
-    hourRads -= TWO_PI
-  }
-
-  var iiSpiral = 0;
-
-  // Calc index into radius array for the current time.
-  //  taking into acct that there are two turns per day for each AM/PM.
-  // Always Day Spiral logic
-  iiSpiral = int((theHour / 24) * NumSpiralPointsPerTurn * 2);
-
-  if (iiSpiral < NumSpiralPointsPerTurn * NumSpiralTurns) // if index is valid
-  {
-    HoursRadius = RadiusSpiralArray[iiSpiral];  //wc5
-  }
-  else {
-    print("ERROR: Illegal index into the RadiusSpiralArray=" + str(iiSpiral) + " for IDow=" + str(IDow));
-    print("theHour=" + str(theHour) + " NumSpiralPointsPerTurn=" + str(NumSpiralPointsPerTurn));
-    print("IHour=" + str(IHour));
-    print("NumSpiralTurns=" + str(NumSpiralTurns));
-
-    HoursRadius = ClockDiameter / 4; // fallback in case iiSpiral was not valid
-  }
-
-
-  noStroke();
-
-  // NOTE: Location info (time, date, sunrise/sunset, VPN warning) are now in HTML
-  // The updateUIElements() call above handles updating those elements
-
-  textAlign(LEFT, TOP);
-  stroke(255);
-  strokeCap(SQUARE);
-  noFill();
-
-  // set font size of day-of-week labels
-  var dowLabelSizeDsktp = 0.;
-  var dowLabelSizeMobl = 0.3;
-  var dowLabelSizeDsktpBoost = 0.57;
-  var dowLabelSizeMoblBoost = 0.4;
-  if (IsDesktop) {
-    textSize(RefFontSize * dowLabelSizeDsktp);
-  }
-  else {
-    textSize(RefFontSize * dowLabelSizeMobl);
-  }
-
-  // Draw the spiral ================
-
-  var vv;
-  var vvBase;
-  var vvRise;
-  var secToRise;
-  var vvSet;
-  var secToSet;
-
-  var dw = IDow;
-  var dayColor = color(0x84, 0xd2, 0xf1);
-  var nightColor = color(20, 80, 100);
-  var dayString = getDayStringShort(dw);
-  var nextDayString = getDayStringShort(dw + 1);
-
-  // set weight differently when running on phone.  
-  //   Should be reduced by about half.
-  strokeWeight(SpiralStrokeWeightSecondary);
-
-  // Draw logic for the simple 2-turn case, DaySpiral.  
-
-  // Check if location is available. If not, draw neutral spiral.
-  if (IsLoadingLocation || Latitude == 99999 || Longitude == 99999) {
-    // location is not available, so draw neutral spiral
-    stroke(200); // Neutral light gray
-    noFill();
-
-    strokeWeight(SpiralStrokeWeight);
-    beginShape();
-    for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
-      vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-    }
-    endShape();
-  }
-  else {
-    // Draw the day spiral for the current day.
-    // Use broader stroke for the day spiral, since it's only 2 turns long
-    strokeWeight(SpiralStrokeWeight);
-
-    // ==240125a
-
-
-    dowLabelSizeDsktpBoost = 0.5;
-    dowLabelSizeMoblBoost = 0.4;
-
-    stroke(dayColor);
-    vvBase = 0;
-
-    if (SunriseHour != -1) // if not dark-all-day
-    {
-      // use daytime color, but draw the entire 24hrs for this day.
-      // If it's light all day (midnight sun) then this is all we need.
-      // Otherwise, we'll draw the night-time part over this.
-      beginShape();
-      for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
-        //print("for day=" + dw +" color="+ dayColor);
-        vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-      }
-      endShape();
-
-      if (SunriseHour != -2) // if not all-day-sun
-      {
-        // now draw in the night portion for this day-of-week.
-        stroke(nightColor); // set black color
-
-
-        // first the part from midnight to sunrise ----------------
-        secToRise = SunriseMin * 60 + SunriseHour * 3600;
-
-        // convert seconds to vv offset from start
-        vvRise = int((secToRise / (60 * 60 * 24)) * NumSpiralPointsPerTurn * 2);
-
-        beginShape();
-        for (vv = 0; vv < vvRise; vv++) {
-          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-        }
-        endShape();
-
-        // Next draw the part from sunset to midnight ----
-        // vv at sunset is vvSet, 
-        // vv at midnight is NumSpiralPointsPerTurn
-
-        // seconds from midnight to sunset
-        secToSet = SunsetMin * 60 + SunsetHour * 3600;
-        // convert seconds to vv offset
-        vvSet = int((secToSet / (60 * 60 * 24)) * NumSpiralPointsPerTurn * 2);
-        beginShape();
-
-        // NOTE use of <= below, this ensures that the last vertex hooks up with first.
-        for (vv = vvSet; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
-          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-        }
-
-        endShape();
-      }
-
-    }
-    else // is 24hr night
-    {
-      // use night-time color, but draw the entire 24hrs for this day.
-      stroke(nightColor);
-      console.log("midnight sun")
-
-      beginShape();
-      for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
-        //print("for day=" + dw +" color="+ dayColor);
-        vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
-      }
-      endShape();
-    }
-
-    textStyle(BOLD);
-
-    //------------------------
-    // Show day of week label next to start of spiral
-    // boost text size for emphasis, same for dsktop and mobile
-
-    strokeWeight(0);
-    //fill(color(251, 246, 71));  // yellow
-    fill(color(255, 245, 0));  // yellow
-    let vvEnd = 2 * NumSpiralPointsPerTurn - 1;
-    //textAlign(RIGHT, TOP);
-    textAlign(LEFT, TOP);
-
-    // Supress the day labels when gmt display is on
-    if (!IsGmtShown) {
-      textSize(SpiralFontSize);
-      text(dayString, CenterX + XSpiralArray[vvBase] + 3, CenterY + YSpiralArray[vvBase] - (SpiralFontSize * 0.5));
-
-      textAlign(LEFT, TOP);
-      text(nextDayString, CenterX + XSpiralArray[vvEnd] + 5, CenterY + YSpiralArray[vvEnd] - (SpiralFontSize * 0.5));
-    }
-
-    // If display of GMT is enabled, we show on the spiral
-    if (IsGmtShown) {
-      let gmtHour = 0;
-      let theLocalHour = 0;
-      let gmtHourIndex = 0;
-      let gmtLabelX = 0;
-      let gmtLabelY = 0;
-
-      textAlign(CENTER, CENTER);
-      textSize(SpiralFontSize);
-
-      // FINDME
-
-      for (theLocalHour = 0; theLocalHour < 24; theLocalHour++) // step thru the gmt hours
-      {
-        // calculate the gmt equivalent of theLocalHour
-        gmtHour = theLocalHour - TzOffset;
-        if (gmtHour > 23) {
-          gmtHour = gmtHour - 24;
-        }
-        else if (gmtHour < 0) {
-          gmtHour = gmtHour + 24;
-        }
-
-        // get the location to place the gmtHour from the spiral arrays
-        gmtHourIndex = int((theLocalHour / 24) * NumSpiralPointsPerTurn * 2);
-        gmtLabelX = CenterX + XSpiralArray[gmtHourIndex];
-        gmtLabelY = CenterY + YSpiralArray[gmtHourIndex];
-
-        text(str(gmtHour), gmtLabelX, gmtLabelY);
-
-        if (theLocalHour == 0) {
-          textAlign(RIGHT, CENTER);
-
-          text("GMT", gmtLabelX - 20, gmtLabelY);
-          textAlign(CENTER, CENTER);
-
-          // The gmt label for the start of the day is the same as the end
-          gmtHourIndex = NumSpiralPointsPerTurn * 2;
-          gmtLabelX = CenterX + XSpiralArray[gmtHourIndex];
-          gmtLabelY = CenterY + YSpiralArray[gmtHourIndex];
-
-          text(str(gmtHour), gmtLabelX, gmtLabelY);
-
-
-
-        }
-      }
-
-    }
-
-
-    textAlign(LEFT, TOP); // restore alignment
-
-    // END of spiral draw for day spiral
-  }
-
-  strokeCap(ROUND);
-  fill(0);
-
-
-  // Draw the hands of the clock ===============
-
-  stroke(255);  // set hand color
-
-  // Draw second hand
-  strokeWeight(SpiralStrokeWeightSecondary * 0.35);
-  line(CenterX, CenterY, CenterX + cos(secRads) * SecondsRadius, CenterY + sin(secRads) * SecondsRadius);
-
-  // draw minute hand
-  strokeWeight(SpiralStrokeWeightSecondary * 0.7);
-  line(CenterX, CenterY, CenterX + cos(minRads) * MinutesRadius, CenterY + sin(minRads) * MinutesRadius);
-
-  // draw local hour hand
-  strokeWeight(SpiralStrokeWeightSecondary);
-
-  // Draw hour hand with square cap so it clearly shows where it's tracking on the
-  // spiral.  
-  strokeCap(SQUARE);
-  let adjustedHourRadius = HoursRadius;
-  if (IsGmtShown) {
-    adjustedHourRadius = RadiusSpiralArray[iiSpiral] - ClockDiameter * 0.017;  //wc5
-  }
-
-  line(CenterX, CenterY, CenterX + cos(hourRads) * adjustedHourRadius,
-    CenterY + sin(hourRads) * adjustedHourRadius);
-
-  // Redraw the hour hand at half length to avoid having a square end cap in the center
-  //  of the clock
-  strokeCap(ROUND); // restore round ends    
-  line(CenterX, CenterY, CenterX + cos(hourRads) * HoursRadius / 2, CenterY + sin(hourRads) * HoursRadius / 2);
-
-  // Draw a little circle around the tip of the hour hand to emphasize that it's following
-  //   the spiral
-  noFill();
-  strokeWeight(SpiralStrokeWeightSecondary * 0.5);
-  stroke(255); // white
-
-  ellipse(CenterX + cos(hourRads) * HoursRadius,
-    CenterY + sin(hourRads) * HoursRadius,
-    32 * FontScaleFactor,
-    32 * FontScaleFactor);
-
-  // restore text style
-  textStyle(NORMAL);
+  // Pass calculated sun times to TimeKeeper if we computed them here (legacy flow)
+  // OR rely on TimeKeeper to do it. 
+  // For now, let's inject the legacy calculated sun times into TimeKeeper so Renderers see them
+  // without re-implementing the connection yet.
+  timeKeeper.sunriseTime.totalSeconds = SecondsToSunrise;
+  timeKeeper.sunsetTime.totalSeconds = SecondsToSunset;
+  // This ensures DaySpiralRenderer works with the existing calc logic in sketch.js
+
+  // Update Active Renderer
+  activeRenderer.update(timeKeeper, locManager);
 }
+
+function toggleClockMode() {
+  activeRenderer.deactivate();
+  if (activeRenderer === daySpiralRenderer) {
+    activeRenderer = mobiusRenderer;
+    select('#btn-clock-mode').html("Switch to DaySpiral");
+    if (GmtDisplayButton) GmtDisplayButton.addClass('hidden'); // Hide GMT button for Mobius
+  } else {
+    activeRenderer = daySpiralRenderer;
+    select('#btn-clock-mode').html("Switch to Mobius");
+    if (GmtDisplayButton) GmtDisplayButton.removeClass('hidden'); // Show GMT button for DaySpiral
+  }
+  activeRenderer.activate();
+  activeRenderer.resize(window.innerWidth, window.innerHeight);
+  updateUIElements(); // Ensure title/desc update immediately
+}
+
 
 
 

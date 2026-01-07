@@ -64,6 +64,26 @@ body {
   display: block;
 }
 
+#mobius-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  /* Same as canvas-container, visibility controlled via hidden class */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  /* Let clicks pass through if needed, but THREE.js usually handles them */
+}
+
+#mobius-container canvas {
+  pointer-events: auto;
+  /* Re-enable for canvas */
+}
+
 /* --- UI Overlay Layer --- */
 #ui-layer {
   position: absolute;

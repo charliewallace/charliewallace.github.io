@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- "Mobius Clock" web app, by Charles L Wallace of Carlsbad, CA, USA, (c) 2025
+ This web app displays a 3D Mobius strip adapted to work as a clock face.
+Why a mobius strip? Because it allows a 24-hour clock to be displayed on a 12-hour clock face. This
+is possible due to the nature of a mobius strip.  If you follow one edge of a mobius strip,
+it will take 2 full turns to return to the starting point, thus allowing a 24-hour clock to be displayed on a 12-hour clock face.
+ -->
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ML3R0Z6E6B"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-ML3R0Z6E6B');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobius Clock</title>
+    <link rel="stylesheet" href="style.css?v=0.6.2">
+</head>
+
+<body>
+    <div id="container"></div>
+
+    <!-- Main UI Layer -->
+    <div id="ui-layer">
+        <!-- Top Bar -->
+        <div id="top-bar">
+            <div class="ui-element">
+                <h1 id="title">Mobius Clock</h1>
+                <div id="version">Version 0.6.7</div>
+            </div>
+            <!-- Digital Time (Desktop) top-right for desktop. -->
+            <div class="ui-element" id="digital-time-container">
+                <div id="digital-time">12:00:00 AM</div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar (Desktop) -->
+        <div id="bottom-bar">
+            <div class="ui-element">
+                <button id="explainer-button" class="icon-btn">WHY?</button>
+                <span id="copyright" style="margin-left: 10px;">(C)2025 Charles L. Wallace</span>
+                <span style="margin-left: 10px;">|</span>
+                <a href="https://coolweird.com" target="_blank" class="website-link" style="margin-left: 10px;"
+                    onclick="gtag('event', 'click', { 'event_category': 'outbound', 'event_label': 'coolweird_link', 'transport_type': 'beacon' });">
+                    coolweird.com
+                </a>
+            </div>
+            <div id="controls-desktop" class="ui-element">
+                <button id="rotation-button" class="icon-btn">Rotate</button>
+                <button id="fast-mode-button" class="icon-btn">Fast Mode</button>
+                <button id="zen-button" class="icon-btn">Zen Mode</button>
+                <button id="hours-button" class="icon-btn active">Hide Hours</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Button (Fixed) -->
+    <button id="settings-btn" class="icon-btn">⚙️</button>
+    <button id="fullscreen-btn" class="icon-btn">Fullscreen</button>
+
+    <!-- Settings Panel -->
+    <div id="settings-panel">
+        <div id="settings-header">
+            <h2>Settings</h2>
+            <button id="close-settings">×</button>
+        </div>
+
+        <div class="settings-section">
+            <h3>Indicator Shape</h3>
+            <div class="control-group">
+                <label>Hours:
+                    <select id="shape-hours"
+                        style="margin-left: 10px; padding: 5px; background: #444; color: white; border: 1px solid #666;">
+                        <option value="sphere">Sphere</option>
+                        <option value="disc">Disc</option>
+                        <option value="ring">Ring</option>
+                        <option value="outer-ring" selected>Outer Ring</option>
+                    </select>
+                </label>
+                <label>Minutes:
+                    <select id="shape-minutes"
+                        style="margin-left: 10px; padding: 5px; background: #444; color: white; border: 1px solid #666;">
+                        <option value="sphere">Sphere</option>
+                        <option value="disc">Disc</option>
+                        <option value="ring" selected>Ring</option>
+                    </select>
+                </label>
+                <label>Seconds:
+                    <select id="shape-seconds"
+                        style="margin-left: 10px; padding: 5px; background: #444; color: white; border: 1px solid #666;">
+                        <option value="sphere" selected>Sphere</option>
+                        <option value="disc">Disc</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>Tick Marks</h3>
+            <div class="control-group">
+                <select id="tick-scheme-select"
+                    style="width: 100%; padding: 5px; background: #444; color: white; border: 1px solid #666;">
+                    <option value="standard">Standard (Hour + Min/Sec)</option>
+                    <option value="minimal">Minimal (Hour Only)</option>
+                    <option value="alternating">Alternating Colors</option>
+                    <option value="alternating_ticks">Alternating hours and min</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>Time Style</h3>
+            <div class="control-group">
+                <select id="time-style-select"
+                    style="width: 100%; padding: 5px; background: #444; color: white; border: 1px solid #666;">
+                    <option value="ampm">12-hour (AM/PM)</option>
+                    <option value="24">24-hour</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Toolbar -->
+    <div id="mobile-toolbar">
+        <div id="mobile-controls-right" class="mobile-btn-group">
+            <button id="mobile-hours" class="icon-btn active">Hours</button>
+            <button id="mobile-fast" class="icon-btn">Fast</button>
+            <button id="mobile-rotate" class="icon-btn">Rotate</button>
+            <button id="mobile-explainer" class="icon-btn">Why?</button>
+            <button id="mobile-zen" class="icon-btn">Zen</button>
+        </div>
+    </div>
+
+    <!-- Mobile Info Overlay -->
+    <div id="mobile-info-overlay">
+        (C)2025 Charles L. Wallace<br>
+        <a href="https://coolweird.com" target="_blank" class="website-link"
+            onclick="gtag('event', 'click', { 'event_category': 'outbound', 'event_label': 'coolweird_link', 'transport_type': 'beacon' });">
+            coolweird.com
+        </a>
+    </div>
+
+    <!-- Explainer Modal -->
+    <div id="modal-explainer" style="display: none;">
+        <div id="modal-content">
+            <h2>Why a Mobius Clock?</h2>
+            <p>Reason: to show 24-hour time on a 12-hour clock face. Since the hour indicator moves along the edge
+                of the Mobius strip (try Fast Mode for demo), it must make 2 full turns to return to its starting
+                point, thus showing the 24-hour time: Noon is at the bottom of the upper arch, and midnight is at the
+                top. Turn on the hour labels to see the hours.
+                The minute and second indicators move along the center of the strip, so they complete a cycle in only
+                one turn.</p>
+            <button id="modal-close-button">OK</button>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="script.js?v=0.7.9"></script>
+</body>
+
+</html>

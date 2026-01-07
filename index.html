@@ -36,6 +36,7 @@
 <body>
   <div id="app-container">
     <div id="canvas-container"></div>
+    <div id="mobius-container" class="hidden"></div>
 
     <!-- UI Overlay Layer -->
     <div id="ui-layer">
@@ -94,6 +95,7 @@
       <div id="bottom-right-container" class="ui-corner">
         <div class="button-group-bottom-right">
           <button id="btn-gmt" class="ui-btn">Show GMT</button>
+          <button id="btn-clock-mode" class="ui-btn">Switch to Mobius</button>
           <button id="btn-setup" class="ui-btn desktop-only hidden">Setup</button>
         </div>
       </div>
@@ -238,6 +240,16 @@
 
     </div>
   </div>
+
+  <!-- THREE.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- App Modules -->
+  <script src="js/TimeKeeper.js"></script>
+  <script src="js/LocationManager.js"></script>
+  <script src="js/ClockRenderer.js"></script>
+  <script src="js/renderers/DaySpiralRenderer.js"></script>
+  <script src="js/renderers/MobiusRenderer.js"></script>
 
   <script src="sketch.js"></script>
 </body>
