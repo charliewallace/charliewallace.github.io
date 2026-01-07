@@ -90,21 +90,17 @@ class DaySpiralRenderer extends ClockRenderer {
         // Original ClockDiameter is the white circle
         ellipse(this.centerX, this.centerY, this.clockDiameter, this.clockDiameter);
 
-        // Draw Inner Face (Gray)
-        fill(150); // Medium Gray
+        // Draw Inner Face (Dark Gray)
+        // User feedback: "color within the clock is dark gray in the ref image, but a bit lighter in our current version"
+        fill(100);
         ellipse(this.centerX, this.centerY, this.faceDiameter, this.faceDiameter);
 
-        // Draw Ticks?
-        // Original code had "HourNumbersRadius" and "InnerFaceRadius".
-        // Ticks are likely at one of these.
-        // Draw TIcks - small white dots marking number positions
+        // Draw Ticks - small white dots marking number positions
         fill(255);
         noStroke();
         for (let b = 0; b < 360; b += 30) {
             let angle = radians(b);
             // Place dots at OUTER edge of gray face (visible against gray, near white)
-            // FaceRadius = faceDiameter/2. 
-            // 0.98 factor pushes it close to the white ring
             let dotRadius = (this.faceDiameter / 2) * 0.98;
             let x = this.centerX + cos(angle) * dotRadius;
             let y = this.centerY + sin(angle) * dotRadius;
@@ -112,8 +108,6 @@ class DaySpiralRenderer extends ClockRenderer {
             let dotSize = this.fontSize * 0.25;
             ellipse(x, y, dotSize, dotSize);
         }
-
-        // No endShape needed for separate ellipses
 
         this.drawHourLabels();
         this.drawSpiral(timeKeeper, locManager);
@@ -127,12 +121,10 @@ class DaySpiralRenderer extends ClockRenderer {
     drawHourLabels() {
         noStroke();
         fill(this.hourDigitColor);
-        // Original: textSize(CurrentFontSize). CurrentFontSize approx 40 scaled.
         textSize(this.fontSize);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
 
-        // Use exact radius calculated
         let radius = this.numbersRadius;
 
         // 12 is at -90 deg (top)
@@ -162,10 +154,10 @@ class DaySpiralRenderer extends ClockRenderer {
     drawSpiral(tk, loc) {
         let dayColor = color(0x84, 0xd2, 0xf1);
         let nightColor = color(20, 80, 100);
-        let baseColor = color(90); // Dark Gray for the track (visible on 150bg)
+        let baseColor = color(90); // Dark Gray for the track
 
         strokeWeight(this.spiralStrokeWeight);
-        strokeCap(SQUARE); // FLAT ends as requested
+        strokeCap(SQUARE);
         noFill();
 
         // 1. Draw Base Track (Gray)
@@ -177,7 +169,6 @@ class DaySpiralRenderer extends ClockRenderer {
         endShape();
 
         // Calculate sunset/sunrise indices
-        // If valid location, use calculated times. Else default to 6am/6pm.
         let riseSeconds = 6 * 3600; // 6 AM
         let setSeconds = 18 * 3600; // 6 PM
 
@@ -189,7 +180,6 @@ class DaySpiralRenderer extends ClockRenderer {
         stroke(nightColor);
 
         // Midnight to Sunrise
-        // Indices
         let len = this.xSpiral.length;
         let totalDailyPts = this.numPointsPerTurn * 2;
 
@@ -232,10 +222,9 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawDayLabels(tk) {
-        // Hide DOW labels if GMT is shown (User requirement)
+        // Hide DOW labels if GMT is shown
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) return;
 
-        // Draw day strings at start and end of spiral
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
         let dayNames = ["su", "m", "tu", "w", "th", "f", "sa"];
@@ -250,13 +239,11 @@ class DaySpiralRenderer extends ClockRenderer {
         textAlign(CENTER, CENTER);
 
         // Start of spiral (Outer) - Represents 0:00 Today
-        // Index 0 is Outer in our current loop (r = endRadius)
         let idxStart = 0;
         text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart], this.centerY + this.ySpiral[idxStart]);
 
-        // End of spiral (Inner) - Represents 24:00 Today (Start of Tomorrow)
+        // End of spiral (Inner) - Represents 24:00 Today
         let idxEnd = this.xSpiral.length - 1;
-        // Check distance, if it spirals inside, ensure text doesn't overlap center too much
         text(dayNames[nextDayIdx], this.centerX + this.xSpiral[idxEnd], this.centerY + this.ySpiral[idxEnd]);
     }
 
@@ -282,8 +269,8 @@ class DaySpiralRenderer extends ClockRenderer {
             gmtH = gmtH % 24;
             if (gmtH < 0) gmtH += 24;
 
-            // Don't draw 24/0 duplicate if closely overlapping? 
-            if (h === 24) continue;
+            // Allow drawing h=24 at inner end (User: "last hour on the inner end of the spiral is missing")
+            // if (h === 24) continue; 
 
             let label = str(Math.floor(gmtH));
             let x = this.centerX + this.xSpiral[idx];
@@ -291,8 +278,13 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Special case for start of spiral: Right justify "GMT" to the left
             if (h === 0) {
+                textAlign(CENTER, CENTER);
+                text(label, x, y);
+
+                // Draw "GMT " to the left of the centered number
                 textAlign(RIGHT, CENTER);
-                text("GMT " + label, x, y);
+                let spacing = textWidth(label) / 2 + 2;
+                text("GMT ", x - spacing, y);
             } else {
                 textAlign(CENTER, CENTER);
                 text(label, x, y);
@@ -303,14 +295,11 @@ class DaySpiralRenderer extends ClockRenderer {
     drawHands(tk) {
         push(); // Isolate state
 
-        // Hands: White (User feedback)
+        // Hands: White
         let handColor = color(255);
 
         stroke(handColor);
         strokeCap(ROUND);
-
-        // Ensure hands are visible but not too thick
-        let minStroke = 2; // Reduced from 4
 
         // Angles
         let secAngle = map(tk.seconds + tk.millis / 1000, 0, 60, 0, TWO_PI) - HALF_PI;
@@ -318,17 +307,17 @@ class DaySpiralRenderer extends ClockRenderer {
         let hourAngle = map(tk.hours + tk.minutes / 60, 0, 24, 0, TWO_PI * 2) - HALF_PI;
 
         // Radii
-        // Minute: "too long" (was 0.85) -> 0.75
-        // Second: "too short" (was 0.75) -> 0.80
-        let rSec = this.diameter / 2 * 0.80;
-        let rMin = this.diameter / 2 * 0.75;
+        // Minute: "too long" (was 0.75) -> 0.68
+        // Second: "too short" (was 0.80) -> 0.88
+        let rMin = this.diameter / 2 * 0.68;
+        let rSec = this.diameter / 2 * 0.88;
 
         // Second Hand: "too thick" -> Thinner
-        strokeWeight(Math.max(1.5, this.secondaryStrokeWeight * 0.5));
+        strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
         line(this.centerX, this.centerY, this.centerX + cos(secAngle) * rSec, this.centerY + sin(secAngle) * rSec);
 
         // Minute Hand: "too thick" -> Thinner
-        strokeWeight(Math.max(2.5, this.secondaryStrokeWeight * 1.0));
+        strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
         line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
 
         // Hour Hand
@@ -341,27 +330,27 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let rHour = this.radiusSpiral[idx];
 
-        // Hour Hand: "Reference is thinner than what you are using currently"
-        // Previous used 1.5 multiplier. Let's reduce to 0.8.
-        let hWeight = Math.max(4, this.secondaryStrokeWeight * 0.8);
+        // Hour Hand: "increase it's width by 50%"
+        // Previous was 0.8. New is 1.2.
+        let hWeight = Math.max(6, this.secondaryStrokeWeight * 1.2);
 
-        stroke(255); // White hour hand
+        stroke(255);
         strokeWeight(hWeight);
         strokeCap(SQUARE);
         line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour);
 
         // Tip Circle
-        // "Circle at end ... too large and too thin"
-        // Thicker stroke, smaller diameter
+        // "increase the radius of the tip circle by 50%, and double the line weight"
+        // Previous tipDiam = hWeight * 1.3. New is 1.95.
+        // Previous strokeWeight = hWeight * 0.3. New is 0.6.
         noFill();
         stroke(255);
-        strokeWeight(Math.max(2, hWeight * 0.3));
+        strokeWeight(Math.max(4, hWeight * 0.6));
 
-        let tipDiam = hWeight * 1.3; // Significantly smaller (was 2.0)
+        let tipDiam = hWeight * 1.95;
         ellipse(this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour, tipDiam, tipDiam);
 
         // Center Circle
-        // Matches HWeight
         fill(255);
         noStroke();
         ellipse(this.centerX, this.centerY, hWeight * 1.1, hWeight * 1.1);
@@ -374,19 +363,11 @@ class DaySpiralRenderer extends ClockRenderer {
         this.ySpiral = [];
         this.radiusSpiral = [];
 
-        // Note: loop goes from 0 to <= totalPoints to match original
         let totalPoints = this.numPointsPerTurn * this.numTurns;
-
-        // Original logic: radius = endRadius - delta * (ii/totalPerTurn)
-        // copy loop structure to be safe.
-
         let deltaRadiusPerTurn = (endRadius - startRadius) / this.numTurns;
 
         for (let i = 0; i <= totalPoints; i++) {
-            // Original: var iiRadians = TWO_PI * (ii / NumSpiralPointsPerTurn) - HALF_PI;
             let theta = TWO_PI * (i / this.numPointsPerTurn) - HALF_PI;
-
-            // Original: var radius = endRadius - deltaRadiusPerTurn * (ii / NumSpiralPointsPerTurn);
             let r = endRadius - deltaRadiusPerTurn * (i / this.numPointsPerTurn);
 
             this.xSpiral.push(r * cos(theta));
