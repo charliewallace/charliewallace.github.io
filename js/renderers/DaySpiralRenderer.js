@@ -301,18 +301,16 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawHands(tk) {
+        push(); // Isolate state
 
-
-        push(); // Isolate state to prevent external noStroke() affecting us
-
-        // Hands: Use BLACK or Very Dark Gray for max visibility
-        let handColor = color(0); // Pure Black
+        // Hands: White (User feedback)
+        let handColor = color(255);
 
         stroke(handColor);
         strokeCap(ROUND);
 
-        // Ensure hands are thick enough to see
-        let minStroke = 4;
+        // Ensure hands are visible but not too thick
+        let minStroke = 2; // Reduced from 4
 
         // Angles
         let secAngle = map(tk.seconds + tk.millis / 1000, 0, 60, 0, TWO_PI) - HALF_PI;
@@ -320,15 +318,17 @@ class DaySpiralRenderer extends ClockRenderer {
         let hourAngle = map(tk.hours + tk.minutes / 60, 0, 24, 0, TWO_PI * 2) - HALF_PI;
 
         // Radii
-        let rSec = this.diameter / 2 * 0.75;
-        let rMin = this.diameter / 2 * 0.85;
+        // Minute: "too long" (was 0.85) -> 0.75
+        // Second: "too short" (was 0.75) -> 0.80
+        let rSec = this.diameter / 2 * 0.80;
+        let rMin = this.diameter / 2 * 0.75;
 
-        // Second Hand
-        strokeWeight(Math.max(minStroke, this.secondaryStrokeWeight * 0.8));
+        // Second Hand: "too thick" -> Thinner
+        strokeWeight(Math.max(1.5, this.secondaryStrokeWeight * 0.5));
         line(this.centerX, this.centerY, this.centerX + cos(secAngle) * rSec, this.centerY + sin(secAngle) * rSec);
 
-        // Minute Hand
-        strokeWeight(Math.max(minStroke + 2, this.secondaryStrokeWeight * 1.5));
+        // Minute Hand: "too thick" -> Thinner
+        strokeWeight(Math.max(2.5, this.secondaryStrokeWeight * 1.0));
         line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
 
         // Hour Hand
@@ -341,10 +341,9 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let rHour = this.radiusSpiral[idx];
 
-        // Use THICKER width due to user feedback "reference is twice as thick"
-        // Previous target was just HWeight. I previously used 0.6.
-        // Let's use 1.25 as a solid visible thickness.
-        let hWeight = Math.max(6, this.secondaryStrokeWeight * 1.5);
+        // Hour Hand: "Reference is thinner than what you are using currently"
+        // Previous used 1.5 multiplier. Let's reduce to 0.8.
+        let hWeight = Math.max(4, this.secondaryStrokeWeight * 0.8);
 
         stroke(255); // White hour hand
         strokeWeight(hWeight);
@@ -352,21 +351,20 @@ class DaySpiralRenderer extends ClockRenderer {
         line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour);
 
         // Tip Circle
-        // "Circle at end ... should be twice as large" [as hWeight?]
-        // I will interpret "twice as large" as diameter = 2 * hWeight.
+        // "Circle at end ... too large and too thin"
+        // Thicker stroke, smaller diameter
         noFill();
         stroke(255);
-        strokeWeight(Math.max(2, hWeight * 0.15));
+        strokeWeight(Math.max(2, hWeight * 0.3));
 
-        let tipDiam = hWeight * 2.0;
+        let tipDiam = hWeight * 1.3; // Significantly smaller (was 2.0)
         ellipse(this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour, tipDiam, tipDiam);
 
         // Center Circle
-        // White filled, black/no outline.
-        // "Diameter matches width but is a bit larger" -> 1.2 * hWeight?
+        // Matches HWeight
         fill(255);
         noStroke();
-        ellipse(this.centerX, this.centerY, hWeight * 1.2, hWeight * 1.2);
+        ellipse(this.centerX, this.centerY, hWeight * 1.1, hWeight * 1.1);
 
         pop();
     }
