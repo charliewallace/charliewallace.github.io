@@ -221,11 +221,29 @@ body {
   display: block;
 }
 
-.button-stack {
+.button-group-bottom-right {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
   align-items: flex-end;
+}
+
+/* Renderer-specific groups */
+.controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.controls-group.hidden {
+  display: none !important;
+}
+
+.gear-btn {
+  font-size: 1.4rem !important;
+  padding: 8px 12px !important;
+  min-width: 50px !important;
 }
 
 #precise-hint {

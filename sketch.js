@@ -65,7 +65,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.3.9 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.4.0 ©2026 Charlie Wallace";
 
 console.log("📦 Day Spiral Clock loaded");
 var WebsiteLink;
@@ -466,8 +466,72 @@ function oneTimeInit() {
   var detailsBtn = select('#btn-details-desktop');
   if (detailsBtn) detailsBtn.mousePressed(openDetailsModal);
 
-  // NEW: Clock Mode Button
+  // Renderer Switching logic
   select('#btn-clock-mode').mousePressed(toggleClockMode);
+
+  // --- MOBIUS SPECIFIC CONTROLS ---
+  var btnRotate = select('#btn-rotate');
+  if (btnRotate) btnRotate.mousePressed(() => {
+    if (mobiusRenderer.active) {
+      mobiusRenderer.rotationEnabled = !mobiusRenderer.rotationEnabled;
+      if (mobiusRenderer.rotationEnabled) btnRotate.addClass('toggled-on');
+      else btnRotate.removeClass('toggled-on');
+    }
+  });
+
+  var btnDemo = select('#btn-demo');
+  if (btnDemo) btnDemo.mousePressed(() => {
+    if (mobiusRenderer.active) {
+      mobiusRenderer.fastMode = !mobiusRenderer.fastMode;
+      if (mobiusRenderer.fastMode) btnDemo.addClass('toggled-on');
+      else btnDemo.removeClass('toggled-on');
+    }
+  });
+
+  var btnHideHours = select('#btn-hide-hours');
+  if (btnHideHours) btnHideHours.mousePressed(() => {
+    if (mobiusRenderer.active) {
+      const isVisible = mobiusRenderer.toggleHourNumbers();
+      if (!isVisible) {
+        btnHideHours.addClass('toggled-on');
+        btnHideHours.html("Show Hours");
+      } else {
+        btnHideHours.removeClass('toggled-on');
+        btnHideHours.html("Hide Hours");
+      }
+    }
+  });
+
+  var btnSetupMobius = select('#btn-setup-mobius');
+  if (btnSetupMobius) btnSetupMobius.mousePressed(() => {
+    openModal('modal-setup-mobius');
+  });
+
+  // Setup Modal Change Listeners
+  var selHours = select('#select-shape-hours');
+  if (selHours) selHours.changed(() => {
+    mobiusRenderer.setIndicatorShape('hours', selHours.value());
+  });
+
+  var selMinutes = select('#select-shape-minutes');
+  if (selMinutes) selMinutes.changed(() => {
+    mobiusRenderer.setIndicatorShape('minutes', selMinutes.value());
+  });
+
+  var selSeconds = select('#select-shape-seconds');
+  if (selSeconds) selSeconds.changed(() => {
+    mobiusRenderer.setIndicatorShape('seconds', selSeconds.value());
+  });
+
+  var selTicks = select('#select-tick-scheme');
+  if (selTicks) selTicks.changed(() => {
+    mobiusRenderer.setTickScheme(selTicks.value());
+  });
+
+  var selStyle = select('#select-time-style');
+  if (selStyle) selStyle.changed(() => {
+    mobiusRenderer.setTimeStyle(selStyle.value());
+  });
 
 
   // NEW: Unified Modal Bindings
@@ -3038,15 +3102,24 @@ function draw() {
 
 function toggleClockMode() {
   activeRenderer.deactivate();
+
   if (activeRenderer === daySpiralRenderer) {
     activeRenderer = mobiusRenderer;
     select('#btn-clock-mode').html("Switch to DaySpiral");
-    if (GmtDisplayButton) GmtDisplayButton.addClass('hidden'); // Hide GMT button for Mobius
+
+    // Switch Control Groups
+    select('#controls-dayspiral').addClass('hidden');
+    select('#controls-mobius').removeClass('hidden');
+
   } else {
     activeRenderer = daySpiralRenderer;
     select('#btn-clock-mode').html("Switch to Mobius");
-    if (GmtDisplayButton) GmtDisplayButton.removeClass('hidden'); // Show GMT button for DaySpiral
+
+    // Switch Control Groups
+    select('#controls-mobius').addClass('hidden');
+    select('#controls-dayspiral').removeClass('hidden');
   }
+
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight);
   updateUIElements(); // Ensure title/desc update immediately

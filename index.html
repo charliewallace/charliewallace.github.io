@@ -88,15 +88,27 @@
         <div class="button-group-bottom">
           <button id="btn-fullscreen" class="ui-btn">Full Screen</button>
           <button id="btn-zen" class="ui-btn">Zen</button>
+          <button id="btn-clock-mode" class="ui-btn">Switch to Mobius</button>
         </div>
       </div>
 
       <!-- Bottom Right: Settings & Footer -->
       <div id="bottom-right-container" class="ui-corner">
         <div class="button-group-bottom-right">
-          <button id="btn-gmt" class="ui-btn">Show GMT</button>
-          <button id="btn-clock-mode" class="ui-btn">Switch to Mobius</button>
-          <button id="btn-setup" class="ui-btn desktop-only hidden">Setup</button>
+
+          <!-- DaySpiral Specific Controls -->
+          <div id="controls-dayspiral" class="controls-group">
+            <button id="btn-gmt" class="ui-btn">Show GMT</button>
+          </div>
+
+          <!-- Mobius Specific Controls (Hidden by default) -->
+          <div id="controls-mobius" class="controls-group hidden">
+            <button id="btn-rotate" class="ui-btn">Rotate</button>
+            <button id="btn-demo" class="ui-btn">Demo</button>
+            <button id="btn-hide-hours" class="ui-btn">Hide Hours</button>
+            <button id="btn-setup-mobius" class="ui-btn gear-btn" title="Mobius Settings">⚙️</button>
+          </div>
+
         </div>
       </div>
 
@@ -235,6 +247,67 @@
         </div>
         <div class="modal-actions">
           <button class="ui-btn btn-close-modal">Close</button>
+        </div>
+      </div>
+
+      <!-- Mobius Setup Modal -->
+      <div id="modal-setup-mobius" class="modal-content hidden">
+        <h2>Mobius Settings</h2>
+        <div class="modal-body">
+
+          <div class="settings-section">
+            <h3>Indicator Shapes</h3>
+            <div class="form-row">
+              <label>Hours:</label>
+              <select id="select-shape-hours" class="modal-input">
+                <option value="sphere">Sphere</option>
+                <option value="disc">Disc</option>
+                <option value="ring">Ring</option>
+                <option value="outer-ring" selected>Outer Ring</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Minutes:</label>
+              <select id="select-shape-minutes" class="modal-input">
+                <option value="sphere">Sphere</option>
+                <option value="disc">Disc</option>
+                <option value="ring" selected>Ring</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Seconds:</label>
+              <select id="select-shape-seconds" class="modal-input">
+                <option value="sphere" selected>Sphere</option>
+                <option value="disc">Disc</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="separator">
+
+          <div class="settings-section">
+            <h3>Tick Marks</h3>
+            <select id="select-tick-scheme" class="modal-input">
+              <option value="standard" selected>Standard (Hour + Min/Sec)</option>
+              <option value="minimal">Minimal (Hour Only)</option>
+              <option value="alternating">Alternating Colors</option>
+              <option value="alternating_ticks">Alternating Hour/Min</option>
+            </select>
+          </div>
+
+          <hr class="separator">
+
+          <div class="settings-section">
+            <h3>Time Style</h3>
+            <select id="select-time-style" class="modal-input">
+              <option value="ampm" selected>12-hour (AM/PM)</option>
+              <option value="24">24-hour</option>
+            </select>
+          </div>
+
+        </div>
+        <div class="modal-actions">
+          <button class="ui-btn btn-close-modal">OK</button>
         </div>
       </div>
 
