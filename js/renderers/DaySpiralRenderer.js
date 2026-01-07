@@ -20,7 +20,7 @@ class DaySpiralRenderer extends ClockRenderer {
         this.fontSize = 12;
         this.fontScale = 1;
 
-        this.bkColor = 34; // #222
+        this.bkColor = 57; // #393939 (Middle ground between #222 and #505050)
         this.hourDigitColor = [25, 25, 25];
 
         // Spiral Data
@@ -91,7 +91,6 @@ class DaySpiralRenderer extends ClockRenderer {
         ellipse(this.centerX, this.centerY, this.clockDiameter, this.clockDiameter);
 
         // Draw Inner Face (Dark Gray)
-        // User feedback: "color within the clock is dark gray in the ref image, but a bit lighter in our current version"
         fill(100);
         ellipse(this.centerX, this.centerY, this.faceDiameter, this.faceDiameter);
 
@@ -269,9 +268,6 @@ class DaySpiralRenderer extends ClockRenderer {
             gmtH = gmtH % 24;
             if (gmtH < 0) gmtH += 24;
 
-            // Allow drawing h=24 at inner end (User: "last hour on the inner end of the spiral is missing")
-            // if (h === 24) continue; 
-
             let label = str(Math.floor(gmtH));
             let x = this.centerX + this.xSpiral[idx];
             let y = this.centerY + this.ySpiral[idx];
@@ -302,21 +298,27 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeCap(ROUND);
 
         // Angles
-        let secAngle = map(tk.seconds + tk.millis / 1000, 0, 60, 0, TWO_PI) - HALF_PI;
+        // Discrete second movement as requested ("moves the second hand once per second")
+        let secAngle = map(Math.floor(tk.seconds), 0, 60, 0, TWO_PI) - HALF_PI;
         let minAngle = map(tk.minutes + tk.seconds / 60, 0, 60, 0, TWO_PI) - HALF_PI;
         let hourAngle = map(tk.hours + tk.minutes / 60, 0, 24, 0, TWO_PI * 2) - HALF_PI;
 
         // Radii
-        // Minute: "too long" (was 0.75) -> 0.68
-        // Second: "too short" (was 0.80) -> 0.88
-        let rMin = this.diameter / 2 * 0.68;
-        let rSec = this.diameter / 2 * 0.88;
+        // "Second hand should be just a bit shorter than the radius of the main gray clock circle"
+        // faceRadius = faceDiameter / 2.
+        let faceRadius = this.faceDiameter / 2;
+        let rSec = faceRadius * 0.96;
 
-        // Second Hand: "too thick" -> Thinner
+        // "Minute hand should be lengthened by about 15%, keeping it about 10% shorter than the second hand"
+        // If rSec is ~0.74 radius, previous rMin was ~0.61. 
+        // Let's use 0.9 * rSec.
+        let rMin = rSec * 0.90;
+
+        // Second Hand: Thinner
         strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
         line(this.centerX, this.centerY, this.centerX + cos(secAngle) * rSec, this.centerY + sin(secAngle) * rSec);
 
-        // Minute Hand: "too thick" -> Thinner
+        // Minute Hand: Thinner
         strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
         line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
 
@@ -330,24 +332,27 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let rHour = this.radiusSpiral[idx];
 
-        // Hour Hand: "increase it's width by 50%"
-        // Previous was 0.8. New is 1.2.
         let hWeight = Math.max(6, this.secondaryStrokeWeight * 1.2);
 
         stroke(255);
         strokeWeight(hWeight);
         strokeCap(SQUARE);
-        line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour);
+
+        // User: "hour hand doesn't protrude into the center of the tip circle... subtle shortening"
+        // Stop at the edge of the tip circle
+        let tipDiam = hWeight * 1.66;
+        let rHourStop = rHour - tipDiam / 2;
+        line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * rHourStop, this.centerY + sin(hourAngle) * rHourStop);
 
         // Tip Circle
-        // "increase the radius of the tip circle by 50%, and double the line weight"
-        // Previous tipDiam = hWeight * 1.3. New is 1.95.
-        // Previous strokeWeight = hWeight * 0.3. New is 0.6.
+        // User: "radius too large, reduce by 15%, and reduce line weight by 15%"
+        // Previous diam factor 1.95 * 0.85 = 1.6575
+        // Previous weight factor 0.6 * 0.85 = 0.51
         noFill();
         stroke(255);
-        strokeWeight(Math.max(4, hWeight * 0.6));
+        strokeWeight(Math.max(3, hWeight * 0.51));
 
-        let tipDiam = hWeight * 1.95;
+        // tipDiam already calculated above
         ellipse(this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour, tipDiam, tipDiam);
 
         // Center Circle

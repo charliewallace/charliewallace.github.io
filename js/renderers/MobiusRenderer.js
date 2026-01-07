@@ -66,7 +66,7 @@ class MobiusRenderer extends ClockRenderer {
 
         // Scene Setup
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x505050); // Medium gray
+        this.scene.background = new THREE.Color(0x393939); // Unified middle-ground gray
 
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.z = 7;
