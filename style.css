@@ -228,6 +228,13 @@ body {
   align-items: flex-end;
 }
 
+.button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
 /* Renderer-specific groups */
 .controls-group {
   display: flex;
