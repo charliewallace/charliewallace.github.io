@@ -126,6 +126,83 @@ body {
   left: 12px;
   max-width: 280px;
   align-items: flex-start;
+  gap: 8px;
+}
+
+/* --- Clock Selector (Bottom Left) --- */
+#clock-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+  background: rgba(40, 40, 40, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 6px 8px;
+  width: fit-content;
+  min-width: auto;
+}
+
+.selector-title {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+
+.selector-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: auto;
+  align-items: flex-start;
+}
+
+.selector-opt {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  text-align: left;
+  display: block;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.selector-opt:hover {
+  background: var(--btn-bg-hover);
+}
+
+.selector-opt.active {
+  color: var(--warning-color);
+  font-weight: bold;
+  background: transparent !important;
+  border-color: transparent !important;
+  cursor: default;
+  pointer-events: none;
+  font-size: 0.85rem;
+  padding: 4px 0;
+}
+
+.button-row-bottom-left {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.horizontal-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  pointer-events: auto;
 }
 
 #app-title {
@@ -224,7 +301,8 @@ body {
 .button-group-bottom-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  /* Reduced from 12px */
   align-items: flex-end;
 }
 
@@ -239,7 +317,8 @@ body {
 .controls-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  /* Reduced from 12px */
   align-items: flex-end;
 }
 
@@ -248,9 +327,16 @@ body {
 }
 
 .gear-btn {
-  font-size: 1.4rem !important;
-  padding: 8px 12px !important;
-  min-width: 50px !important;
+  font-size: 1.2rem !important;
+  /* Slightly smaller icon */
+  padding: 0 !important;
+  /* Remove offset padding */
+  min-width: 44px !important;
+  height: 34px;
+  /* Matches standard desktop ui-btn height (~34px) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #precise-hint {
@@ -689,6 +775,11 @@ screen and (max-height: 600px) {
     display: block;
   }
 
+  .ui-corner {
+    gap: 4px;
+    /* Reduced from 6px/8px */
+  }
+
   /* Hide description on mobile (shown in About modal instead) */
   #app-description {
     display: none;
@@ -721,7 +812,8 @@ screen and (max-height: 600px) {
   .button-group-bottom,
   .button-group-bottom-right {
     display: flex !important;
-    gap: 8px;
+    gap: 6px;
+    /* Reduced from 8px */
   }
 
   .button-group-bottom {
@@ -739,9 +831,24 @@ screen and (max-height: 600px) {
   }
 
   .ui-btn {
-    font-size: 0.9rem;
-    padding: 7px 11px;
+    font-size: 0.85rem;
+    padding: 5px 9px;
     color: #fff;
+    /* Removed fixed height to allow flexible scaling, but ensured padding is tight */
+  }
+
+  .gear-btn {
+    font-size: 1.1rem !important;
+    padding: 0 !important;
+    min-width: 38px !important;
+    /* Slightly wider for touch */
+    height: 32px;
+    width: 38px;
+  }
+
+  #btn-zen {
+    min-width: 50px;
+    /* Narrower for Zen */
   }
 
   /* Specific Tweaks - INCREASED SIZE */
@@ -1063,10 +1170,11 @@ body.zen-mode #btn-fullscreen {
   transition: opacity 0.5s ease;
 }
 
-/* Hide Bottom Left content (if any other children exist) */
-body.zen-mode #bottom-left-container>*:not(.button-group-bottom) {
+/* Hide Clock Mode selector in Zen Mode */
+body.zen-mode #clock-selector {
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.5s ease;
 }
 
 /* For mobile specific handling */

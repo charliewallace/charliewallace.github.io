@@ -467,7 +467,8 @@ function oneTimeInit() {
   if (detailsBtn) detailsBtn.mousePressed(openDetailsModal);
 
   // Renderer Switching logic
-  select('#btn-clock-mode').mousePressed(toggleClockMode);
+  select('#opt-dayspiral').mousePressed(() => setClockMode('dayspiral'));
+  select('#opt-mobius').mousePressed(() => setClockMode('mobius'));
 
   // --- MOBIUS SPECIFIC CONTROLS ---
   var btnRotate = select('#btn-rotate');
@@ -1148,6 +1149,17 @@ function updateUIElements() {
   var label = IsZenMode ? "Show Interface" : "Zen";
 
   if (zenBtn) zenBtn.textContent = label;
+
+  // Update Clock Selector Highlighting
+  var optSpiral = select('#opt-dayspiral');
+  var optMobius = select('#opt-mobius');
+  if (activeRenderer === daySpiralRenderer) {
+    if (optSpiral) optSpiral.addClass('active');
+    if (optMobius) optMobius.removeClass('active');
+  } else {
+    if (optSpiral) optSpiral.removeClass('active');
+    if (optMobius) optMobius.addClass('active');
+  }
 }
 
 // --- LOADING STATE HELPER FUNCTIONS ---
@@ -3100,21 +3112,21 @@ function draw() {
   activeRenderer.update(timeKeeper, locManager);
 }
 
-function toggleClockMode() {
+function setClockMode(mode) {
+  if ((mode === 'dayspiral' && activeRenderer === daySpiralRenderer) ||
+    (mode === 'mobius' && activeRenderer === mobiusRenderer)) {
+    return; // Already in this mode
+  }
+
   activeRenderer.deactivate();
 
-  if (activeRenderer === daySpiralRenderer) {
+  if (mode === 'mobius') {
     activeRenderer = mobiusRenderer;
-    select('#btn-clock-mode').html("Switch to DaySpiral");
-
     // Switch Control Groups
     select('#controls-dayspiral').addClass('hidden');
     select('#controls-mobius').removeClass('hidden');
-
   } else {
     activeRenderer = daySpiralRenderer;
-    select('#btn-clock-mode').html("Switch to Mobius");
-
     // Switch Control Groups
     select('#controls-mobius').addClass('hidden');
     select('#controls-dayspiral').removeClass('hidden');
@@ -3123,6 +3135,14 @@ function toggleClockMode() {
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight);
   updateUIElements(); // Ensure title/desc update immediately
+}
+
+function toggleClockMode() {
+  if (activeRenderer === daySpiralRenderer) {
+    setClockMode('mobius');
+  } else {
+    setClockMode('dayspiral');
+  }
 }
 
 

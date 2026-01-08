@@ -85,10 +85,16 @@
 
       <!-- Bottom Left: View Controls -->
       <div id="bottom-left-container" class="ui-corner">
-        <div class="button-group-bottom">
-          <button id="btn-fullscreen" class="ui-btn">Full Screen</button>
+        <div id="clock-selector">
+          <div class="selector-title">Select Clock</div>
+          <div class="selector-options">
+            <span id="opt-dayspiral" class="selector-opt active">DaySpiral</span>
+            <span id="opt-mobius" class="selector-opt">Mobius</span>
+          </div>
+        </div>
+        <div class="button-row-bottom-left">
           <button id="btn-zen" class="ui-btn">Zen</button>
-          <button id="btn-clock-mode" class="ui-btn">Switch to Mobius</button>
+          <button id="btn-fullscreen" class="ui-btn">Full Screen</button>
         </div>
       </div>
 
@@ -104,9 +110,11 @@
           <!-- Mobius Specific Controls (Hidden by default) -->
           <div id="controls-mobius" class="controls-group hidden">
             <button id="btn-rotate" class="ui-btn">Rotate</button>
-            <button id="btn-demo" class="ui-btn">Demo</button>
             <button id="btn-hide-hours" class="ui-btn">Hide Hours</button>
-            <button id="btn-setup-mobius" class="ui-btn gear-btn" title="Mobius Settings">⚙️</button>
+            <div class="horizontal-row">
+              <button id="btn-demo" class="ui-btn">Demo</button>
+              <button id="btn-setup-mobius" class="ui-btn gear-btn" title="Mobius Settings">⚙️</button>
+            </div>
           </div>
 
         </div>
