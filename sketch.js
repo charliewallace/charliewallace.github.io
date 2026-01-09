@@ -1,5 +1,7 @@
 /** ===========================================================
- * Day Spiral Clock V2: Sunrise & Sunset shown on 12-hr clock face.
+ * Coolweird Clocks: A container for multiple clock types.
+ * 
+ * DaySpiral: Sunrise & Sunset shown on 12-hr clock face.
  * This clock shows the current 24-hour day as a spiral, with 2 turns because
  * of AM and PM on the 12-hour clock face.  
  *
@@ -9,10 +11,15 @@
  * That call requires a free account; if you clone this project, please
  * create your own login and revise the url.  However no API key is needed.
  *
+ * MobiusClock: A 12-hour clock face showing the current time using a Mobius strip, with the
+ * hour indicator moving along the edge of the strip, so it requires 2 turns to 
+ * complete a full day. The minute and second indicators move along the center
+ * of the strip. 
+ *   
  * By Charlie Wallace coolweird.net
  * 
 
-TODO Fixes  Bugs -----------------------
+TODO Fix Bugs -----------------------
   * Replace lots of bare numeric color values with variables centrally set, used in fill()
   *   and stroke() calls.  Similar needed for other bare constants like podition offsets.
   * Fix to recalc the IsDst state on new day
@@ -30,21 +37,16 @@ Future Enhancement Ideas ------------
   *  Will set ClockMode to indicate type.
   * Idea: add mode where the current time is always in the middle of the spiral, so
   *  both past and future are equally shown
-  * Idea: add today+tomorrow mode showing 2 days, or 4 turns of the spiral
   * Idea: an option to show a diff location's time in the spiral (like GMT) while  
   *  the hands show the local time. So both are viewable in one display
   *  ALT: add a second hour hand for the non-local time.
   * Consider using GeoNames for both location and timezone, thus eliminating
   *  need for nominatim.openstreetmap.org call; or could use it as fallback
-  * Add Save Location button, makes cookie (?)
   * Implement 24 hour mode
  
 ==== IMPL / FEATURE NOTES  =====
 * The logic depends on the GMT offset that it fetches to be auto-adjusted 
    for daylight savings time. This appears to be the case.
-* ATTN, on first launch, browser will ask user for permission to get the location in
-   order to fetch the lat/long needed for sunrise/sunset calcs. I added a message
-   assuring user that it's not saved. The popup can be hard to find...
 * FEATURE: input field validation via delay - when I immediately remove invalid numbers,
    this doesn't allow temporarily wrong content, like a minus sign with nothing else. 
    FIX: allow invalid content to sit for a 2 seconds before overwriting, so the 
@@ -65,9 +67,9 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.4.0 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.4.1 ©2026 Charlie Wallace";
 
-console.log("📦 Day Spiral Clock loaded");
+console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
 var CityNameInput;
 
@@ -101,6 +103,7 @@ var TzOffset, TzOffsetLocal;
 var LastTz;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
+var TimezoneWarningShown = false;  // true if timezone mismatch warning has been shown
 var IsPreciseLocation = false; // true if using GPS location
 var IsRequestingPrecise = false; // true if a GPS request is currently in flight
 var LocationFetchSerial = 0; // Incrementing ID to track async location requests
@@ -252,16 +255,23 @@ function fetchIpLocation() {
       // Compare timezones - if different, might be using VPN
       IsTimezoneMismatch = (browserTimezone !== ipTimezone);
 
-      // Allow testing VPN warning via URL hash parameter
-      // TODO: REMOVE THIS TEST CODE
+      // Allow testing VPN warning via URL hash parameter. Retain this for testing purposes.
       var urlHash = window.location.hash.toLowerCase();
-      if (urlHash === '#testvpn' || urlHash === '#simulatevpn') {
+      if (urlHash.includes('#testvpn') || urlHash.includes('#simulatevpn')) {
         IsTimezoneMismatch = true;
         console.log("🧪 TEST MODE: VPN simulation enabled via URL hash");
       }
 
       if (IsTimezoneMismatch) {
-        console.log("⚠️ Timezone mismatch detected - possible VPN/proxy usage");
+        if (!TimezoneWarningShown) {
+          console.log("⚠️ Timezone mismatch detected - possible VPN/proxy usage");
+          alert("⚠️ Timezone mismatch detected - possible VPN/proxy usage." +
+            " This may affect the accuracy of the clock and sunrise/sunset times." +
+            " To avoid this issue, select the GPS OK button."
+          );
+          IsTimezoneMismatch = false; // Reset flag after showing warning
+          TimezoneWarningShown = true;
+        }
       }
 
       // Update UI fields
@@ -329,37 +339,39 @@ function oneTimeInit() {
   console.log("🔍 Current URL:", window.location.href);
   console.log("🔍 URL Hash:", window.location.hash);
 
-  // state vars.  Preserve these thru window resize.
+  // DaySpiral globals declared here.  ------------
+  XSpiralArray = [];
+  YSpiralArray = [];
+  RadiusSpiralArray = [];
+  NumSpiralPointsPerTurn = 300;
+  NumSpiralTurns = 2;  // must set this in the init
+  BkColor = 34; // Default Dark Gray (#222)
+  LastMillisec = 0;
+  HourDigitColor = color(25, 25, 25); //0xe8, 0xe0, 0x22);
 
-  // IsDaySpiral = true; // Removed
+  // DaySpiral state vars.  Preserve these thru window resize.
   IsGmtShown = false; //true; // false; //
-
   ClockMode = 0;
 
 
+  // Prepare renderers for each clock type.
+  daySpiralRenderer = new DaySpiralRenderer('canvas-container');
+  daySpiralRenderer.init();
+
+  mobiusRenderer = new MobiusRenderer('mobius-container');
+  mobiusRenderer.init();
+
+  // Select the default renderer and activate it.
+  activeRenderer = daySpiralRenderer; // Start with default
+  activeRenderer.activate();
+  activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
+
+
+  // Overall app initialization ----------------
+
   // Use this to allow customizing layout for windows vs mobile
   IsWindows = (window.navigator.platform == "Win32");
-  /******************************	
-    if (IsWindows)
-    {
-      window.alert('Windows detected.');
-    }
-    else
-    {
-      window.alert('Windows not detected.');
-    }
-  	
-    if (window.navigator.platform.indexOf("Mac") === 0)
-    {
-      window.alert('Mac detected.');
-    }
-    else
-    {
-      window.alert('Mac not detected.');
-    }	
-  ************************/
 
-  // ==240212a
   // IsDesktop is now calculated in reInit() to support dynamic toggling
   console.log("IsWindows=" + IsWindows);
 
@@ -367,30 +379,14 @@ function oneTimeInit() {
   var cnv = createCanvas(window.innerWidth, window.innerHeight);
   cnv.parent('canvas-container');
 
-  // == INIT NEW CONTROLLERS ==
+  // Init app-level controllers.
   timeKeeper = new TimeKeeper();
   locManager = new LocationManager();
   locManager.init(); // Minimal init
 
-  daySpiralRenderer = new DaySpiralRenderer('canvas-container');
-  mobiusRenderer = new MobiusRenderer('mobius-container');
-
-  daySpiralRenderer.init();
-  mobiusRenderer.init();
-
-  activeRenderer = daySpiralRenderer; // Start with default
-  activeRenderer.activate();
-  activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
-
-  // Apply initial state from URL parameters (clock mode, settings, etc.)
-  applyInitialState();
-
-  // Update URL hash with current settings (even before location is determined)
-  updateUrlHash();
-
-
+  // Fetch IP-based location - this is our fallback if no location is found in the URL
+  fetchIpLocation();
   // (Location fetch logic moved to end of function to ensure UI is ready)
-
 
   // ==== Bind to existing HTML elements ======
   // NOTE: CSS handles all positioning now (responsive design)
@@ -414,7 +410,6 @@ function oneTimeInit() {
   select('#btn-loc-london-m').mousePressed(() => { setLondon(); closeAllModals(); });
   select('#btn-loc-kc-m').mousePressed(() => { setKansasCity(); closeAllModals(); });
   select('#btn-loc-melbourne-m').mousePressed(() => { setMelbourne(); closeAllModals(); });
-
 
 
   GmtDisplayButtonLabel = "Show GMT";
@@ -447,7 +442,7 @@ function oneTimeInit() {
 
   select('#btn-zen').mousePressed(toggleZenMode);
 
-  // NEW: GPS OK Button(s)
+  // "GPS OK?" Button(s)
   var gpsBtns = [select('#btn-gps-ok'), select('#btn-gps-ok-mobile')];
   gpsBtns.forEach(btn => {
     if (btn) btn.mousePressed(() => {
@@ -457,17 +452,17 @@ function oneTimeInit() {
     });
   });
 
-  // NEW: Setup Button
+  // Setup Button for Day Spiral Clock
   var setupBtn = select('#btn-setup');
   if (setupBtn) setupBtn.mousePressed(() => {
     alert("Setup - Future Feature");
   });
 
-  // NEW: Select Different Location Button
+  // Select Different Location Button
   var selectLocBtn = select('#btn-select-loc');
   if (selectLocBtn) selectLocBtn.mousePressed(() => openModal('modal-select-location'));
 
-  // NEW: Location Details Button (opens same details modal)
+  // Location Details Button (opens same details modal)
   var detailsBtn = select('#btn-details-desktop');
   if (detailsBtn) detailsBtn.mousePressed(openDetailsModal);
 
@@ -482,6 +477,8 @@ function oneTimeInit() {
       mobiusRenderer.rotationEnabled = !mobiusRenderer.rotationEnabled;
       if (mobiusRenderer.rotationEnabled) btnRotate.addClass('toggled-on');
       else btnRotate.removeClass('toggled-on');
+      // Update URL hash
+      updateUrlHash();
     }
   });
 
@@ -491,6 +488,8 @@ function oneTimeInit() {
       mobiusRenderer.fastMode = !mobiusRenderer.fastMode;
       if (mobiusRenderer.fastMode) btnDemo.addClass('toggled-on');
       else btnDemo.removeClass('toggled-on');
+      // Update URL hash
+      updateUrlHash();
     }
   });
 
@@ -505,6 +504,8 @@ function oneTimeInit() {
         btnHideHours.removeClass('toggled-on');
         btnHideHours.html("Hide Hours");
       }
+      // Update URL hash
+      updateUrlHash();
     }
   });
 
@@ -517,26 +518,36 @@ function oneTimeInit() {
   var selHours = select('#select-shape-hours');
   if (selHours) selHours.changed(() => {
     mobiusRenderer.setIndicatorShape('hours', selHours.value());
+    // Update URL hash
+    updateUrlHash();
   });
 
   var selMinutes = select('#select-shape-minutes');
   if (selMinutes) selMinutes.changed(() => {
     mobiusRenderer.setIndicatorShape('minutes', selMinutes.value());
+    // Update URL hash
+    updateUrlHash();
   });
 
   var selSeconds = select('#select-shape-seconds');
   if (selSeconds) selSeconds.changed(() => {
     mobiusRenderer.setIndicatorShape('seconds', selSeconds.value());
+    // Update URL hash
+    updateUrlHash();
   });
 
   var selTicks = select('#select-tick-scheme');
   if (selTicks) selTicks.changed(() => {
     mobiusRenderer.setTickScheme(selTicks.value());
+    // Update URL hash
+    updateUrlHash();
   });
 
   var selStyle = select('#select-time-style');
   if (selStyle) selStyle.changed(() => {
     mobiusRenderer.setTimeStyle(selStyle.value());
+    // Update URL hash
+    updateUrlHash();
   });
 
 
@@ -595,23 +606,12 @@ function oneTimeInit() {
   TzInput.value(tzString);
   LastTz = TzOffset;
 
-  XSpiralArray = [];
-  YSpiralArray = [];
-  RadiusSpiralArray = [];
-  NumSpiralPointsPerTurn = 300;
-  NumSpiralTurns = 2;  // must set this in the init
-
+  SecondsSoFar = 0;
+  MsFromStartToResetTime = 0;
 
   CityName = ""
   LocaleTitle = "Local Time"
   PrevLocaleTitle = "";
-
-  BkColor = 34; // Default Dark Gray (#222)
-  LastMillisec = 0;
-  HourDigitColor = color(25, 25, 25); //0xe8, 0xe0, 0x22);
-
-  SecondsSoFar = 0;
-  MsFromStartToResetTime = 0;
 
   // init to unique value to allow detection when set properly
   Latitude = 99999;  // an illegal value
@@ -652,16 +652,22 @@ function oneTimeInit() {
 
   // ==== Initial Location Fetch (Moved here) ====
 
-
-  // First, check if location is in the URL hash
-  if (parseUrlLocation()) {
+  // Parse URL hash. This grabs app settings, clock settings, current clock selection, 
+  //    and Location if provided. 
+  // Returns true if location is in the URL hash
+  var locationFoundInUrlHash = false;
+  if (parseUrlHash()) {
     console.log("Location found in URL hash, using it.");
-    // parseUrlLocation already sets the globals and calls updateTimeThisDay
-    return;
+    // parseUrlHash already sets the globals and calls updateTimeThisDay
+    locationFoundInUrlHash = true;
   }
 
-  // Check if we have permission? 
-  if (navigator.permissions && navigator.permissions.query) {
+  // Apply initial state from URL parameters (clock mode, settings, not location)
+  // Must be called after the url hash is parsed.
+  applyInitialState();
+
+  // The url didn't contain a location. Check if we have location permission? 
+  if (!locationFoundInUrlHash && navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
       // Logic for initial check
       function checkPerm(state) {
@@ -707,12 +713,12 @@ function oneTimeInit() {
               // Note: TzOffset is left as is, getTzUsingLatLong will refresh it if needed
               clearLoadingState(); // Instant revert complete
             } else {
-              // If no cache, we have to fetch
+              // If no cache, we have to fetch IP-based location.
               fetchIpLocation();
             }
 
             // Now update URL and UI (Latitude/Longitude are now local or we are "Finding you...")
-            updateUrlHash();
+            //updateUrlHash(); We no longer update the URL based on user location.
             updateUIElements();
 
             // Recalculate times to match the restored location
@@ -727,13 +733,14 @@ function oneTimeInit() {
         }
       };
     });
-  } else {
-    fetchIpLocation();
+    //} else {  // ATTN: we already called this earlier
+    //  fetchIpLocation();
   }
 }  // end of oneTimeInit()  ====================
 
+
 // Parse location and state from URL hash
-function parseUrlLocation() {
+function parseUrlHash() {
   var hash = window.location.hash.substring(1); // remove #
   if (!hash) return false;
 
