@@ -382,6 +382,11 @@ function oneTimeInit() {
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
 
+  // Apply initial state from URL parameters (clock mode, settings, etc.)
+  applyInitialState();
+
+  // Update URL hash with current settings (even before location is determined)
+  updateUrlHash();
 
 
   // (Location fetch logic moved to end of function to ensure UI is ready)
@@ -642,41 +647,8 @@ function oneTimeInit() {
   // Watchdog to ensure UI stays in sync if events are missed (robust fallback)
   setInterval(onFullScreenChange, 500);
 
-  // ==== Initialize About Modal Content (Static) ====
-  var aboutDescEl = document.getElementById('about-description');
-  if (aboutDescEl) {
-    var descText = 'To show night and day you need a 24-hour clock; ' +
-      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
-      'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
-      'The darker part of the spiral indicates night. ' +
-      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
-
-    //OLD description
-    //'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM.' + 
-    //' The darker part of the spiral indicates night.';
-
-    // Populate all version text elements
-    var versionEls = document.querySelectorAll('.version-text');
-    versionEls.forEach(el => el.textContent = APP_VERSION);
-
-    // Get version and attribution from constant
-    var versionVal = APP_VERSION;
-    var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
-    var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
-
-    // To revise the contact form see
-    //   https://docs.google.com/forms/d/1hq7Dh8_8xkXrNdjJgcGIx47aLDTvX6pujLPpMV21gY4/edit
-    aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
-      '<p style="margin-top: 15px; font-weight: bold;">' + versionVal + '</p>' +
-      '<p style="margin-top: 5px;">' +
-      '<a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">' + linkText + '</a>' +
-      '<span style="margin: 0 10px; color: #666;">|</span>' +
-      '<a href="https://forms.gle/3zAVfRJFH6Kj5drR8" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Contact Me</a>' +
-      '<span style="margin: 0 10px; color: #666;">|</span>' +
-      '<a href="#" onclick="showReadme(); return false;" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Readme</a>' +
-      '</p>' +
-      '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
-  }
+  // ==== Initialize About Modal Content ====
+  updateAboutModalContent();
 
   // ==== Initial Location Fetch (Moved here) ====
 
@@ -760,13 +732,13 @@ function oneTimeInit() {
   }
 }  // end of oneTimeInit()  ====================
 
-// Parse location from URL hash (lat,lon,tz,city)
+// Parse location and state from URL hash
 function parseUrlLocation() {
   var hash = window.location.hash.substring(1); // remove #
   if (!hash) return false;
 
-  // Expected format: lat=33.743&lon=-117.643&tz=-8&city=Silverado
-  // or just comma separated: 33.743,-117.643,-8,Silverado
+  // Expected format: lat=33.743&lon=-117.643&tz=-8&city=Silverado&clock=mobius&...
+  // or legacy comma separated: 33.743,-117.643,-8,Silverado
 
   var params = new URLSearchParams(hash);
   var lat = params.get('lat');
@@ -775,10 +747,39 @@ function parseUrlLocation() {
   var city = params.get('city');
   var zen = params.get('zen') || params.get('focus');
 
+  // Zen mode
   if (zen === '1') {
     IsZenMode = true;
     document.body.classList.add('zen-mode');
     BkColor = 0; // Black
+  }
+
+  // Clock mode - store for later application (after renderers are initialized)
+  var clockMode = params.get('clock');
+  if (clockMode === 'mobius' || clockMode === 'dayspiral') {
+    window._initialClockMode = clockMode;
+  }
+
+  // DaySpiral state - store for later application
+  var gmt = params.get('gmt');
+  if (gmt === '1') {
+    window._initialGmtEnabled = true;
+  }
+
+  // Mobius state - store for later application
+  // Only parse if we have at least one Mobius parameter
+  if (params.has('timeStyle') || params.has('shapeHours') || params.has('rotation') ||
+    params.has('demo') || params.has('showHours')) {
+    window._initialMobiusState = {
+      timeStyle: params.get('timeStyle') || 'ampm',
+      shapeHours: params.get('shapeHours') || 'outer-ring',
+      shapeMinutes: params.get('shapeMinutes') || 'ring',
+      shapeSeconds: params.get('shapeSeconds') || 'sphere',
+      tickScheme: params.get('tickScheme') || 'standard',
+      rotation: params.get('rotation') === '1',
+      demo: params.get('demo') === '1',
+      showHours: params.get('showHours') !== '0' // Default true
+    };
   }
 
   // Helper to validate coordinate strings from URL
@@ -844,59 +845,190 @@ function parseUrlLocation() {
   return false;
 }
 
-// Update URL hash with current location
-function updateUrlHash() {
-  console.log("🔗 updateUrlHash() called");
-  console.log("  Latitude:", Latitude);
-  console.log("  Longitude:", Longitude);
-  console.log("  TzOffset:", TzOffset);
-  console.log("  LocaleTitle:", LocaleTitle);
+// Apply initial state from URL parameters (called after renderers are initialized)
+function applyInitialState() {
+  console.log("🎨 Applying initial state from URL parameters...");
 
-  if (typeof Latitude === 'undefined' || typeof Longitude === 'undefined' ||
-    Latitude === 99999 || Longitude === 99999 ||
-    isNaN(Latitude) || isNaN(Longitude)) {
-    console.log("  ❌ Early return: Latitude or Longitude is invalid:", { Latitude, Longitude });
-    return;
+  // Apply clock mode if specified
+  if (window._initialClockMode) {
+    console.log("  📍 Applying clock mode:", window._initialClockMode);
+    setClockMode(window._initialClockMode);
+    delete window._initialClockMode; // Clean up
   }
 
-  // PRIVACY: Only include coordinates in the URL if it's a PRECISE location 
-  // OR a manually selected remote location. 
-  // If it's just an IP-based local fetch, we don't save it to the URL.
+  // Apply DaySpiral GMT state if specified (regardless of active renderer)
+  if (window._initialGmtEnabled) {
+    console.log("  🌍 Enabling GMT display");
+    const gmtBtn = select('#btn-gmt');
+    if (gmtBtn) {
+      // Directly set the state without checking active renderer
+      if (!gmtBtn.hasClass('toggled-on')) {
+        // Manually apply the GMT state
+        IsGmtShown = true;
+        GmtDisplayButtonLabel = "Hide GMT";
+        gmtBtn.html(GmtDisplayButtonLabel);
+        gmtBtn.addClass('toggled-on');
+      }
+    }
+    delete window._initialGmtEnabled; // Clean up
+  }
+
+  // Apply Mobius state if specified (regardless of active renderer)
+  if (window._initialMobiusState) {
+    console.log("  ⚙️ Applying Mobius settings:", window._initialMobiusState);
+    const state = window._initialMobiusState;
+
+    // Apply time style
+    if (state.timeStyle) {
+      mobiusRenderer.setTimeStyle(state.timeStyle);
+      const selStyle = select('#select-time-style');
+      if (selStyle) selStyle.value(state.timeStyle);
+    }
+
+    // Apply indicator shapes
+    if (state.shapeHours) {
+      mobiusRenderer.setIndicatorShape('hours', state.shapeHours);
+      const selHours = select('#select-shape-hours');
+      if (selHours) selHours.value(state.shapeHours);
+    }
+    if (state.shapeMinutes) {
+      mobiusRenderer.setIndicatorShape('minutes', state.shapeMinutes);
+      const selMinutes = select('#select-shape-minutes');
+      if (selMinutes) selMinutes.value(state.shapeMinutes);
+    }
+    if (state.shapeSeconds) {
+      mobiusRenderer.setIndicatorShape('seconds', state.shapeSeconds);
+      const selSeconds = select('#select-shape-seconds');
+      if (selSeconds) selSeconds.value(state.shapeSeconds);
+    }
+
+    // Apply tick scheme
+    if (state.tickScheme) {
+      mobiusRenderer.setTickScheme(state.tickScheme);
+      const selTicks = select('#select-tick-scheme');
+      if (selTicks) selTicks.value(state.tickScheme);
+    }
+
+    // Apply rotation state
+    if (state.rotation !== undefined) {
+      mobiusRenderer.rotationEnabled = state.rotation;
+      const btnRotate = select('#btn-rotate');
+      if (btnRotate) {
+        if (state.rotation) btnRotate.addClass('toggled-on');
+        else btnRotate.removeClass('toggled-on');
+      }
+    }
+
+    // Apply demo/fast mode
+    if (state.demo !== undefined) {
+      mobiusRenderer.fastMode = state.demo;
+      const btnDemo = select('#btn-demo');
+      if (btnDemo) {
+        if (state.demo) btnDemo.addClass('toggled-on');
+        else btnDemo.removeClass('toggled-on');
+      }
+    }
+
+    // Apply hour visibility
+    if (state.showHours !== undefined) {
+      mobiusRenderer.hoursVisible = state.showHours;
+      const btnHideHours = select('#btn-hide-hours');
+      if (btnHideHours) {
+        if (!state.showHours) {
+          btnHideHours.addClass('toggled-on');
+          btnHideHours.html("Show Hours");
+        } else {
+          btnHideHours.removeClass('toggled-on');
+          btnHideHours.html("Hide Hours");
+        }
+      }
+    }
+
+    delete window._initialMobiusState; // Clean up
+  }
+
+  console.log("  ✅ Initial state applied");
+}
+
+// Update URL hash with current state
+function updateUrlHash() {
+  console.log("🔗 updateUrlHash() called");
+
   var hash = "";
 
-  if (IsPreciseLocation || !IsDisplayingUserLocation) {
+  // PRIVACY-FIRST LOCATION HANDLING:
+  // Only include location if it was MANUALLY SELECTED (preset/city/manual entry)
+  // Do NOT include user's current location (GPS or IP-based)
+  // 
+  // Rationale:
+  // - Shared URLs should share clock settings, not expose user's location
+  // - Bookmarks without location will auto-fetch current location on load
+  // - This allows sharing "show YOUR local time in this style" links
+  // - Users can freely share clock configurations without privacy concerns
+
+  if (!IsDisplayingUserLocation && Latitude !== 99999 && Longitude !== 99999 &&
+    !isNaN(Latitude) && !isNaN(Longitude)) {
+    // This is a manually-selected location (preset, city lookup, or manual entry)
     var city = LocaleTitle || "";
-    // Don't include "Approximate Location" or "Precise Location" as city name in URL if possible
+    // Don't include generic location names
     if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
       city = "";
     }
 
-    // Ensure we have valid coords before generating hash
-    if (Latitude !== 99999 && Longitude !== 99999) {
-      hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
-      if (city) {
-        hash += `&city=${encodeURIComponent(city)}`;
-      }
+    hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
+    if (city) {
+      hash += `&city=${encodeURIComponent(city)}`;
+    }
+    console.log("  📍 Including manually-selected location in URL");
+  } else if (IsDisplayingUserLocation) {
+    console.log("  🔒 Privacy: Not including user's current location in URL");
+  }
+
+  // Zen mode
+  if (IsZenMode) {
+    hash += (hash ? "&" : "") + "zen=1";
+  }
+
+  // Clock mode
+  if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined') {
+    if (activeRenderer === mobiusRenderer) {
+      hash += (hash ? "&" : "") + "clock=mobius";
+    } else {
+      hash += (hash ? "&" : "") + "clock=dayspiral";
     }
   }
 
-  if (IsZenMode) {
-    hash += (hash ? "&" : "") + "zen=1";
-  } else if (hash) {
-    hash += "&zen=0";
+  // DaySpiral-specific state (always save, regardless of active renderer)
+  if (typeof daySpiralRenderer !== 'undefined') {
+    const gmtBtn = select('#btn-gmt');
+    if (gmtBtn && gmtBtn.hasClass('toggled-on')) {
+      hash += (hash ? "&" : "") + "gmt=1";
+    }
+  }
+
+  // Mobius-specific state (always save, regardless of active renderer)
+  if (typeof mobiusRenderer !== 'undefined') {
+    hash += (hash ? "&" : "") + "timeStyle=" + mobiusRenderer.timeStyle;
+    hash += (hash ? "&" : "") + "shapeHours=" + mobiusRenderer.indicatorShapes.hours;
+    hash += (hash ? "&" : "") + "shapeMinutes=" + mobiusRenderer.indicatorShapes.minutes;
+    hash += (hash ? "&" : "") + "shapeSeconds=" + mobiusRenderer.indicatorShapes.seconds;
+    hash += (hash ? "&" : "") + "tickScheme=" + mobiusRenderer.tickScheme;
+    hash += (hash ? "&" : "") + "rotation=" + (mobiusRenderer.rotationEnabled ? "1" : "0");
+    hash += (hash ? "&" : "") + "demo=" + (mobiusRenderer.fastMode ? "1" : "0");
+    hash += (hash ? "&" : "") + "showHours=" + (mobiusRenderer.hoursVisible ? "1" : "0");
   }
 
   console.log("  📝 Generated hash:", hash);
 
-  // Update without triggering hashchange
+  // Update URL without triggering hashchange
   var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
   if (hash) {
     newUrl += "#" + hash;
   } else {
-    console.log("  🧹 Hash is empty, clearing URL hash.");
+    console.log("  🧹 Hash is empty, clearing URL hash");
   }
 
-  console.log("  🌐 Final URL to set:", newUrl);
+  console.log("  🌐 Final URL:", newUrl);
   window.history.replaceState({ path: newUrl }, '', newUrl);
   console.log("  ✅ URL updated successfully");
 }
@@ -982,8 +1114,10 @@ function updateUIElements() {
 
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
     if (titleEl) titleEl.textContent = 'Mobius Clock';
-    // User requested hiding description for Mobius (it's in the About popup)
-    if (descEl) descEl.textContent = "";
+    // Show condensed Mobius description for desktop
+    var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
+      'The hour indicator makes 2 full turns to return to its starting point.';
+    if (descEl) descEl.textContent = mobiusDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show night and day you need a 24-hour clock; ' +
@@ -1952,6 +2086,9 @@ function setGmtDisplay()  // Toggling mode button
   } else {
     GmtDisplayButton.removeClass('toggled-on');
   }
+
+  // Update URL hash to reflect GMT state
+  updateUrlHash();
 }
 
 
@@ -3135,6 +3272,53 @@ function setClockMode(mode) {
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight);
   updateUIElements(); // Ensure title/desc update immediately
+  updateAboutModalContent(); // Update About content based on clock
+
+  // Update URL hash to reflect clock mode change
+  updateUrlHash();
+}
+
+/**
+ * Updates the About modal content based on the active clock renderer.
+ */
+function updateAboutModalContent() {
+  const aboutTitleEl = select('#modal-about h2');
+  const aboutDescEl = document.getElementById('about-description');
+
+  if (!aboutDescEl) return;
+
+  let title = "About Day Spiral Clock";
+  let descText = 'To show night and day you need a 24-hour clock; ' +
+    'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
+    'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
+    'The darker part of the spiral indicates night. ' +
+    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
+
+  if (activeRenderer === mobiusRenderer) {
+    title = "About Mobius Clock";
+    descText = "The Mobius clock shows 24-hour time on a 12-hour clock face. " +
+      "Since the hour indicator moves along the single edge of the Mobius strip, it must make 2 full turns to return to its starting point. " +
+      "Noon is at the bottom of the upper arch, and midnight is at the top. " +
+      "The minute and second indicators move along the center of the strip, so they complete a cycle in only one turn.";
+  }
+
+  if (aboutTitleEl) aboutTitleEl.html(title);
+
+  // Common footer elements
+  const versionVal = APP_VERSION;
+  const linkHref = "http://coolweird.com";
+  const linkText = "Coolweird.com";
+
+  aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
+    '<p style="margin-top: 15px; font-weight: bold;">' + versionVal + '</p>' +
+    '<p style="margin-top: 5px;">' +
+    '<a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">' + linkText + '</a>' +
+    '<span style="margin: 0 10px; color: #666;">|</span>' +
+    '<a href="https://forms.gle/3zAVfRJFH6Kj5drR8" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Contact Me</a>' +
+    '<span style="margin: 0 10px; color: #666;">|</span>' +
+    '<a href="#" onclick="showReadme(); return false;" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Readme</a>' +
+    '</p>' +
+    '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
 }
 
 function toggleClockMode() {
