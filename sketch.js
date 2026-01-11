@@ -67,7 +67,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.4.1 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.4.2 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -1117,7 +1117,10 @@ function onFullScreenChange(e) {
 function updateUIElements() {
   // Update title based on mode
   var titleEl = document.getElementById('app-title');
+  var versionEl = document.getElementById('app-version');
   var descEl = document.getElementById('app-description');
+
+  if (versionEl) versionEl.textContent = APP_VERSION;
 
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
     if (titleEl) titleEl.textContent = 'Mobius Clock';
@@ -1912,7 +1915,7 @@ function calcSunRiseSet() {
 // Update time-related vars.
 function updateTimeThisDay() {
   // Sync TimeKeeper
-  if (timeKeeper) timeKeeper.update();
+  if (timeKeeper) timeKeeper.update(TzOffset);
 
 
   IDowPrevious = IDow; // save the previous day of week
