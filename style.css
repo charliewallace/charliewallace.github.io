@@ -178,6 +178,15 @@ body {
   background: var(--btn-bg-hover);
 }
 
+.selector-opt:not(.active)::before {
+  content: "➔";
+  font-size: 0.85rem;
+  margin-right: 6px;
+  vertical-align: middle;
+  display: inline-block;
+  transform: translateY(-1px);
+}
+
 .selector-opt.active {
   color: var(--warning-color);
   font-weight: bold;
