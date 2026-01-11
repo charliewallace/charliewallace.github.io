@@ -1009,6 +1009,46 @@ screen and (max-height: 600px) {
     padding: 0 10px;
   }
 
+  /* New Location Modal Landscape Layout */
+  #modal-select-location.modal-content {
+    max-width: 550px;
+    max-height: 95vh;
+    padding: 10px 15px;
+    overflow-y: auto;
+  }
+
+  #modal-select-location .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  #modal-select-location .preset-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  #modal-select-location .location-section h3 {
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+  }
+
+  #modal-select-location .location-section {
+    padding: 2px 0;
+  }
+
+  #modal-select-location hr.separator {
+    margin: 5px 0;
+  }
+
+  #modal-select-location .input-row {
+    margin-bottom: 2px;
+  }
+
+  #modal-select-location .button-row-split {
+    margin-top: 2px;
+  }
+
   #modal-setup-mobius .settings-section {
     padding: 0;
   }
