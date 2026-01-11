@@ -1,5 +1,5 @@
 /** ===========================================================
- * Coolweird Clocks: A container for multiple clock types.
+ * CoolweirdClocks: A container for multiple clock types.
  * 
  * DaySpiral: Sunrise & Sunset shown on 12-hr clock face.
  * This clock shows the current 24-hour day as a spiral, with 2 turns because
@@ -67,7 +67,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.4.2 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.4.3 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -1142,14 +1142,16 @@ function updateUIElements() {
 
   if (versionEl) versionEl.textContent = APP_VERSION;
 
+  var clockNameEl = document.getElementById('clock-name-display');
+
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
-    if (titleEl) titleEl.textContent = 'Mobius Clock';
+    if (clockNameEl) clockNameEl.textContent = 'Mobius Clock';
     // Show condensed Mobius description for desktop
     var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
       'The hour indicator makes 2 full turns to return to its starting point.';
     if (descEl) descEl.textContent = mobiusDescText;
   } else {
-    if (titleEl) titleEl.textContent = 'Day Spiral Clock';
+    if (clockNameEl) clockNameEl.textContent = 'Day Spiral Clock';
     var descText = 'To show night and day you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ' +
       'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
@@ -3308,14 +3310,18 @@ function updateAboutModalContent() {
 
   if (!aboutDescEl) return;
 
-  let title = "About Day Spiral Clock";
-  let descText = 'To show night and day you need a 24-hour clock; ' +
-    'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
-    'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
-    'The darker part of the spiral indicates night. ' +
-    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
+  let title = "About CoolweirdClocks";
+  let descText = 'CoolweirdClocks is a collection of unique world-time visualizations by Charlie Wallace. ' +
+    'The app currently features the Day Spiral and Mobius clocks, with more to come.';
 
-  if (activeRenderer === mobiusRenderer) {
+  if (activeRenderer === daySpiralRenderer) {
+    title = "About Day Spiral Clock";
+    descText = 'To show night and day you need a 24-hour clock; ' +
+      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
+      'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
+      'The darker part of the spiral indicates night. ' +
+      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
+  } else if (activeRenderer === mobiusRenderer) {
     title = "About Mobius Clock";
     descText = "The Mobius clock shows 24-hour time on a 12-hour clock face. " +
       "Since the hour indicator moves along the single edge of the Mobius strip, it must make 2 full turns to return to its starting point. " +

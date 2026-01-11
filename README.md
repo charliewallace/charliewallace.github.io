@@ -1,63 +1,73 @@
-# Day Spiral Clock
+# CoolweirdClocks
 
-![Day Spiral Clock Screenshot](clock_spiral_screenshot.png)
+![CoolweirdClocks Screenshot](coolweird_clocks_screenshot.png)
 
-A unique visualization of time using a spiral clock face that shows the full 24 hour day
-coiled into a 12-hour clock face.  The spiral is color-coded to show the day and night
-segments based on your location, thus indicating sunrise and sunset times.  
+**CoolweirdClocks** is a collection of unique time visualizations designed by Charlie Wallace. Originally starting with the Day Spiral Clock, the app has evolved into a platform for various experimental clock designs that help you visualize time in new ways.
 
-## Features
+## Platform Features
 
-- **Spiral Clock Display**: Time displayed on a spiral that represents 24 hours on a 12-hour clock face.
-- **Sunrise/Sunset Visualization**: Color-coded day (light blue) and night (dark blue) segments based on your location.
-- **Responsive Mobile Design**: Optimized UI for both portrait and landscape mobile usage, with touch-friendly buttons.
-- **Automatic Location**: Uses IP approximate geolocation for seamless startup (no permission prompt)
-- **Precise Location Option**: Optional GPS coordinates for exact sunrise/sunset times (location is not saved)
-- **VPN Detection**: Detects when timezone doesn't match browser timezone and prompts user to
-      grant browser permission to access actual location for more accurate sunrise/sunset times. 
-- **URL Location Sharing**: Location is embedded in URL, allowing bookmarkable and shareable links
-- **Multiple Locations**: Quick-select buttons for major cities
-- **Manual Entry**: Enter custom lat/long or city name
-- **GMT Time Display**: Optional GMT hour labels on day spiral
-- **Full Screen Mode**: Toggle full-screen view for an immersive experience, especially useful on mobile.
-- **Zen Mode**: Minimalist mode that hides UI controls for a cleaner visualization; toggled by the "Zen" button (changes to "Show Interface" when active). Saved in URL for convenience.
-- **Contact & Feedback**: Integrated contact form for user feedback and inquiries.
+CoolweirdClocks provides a robust set of features common to all its clock designs:
+
+- **Universal Location Detection**: Some clocks need your location, for example to calculate sunrise/sunset. Automatically detects your approximate location using IP geolocation for a seamless startup experience.
+- **Precise GPS Location**: Optionally grant location permission for exact coordinates and the most accurate sunrise/sunset calculations.
+- **Manual Location Entry**: Enter any city name or manual coordinates (latitude, longitude, and GMT offset) to view the time anywhere in the world.
+- **Clock Selector**: Easily switch between different clock designs (currently featuring DaySpiral and Mobius).
+- **Zen Mode**: A minimalist mode that hides all UI controls for a clean, immersive visualization.
+- **Full Screen Mode**: Useful for wall-mounted displays and mobile devices/small screens.
+- **Privacy-First URL Persistence**: Share and bookmark your favorite clock settings without exposing your current location.
+
+## URL "Hash" & Privacy
+
+CoolweirdClocks uses a URL hash (e.g., `#clock=mobius&zen=1`) added to the end of the URL to persist your settings; no cookies are used. This allows you to preserve any setup by saving a bookmark or sharing a URL with others.
+
+### The Privacy Rule
+- **Automatic locations are NOT saved**: Your approximate (IP-based) or precise (GPS-based) location is **never** added to the URL automatically. This ensures that when you copy a URL to share with others, you aren't inadvertently sharing your home coordinates.
+- **Manual location selections ARE saved**: Only locations you intentionally choose—via preset buttons, city search, or manual coordinate entry—are saved to the URL.
+- **Settings are saved**: Choices like Zen mode, Full Screen state, and clock-specific customizations are persisted in the URL.
+
+---
+
+## Supported Clocks
+
+### DaySpiral Clock
+A unique visualization that shows you your whole day, including day and night, sunrise and sunset. To show night and day you need a 24-hour clock; using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face.
+- **Sunset/Sunrise**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun at your location.
+- **Spiral Geometry**: The hour hand follows the spiral path, making two full turns to complete a day.
+
+**Specific URL Parameters:**
+- `gmt=1`: Optionally display the GMT hours on the spiral.
+
+### Mobius Clock
+A 12-hour clock face where time moves along a fully three-dimensional Mobius strip (a strip with a single edge and a single surface).  You can even make it rotate in 3D space!
+- **Hour shown on the edge**: The hour indicator moves along the edge of the strip, requiring two full loops to return to the start. Thus you have 24 hours shown on a 12-hour clock face.
+- **Minutes and seconds shown in the center**: Seconds and minutes move along the center line of the strip, thus only requiring one loop to complete.
+- **Lots of customization**: You can change the shape of the hour, minute, and second indicators, select the ticks style and even make the strip rotate in 3D space.
+
+**Specific URL Parameters:**
+- `clock=mobius`: Activates the Mobius clock.
+- `timeStyle=[ampm|24h]`: Sets the label style.
+- `shapeHours`, `shapeMinutes`, `shapeSeconds`: Customize the indicator shapes (e.g., `sphere`, `ring`, `outer-ring`).
+- `rotation=1`: Enables the 3D rotation animation.
+- `demo=1`: Activates fast-motion demo mode.
+- `showHours=0`: Hides the hour number labels.
+
+---
 
 ## Suggested Use Case
 
-Have an old tablet? Convert it into a wall clock with a spiral face! Zen Mode is suggested for a simpler look. All that's needed is internet access and a web browser. You can create a bookmark with `zen=1` in the URL and set it as the home screen for a minimalist clock experience.
+Have an old tablet? Convert it into a beautiful wall or shelf clock! Use **Zen Mode** for a clean look. Bookmark your favorite setup (e.g., `https://dayspiral.com/#clock=mobius&rotation=1&zen=1`) and set it as the device's home screen.
 
-## Available online
-
-Visit [dayspiral.com](https://www.dayspiral.com)
-
-
-## Location Sharing & Bookmarks
-
-The app supports URL-based location persistence. When you select a location (GPS, city lookup, preset, or manual coordinates), the location details are automatically saved in the URL hash. Zen too! This enables:
-
-- **Bookmarking**: Save your favorite locations as browser bookmarks
-- **Sharing**: Send URLs to others to show them a specific location
-- **Quick Access**: Return to saved locations without re-entering coordinates
-
-**Example URLs:**
-- Boston: [https://www.dayspiral.com/#lat=42.359&lon=-71.058&tz=-5&city=boston](https://www.dayspiral.com/#lat=42.359&lon=-71.058&tz=-5&city=boston)
-- London: [https://www.dayspiral.com/#lat=51.507&lon=-0.127&tz=0&city=London](https://www.dayspiral.com/#lat=51.507&lon=-0.127&tz=0&city=London)
-- Zen: [https://www.dayspiral.com/#zen=1](https://www.dayspiral.com/#zen=1)
-
-**Note:** IP-based approximate locations are NOT saved to the URL automatically - only user-selected locations are persisted. This ensures your approximate location isn't inadvertently shared when copying URLs.
+Try it here: [dayspiral.com/#clock=mobius&rotation=1&zen=1](https://dayspiral.com/#clock=mobius&rotation=1&zen=1)
 
 ## Technologies
 
-- **p5.js**: Canvas rendering and animation
-- **IP Geolocation**: ipapi.co for automatic location detection
-- **Location Services**: OpenStreetMap (Nominatim) for city lookup
-- **Timezone Data**: GeoNames for accurate timezone information 
-
+- **p5.js**: 2D Canvas rendering and animation.
+- **Three.js**: 3D rendering for complex geometries like the Mobius strip.
+- **IP Geolocation**: `ipwho.is` for CORS-friendly automatic location detection.
+- **OpenStreetMap & GeoNames**: For city lookup and accurate timezone data.
 
 ## Credits
 
-Created by Charlie Wallace of Carlsbad, CA, copyright 2026.
-For artwork by Charlie Wallace, see [coolweird.com](https://www.coolweird.com)
-Check out my other clock: [mobiusclock.com](https://www.mobiusclock.com)
-
+Created by Charlie Wallace of Carlsbad, CA. Copyright 2026. Gnu General Public License v3.0.
+For artwork and other projects, visit [coolweird.com](https://www.coolweird.com).
+Feedback is welcome via the **Contact Me** link in the About modal!

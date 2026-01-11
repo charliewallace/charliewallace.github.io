@@ -243,7 +243,16 @@ body {
   font-size: 0.65rem;
   color: var(--text-dim);
   margin-top: -4px;
-  margin-bottom: 0;
+  margin-bottom: 2px;
+}
+
+.clock-name-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--warning-color);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .button-group {
