@@ -217,7 +217,8 @@ body {
 #app-title {
   font-size: 1.1rem;
   font-weight: 600;
-  margin: 0 0 4px 0;
+  color: var(--text-color);
+  margin: 0 0 2px 0;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
   /* Enforce min-height to match Right Side (Info + Time) for button alignment */
   min-height: 1.2rem;
@@ -240,19 +241,11 @@ body {
 }
 
 #app-version {
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  margin-top: -4px;
-  margin-bottom: 2px;
-}
-
-.clock-name-text {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--warning-color);
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #fff;
+  margin-top: 0;
   margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .button-group {
@@ -607,7 +600,8 @@ body {
   margin: 0;
   font-size: 1.2rem;
   color: var(--text-color);
-  text-align: center;
+  border-bottom: 1px solid var(--btn-border);
+  padding-bottom: 10px;
 }
 
 /* Compact modal layout */
@@ -883,7 +877,7 @@ screen and (max-height: 600px) {
     display: block !important;
     font-size: 0.7rem;
     margin-top: -8px;
-    color: var(--text-muted);
+    color: #fff;
   }
 
   .input-prompt {
@@ -1080,8 +1074,8 @@ screen and (max-height: 600px) {
   }
 
   .version-text {
-    font-size: 0.7rem;
-    color: var(--text-dim);
+    font-size: 0.9rem;
+    color: #fff;
     margin-bottom: 8px;
   }
 

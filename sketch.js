@@ -1140,18 +1140,19 @@ function updateUIElements() {
   var versionEl = document.getElementById('app-version');
   var descEl = document.getElementById('app-description');
 
-  if (versionEl) versionEl.textContent = APP_VERSION;
-
-  var clockNameEl = document.getElementById('clock-name-display');
+  if (versionEl) {
+    let verOnly = APP_VERSION.split(' ')[0]; // e.g. "v0.4.3"
+    versionEl.textContent = 'CoolweirdClocks ' + verOnly;
+  }
 
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
-    if (clockNameEl) clockNameEl.textContent = 'Mobius Clock';
+    if (titleEl) titleEl.textContent = 'Mobius Clock';
     // Show condensed Mobius description for desktop
     var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
       'The hour indicator makes 2 full turns to return to its starting point.';
     if (descEl) descEl.textContent = mobiusDescText;
   } else {
-    if (clockNameEl) clockNameEl.textContent = 'Day Spiral Clock';
+    if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show night and day you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ' +
       'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
@@ -3337,7 +3338,7 @@ function updateAboutModalContent() {
   const linkText = "Coolweird.com";
 
   aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
-    '<p style="margin-top: 15px; font-weight: bold;">' + versionVal + '</p>' +
+    '<p style="margin-top: 15px; font-weight: bold;">CoolweirdClocks ' + versionVal + '</p>' +
     '<p style="margin-top: 5px;">' +
     '<a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">' + linkText + '</a>' +
     '<span style="margin: 0 10px; color: #666;">|</span>' +
