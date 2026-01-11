@@ -197,7 +197,6 @@ var activeRenderer;
 
 
 
-// ================================================================
 // Fetch approximate location from IP geolocation API
 function fetchIpLocation() {
   const requestId = ++LocationFetchSerial;
@@ -207,14 +206,22 @@ function fetchIpLocation() {
   IsDisplayingUserLocation = true; // We are tracking user location
   IsPreciseLocation = false;
   IsUserInitiatedLocation = false; // IP location is automatic, not user-initiated
-  // Using ipapi.co (free, no API key required)
-  fetch('https://ipapi.co/json/')
+
+  // Using ipwho.is (CORS-friendly, no API key required for low-volume)
+  fetch('https://ipwho.is/')
     .then(response => response.json())
     .then(data => {
       if (requestId !== LocationFetchSerial) {
         console.log(`[${requestId}] IP location fetch results ignored (stale/cancelled).`);
         return;
       }
+
+      if (!data.success) {
+        console.log(`[${requestId}] IP location API returned failure:`, data.message);
+        handleIpFallback(requestId, data.message);
+        return;
+      }
+
       console.log(`[${requestId}] IP Geolocation data:`, data);
 
       // Extract and validate coordinates
@@ -235,27 +242,24 @@ function fetchIpLocation() {
 
       if (city) {
         locationString = "Near " + city; // Add "Near" prefix for IP-based location
-        if (region) {
-          // Optional: could add region too, but keeping it short for now
-          // locationString += ", " + region;
-        }
       }
 
-      // CityNameInput.value(locationString); // Keep empty as per user request
       LocaleTitle = locationString;
       LocaleTitleLocal = locationString; // Save for fallback
 
       // Check for timezone mismatch (VPN detection)
       var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      var ipTimezone = data.timezone; // from ipapi.co
+      var ipTimezone = data.timezone ? data.timezone.id : null;
 
       console.log("Browser timezone:", browserTimezone);
       console.log("IP location timezone:", ipTimezone);
 
       // Compare timezones - if different, might be using VPN
-      IsTimezoneMismatch = (browserTimezone !== ipTimezone);
+      if (ipTimezone) {
+        IsTimezoneMismatch = (browserTimezone !== ipTimezone);
+      }
 
-      // Allow testing VPN warning via URL hash parameter. Retain this for testing purposes.
+      // Allow testing VPN warning via URL hash parameter.
       var urlHash = window.location.hash.toLowerCase();
       if (urlHash.includes('#testvpn') || urlHash.includes('#simulatevpn')) {
         IsTimezoneMismatch = true;
@@ -285,52 +289,47 @@ function fetchIpLocation() {
       LngLocal = Longitude;
       LastLong = Longitude;
 
-      // DO NOT update URL hash for IP-based location on initial load
-      // Only user-initiated actions should update URL (GPS, presets, city lookup)
-
       // Get timezone using existing GeoNames function
       getTzUsingLatLong(Latitude, Longitude, requestId);
     })
-    .then(null, error => {
-      if (requestId !== LocationFetchSerial) return;
-      clearLoadingState();
-      exitZenMode(); // Ensure UI is visible to show details of fallback
-      console.log("IP geolocation failed:", error);
-      console.log("Using fallback location (Melbourne)");
-
-      // Fallback to Melbourne
-      Latitude = -37.8;
-      Longitude = 144.96;
-      TzOffset = 10; // assume DST
-
-      LatLocal = Latitude;
-      LngLocal = Longitude;
-      TzOffsetLocal = TzOffset;
-      LocaleTitleLocal = "Melbourne";
-      LocaleTitle = "Melbourne";
-
-      alert("IP-based location detection failed. Defaulting to Melbourne, Australia.");
-
-      var tzString = str(TzOffset);
-      // Add in a plus sign if not negative
-      if (TzOffset > 0) {
-        tzString = "+" + str(TzOffset);
-      }
-      // init the UI field
-      TzInput.value(tzString);
-      LastTz = TzOffset;
-
-      var latString = str(Latitude);
-      LatInput.value(latString);
-      LastLat = Latitude;
-
-      var longString = str(Longitude);
-      LngInput.value(longString);
-      LastLong = Longitude;
-
-      // DO NOT update URL hash for fallback location
-      // Only user-initiated actions should update URL
+    .catch(error => {
+      handleIpFallback(requestId, error);
     });
+}
+
+// Helper for consistent IP fallback
+function handleIpFallback(requestId, error) {
+  if (requestId !== LocationFetchSerial) return;
+  clearLoadingState();
+  exitZenMode(); // Ensure UI is visible to show details of fallback
+  console.log("IP geolocation failed:", error);
+  console.log("Using fallback location (Melbourne)");
+
+  // Fallback to Melbourne
+  Latitude = -37.8;
+  Longitude = 144.96;
+  TzOffset = 10; // assume DST
+
+  LatLocal = Latitude;
+  LngLocal = Longitude;
+  TzOffsetLocal = TzOffset;
+  LocaleTitleLocal = "Melbourne";
+  LocaleTitle = "Melbourne";
+
+  alert("IP-based location detection failed. Defaulting to Melbourne, Australia.");
+
+  var tzString = str(TzOffset);
+  if (TzOffset > 0) tzString = "+" + str(TzOffset);
+  TzInput.value(tzString);
+  LastTz = TzOffset;
+
+  var latString = str(Latitude);
+  LatInput.value(latString);
+  LastLat = Latitude;
+
+  var longString = str(Longitude);
+  LngInput.value(longString);
+  LastLong = Longitude;
 }
 
 // This only runs at startup, see Init() below
@@ -1015,14 +1014,31 @@ function updateUrlHash() {
 
   // Mobius-specific state (always save, regardless of active renderer)
   if (typeof mobiusRenderer !== 'undefined') {
-    hash += (hash ? "&" : "") + "timeStyle=" + mobiusRenderer.timeStyle;
-    hash += (hash ? "&" : "") + "shapeHours=" + mobiusRenderer.indicatorShapes.hours;
-    hash += (hash ? "&" : "") + "shapeMinutes=" + mobiusRenderer.indicatorShapes.minutes;
-    hash += (hash ? "&" : "") + "shapeSeconds=" + mobiusRenderer.indicatorShapes.seconds;
-    hash += (hash ? "&" : "") + "tickScheme=" + mobiusRenderer.tickScheme;
-    hash += (hash ? "&" : "") + "rotation=" + (mobiusRenderer.rotationEnabled ? "1" : "0");
-    hash += (hash ? "&" : "") + "demo=" + (mobiusRenderer.fastMode ? "1" : "0");
-    hash += (hash ? "&" : "") + "showHours=" + (mobiusRenderer.hoursVisible ? "1" : "0");
+    // Only include Mobius settings if they differ from their defaults
+    if (mobiusRenderer.timeStyle !== 'ampm') {
+      hash += (hash ? "&" : "") + "timeStyle=" + mobiusRenderer.timeStyle;
+    }
+    if (mobiusRenderer.indicatorShapes.hours !== 'outer-ring') {
+      hash += (hash ? "&" : "") + "shapeHours=" + mobiusRenderer.indicatorShapes.hours;
+    }
+    if (mobiusRenderer.indicatorShapes.minutes !== 'ring') {
+      hash += (hash ? "&" : "") + "shapeMinutes=" + mobiusRenderer.indicatorShapes.minutes;
+    }
+    if (mobiusRenderer.indicatorShapes.seconds !== 'sphere') {
+      hash += (hash ? "&" : "") + "shapeSeconds=" + mobiusRenderer.indicatorShapes.seconds;
+    }
+    if (mobiusRenderer.tickScheme !== 'standard') {
+      hash += (hash ? "&" : "") + "tickScheme=" + mobiusRenderer.tickScheme;
+    }
+    if (mobiusRenderer.rotationEnabled !== false) {
+      hash += (hash ? "&" : "") + "rotation=1";
+    }
+    if (mobiusRenderer.fastMode !== false) {
+      hash += (hash ? "&" : "") + "demo=1";
+    }
+    if (mobiusRenderer.hoursVisible !== true) {
+      hash += (hash ? "&" : "") + "showHours=0";
+    }
   }
 
   console.log("  📝 Generated hash:", hash);
