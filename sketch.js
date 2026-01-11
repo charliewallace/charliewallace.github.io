@@ -261,7 +261,7 @@ function fetchIpLocation() {
 
       // Allow testing VPN warning via URL hash parameter.
       var urlHash = window.location.hash.toLowerCase();
-      if (urlHash.includes('#testvpn') || urlHash.includes('#simulatevpn')) {
+      if (urlHash.includes('testvpn') || urlHash.includes('simulatevpn')) {
         IsTimezoneMismatch = true;
         console.log("🧪 TEST MODE: VPN simulation enabled via URL hash");
       }
@@ -960,30 +960,34 @@ function applyInitialState() {
 function updateUrlHash() {
   console.log("🔗 updateUrlHash() called");
 
-  var hash = "";
+  // Use URLSearchParams to preserve non-state parameters (like #testvpn)
+  var currentHash = window.location.hash.substring(1);
+  var params = new URLSearchParams(currentHash);
+
+  // Clear managed parameters to re-add them based on current state
+  const managedKeys = [
+    'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
+    'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
+    'tickScheme', 'rotation', 'demo', 'showHours'
+  ];
+  managedKeys.forEach(key => params.delete(key));
 
   // PRIVACY-FIRST LOCATION HANDLING:
   // Only include location if it was MANUALLY SELECTED (preset/city/manual entry)
   // Do NOT include user's current location (GPS or IP-based)
-  // 
-  // Rationale:
-  // - Shared URLs should share clock settings, not expose user's location
-  // - Bookmarks without location will auto-fetch current location on load
-  // - This allows sharing "show YOUR local time in this style" links
-  // - Users can freely share clock configurations without privacy concerns
-
   if (!IsDisplayingUserLocation && Latitude !== 99999 && Longitude !== 99999 &&
     !isNaN(Latitude) && !isNaN(Longitude)) {
-    // This is a manually-selected location (preset, city lookup, or manual entry)
     var city = LocaleTitle || "";
     // Don't include generic location names
     if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
       city = "";
     }
 
-    hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
+    params.set('lat', Latitude);
+    params.set('lon', Longitude);
+    params.set('tz', TzOffset);
     if (city) {
-      hash += `&city=${encodeURIComponent(city)}`;
+      params.set('city', city);
     }
     console.log("  📍 Including manually-selected location in URL");
   } else if (IsDisplayingUserLocation) {
@@ -992,56 +996,56 @@ function updateUrlHash() {
 
   // Zen mode
   if (IsZenMode) {
-    hash += (hash ? "&" : "") + "zen=1";
+    params.set('zen', '1');
   }
 
   // Clock mode
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined') {
     if (activeRenderer === mobiusRenderer) {
-      hash += (hash ? "&" : "") + "clock=mobius";
+      params.set('clock', 'mobius');
     } else {
-      hash += (hash ? "&" : "") + "clock=dayspiral";
+      params.set('clock', 'dayspiral');
     }
   }
 
-  // DaySpiral-specific state (always save, regardless of active renderer)
+  // DaySpiral-specific state
   if (typeof daySpiralRenderer !== 'undefined') {
     const gmtBtn = select('#btn-gmt');
     if (gmtBtn && gmtBtn.hasClass('toggled-on')) {
-      hash += (hash ? "&" : "") + "gmt=1";
+      params.set('gmt', '1');
     }
   }
 
-  // Mobius-specific state (always save, regardless of active renderer)
+  // Mobius-specific state
   if (typeof mobiusRenderer !== 'undefined') {
-    // Only include Mobius settings if they differ from their defaults
     if (mobiusRenderer.timeStyle !== 'ampm') {
-      hash += (hash ? "&" : "") + "timeStyle=" + mobiusRenderer.timeStyle;
+      params.set('timeStyle', mobiusRenderer.timeStyle);
     }
     if (mobiusRenderer.indicatorShapes.hours !== 'outer-ring') {
-      hash += (hash ? "&" : "") + "shapeHours=" + mobiusRenderer.indicatorShapes.hours;
+      params.set('shapeHours', mobiusRenderer.indicatorShapes.hours);
     }
     if (mobiusRenderer.indicatorShapes.minutes !== 'ring') {
-      hash += (hash ? "&" : "") + "shapeMinutes=" + mobiusRenderer.indicatorShapes.minutes;
+      params.set('shapeMinutes', mobiusRenderer.indicatorShapes.minutes);
     }
     if (mobiusRenderer.indicatorShapes.seconds !== 'sphere') {
-      hash += (hash ? "&" : "") + "shapeSeconds=" + mobiusRenderer.indicatorShapes.seconds;
+      params.set('shapeSeconds', mobiusRenderer.indicatorShapes.seconds);
     }
     if (mobiusRenderer.tickScheme !== 'standard') {
-      hash += (hash ? "&" : "") + "tickScheme=" + mobiusRenderer.tickScheme;
+      params.set('tickScheme', mobiusRenderer.tickScheme);
     }
     if (mobiusRenderer.rotationEnabled !== false) {
-      hash += (hash ? "&" : "") + "rotation=1";
+      params.set('rotation', '1');
     }
     if (mobiusRenderer.fastMode !== false) {
-      hash += (hash ? "&" : "") + "demo=1";
+      params.set('demo', '1');
     }
     if (mobiusRenderer.hoursVisible !== true) {
-      hash += (hash ? "&" : "") + "showHours=0";
+      params.set('showHours', '0');
     }
   }
 
-  console.log("  📝 Generated hash:", hash);
+  var hash = params.toString().replace(/=(&|$)/g, '$1');
+  console.log("  📝 Generated hash (refined):", hash);
 
   // Update URL without triggering hashchange
   var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
