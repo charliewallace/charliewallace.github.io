@@ -280,23 +280,6 @@ body {
   color: var(--text-muted);
 }
 
-#vpn-warning {
-  display: none;
-  font-size: 0.75rem;
-  color: var(--warning-color);
-  padding: 8px 12px;
-  background: rgba(255, 204, 0, 0.1);
-  border: 1px solid rgba(255, 204, 0, 0.2);
-  border-radius: 6px;
-  margin-top: 10px;
-  max-width: 260px;
-  line-height: 1.4;
-  text-align: right;
-}
-
-#vpn-warning.visible {
-  display: block;
-}
 
 .button-group-bottom-right {
   display: flex;
@@ -875,20 +858,8 @@ screen and (max-height: 600px) {
     color: var(--text-color);
   }
 
-  #vpn-warning {
-    font-size: 0.65rem;
-    /* Reduced to fit mobile */
-    margin-bottom: 0;
-    max-width: 160px;
-    /* Constrain width on mobile */
-    padding: 4px 8px;
-  }
 
-  @media (orientation: portrait) {
-    #vpn-warning {
-      max-width: 100%;
-    }
-  }
+  @media (orientation: portrait) {}
 
   #app-version {
     display: block !important;
@@ -955,16 +926,6 @@ screen and (max-height: 600px) {
     margin-top: -2px;
   }
 
-  #vpn-warning {
-    max-width: 180px;
-    /* Even narrower */
-    margin-left: -8px;
-    /* Shift slightly left */
-    white-space: normal;
-    line-height: 1.2;
-    font-size: 0.65rem;
-    margin-bottom: 0;
-  }
 
   /* Loc Details: Two-column grid for landscape to save vertical space */
   #details-content {
@@ -1256,8 +1217,7 @@ body.zen-mode #clock-selector {
 
 /* For mobile specific handling */
 body.zen-mode #btn-gps-ok-mobile,
-body.zen-mode #precise-hint,
-body.zen-mode #vpn-warning {
+body.zen-mode #precise-hint {
   opacity: 0;
   pointer-events: none;
 }

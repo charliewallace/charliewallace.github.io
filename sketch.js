@@ -1294,15 +1294,6 @@ function updateUIElements() {
     }
   }
 
-  // Update VPN warning visibility
-  var vpnWarning = document.getElementById('vpn-warning');
-  if (vpnWarning) {
-    if (IsTimezoneMismatch) {
-      vpnWarning.classList.add('visible');
-    } else {
-      vpnWarning.classList.remove('visible');
-    }
-  }
 
   // Update Zen Mode button labels
   var zenBtn = document.getElementById('btn-zen');
