@@ -149,6 +149,8 @@ class MobiusRenderer extends ClockRenderer {
         // Animation Logic
         if (this.rotationEnabled) {
             this.mobiusGroup.rotation.y += 0.005;
+        } else {
+            this.mobiusGroup.rotation.y = 0;
         }
 
         // Light Animation
