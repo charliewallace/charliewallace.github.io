@@ -1370,40 +1370,109 @@ body.zen-mode #btn-zen-desktop:hover {
 }
 
 /* --- Mobile Landscape Dialog Tweaks --- */
+/* --- Mobile Landscape Dialog Tweaks --- */
 @media screen and (max-height: 500px) {
   .modal-content {
-    padding: 10px !important;
-    gap: 10px !important;
-    max-height: 95vh !important;
+    padding: 8px !important;
+    gap: 4px !important;
+    max-height: 98vh !important;
+    max-width: 640px !important;
+    width: 98% !important;
   }
 
+  /* Make header very compact */
   .modal-content>h2 {
-    font-size: 1rem !important;
-    padding-bottom: 5px !important;
+    font-size: 0.95rem !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 0 !important;
+    border-bottom: 1px solid #333 !important;
   }
 
-  /* Compact preset buttons in landscape */
+  /* HIDE SEPARATORS completely to save space */
+  .separator {
+    display: none !important;
+  }
+
+  /* SIDE-BY-SIDE LAYOUT: Put headers next to content */
+  .location-section {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 2px !important;
+  }
+
+  /* Headers become labels on the left */
+  .location-section h3 {
+    margin: 0 !important;
+    font-size: 0.85rem !important;
+    white-space: nowrap !important;
+    min-width: 80px !important;
+    /* Align content */
+    color: #aaa !important;
+  }
+
+  /* Content area grows */
+  .preset-grid,
+  .input-row {
+    flex-grow: 1 !important;
+    margin: 0 !important;
+  }
+
+  /* Compact preset grid */
   .preset-grid {
     grid-template-columns: repeat(3, 1fr) !important;
-    gap: 5px !important;
+    gap: 3px !important;
   }
 
   .ui-btn.preset-modal {
-    padding: 6px 4px !important;
-    font-size: 0.8rem !important;
+    padding: 2px 4px !important;
+    font-size: 0.75rem !important;
+    height: 24px !important;
+    /* Force short buttons */
   }
 
-  .location-section h3 {
-    margin: 5px 0 !important;
-    font-size: 0.9rem !important;
+  /* City Lookup optimizations */
+  .location-section .input-row {
+    margin: 0 !important;
+    display: flex !important;
+    /* Ensure input row is flex too */
+    flex-direction: row !important;
   }
 
-  .separator {
-    margin: 5px 0 !important;
+  .modal-input {
+    padding: 4px !important;
+    font-size: 0.85rem !important;
+    height: 28px !important;
   }
 
-  /* Ensure input rows are compact */
-  .input-row {
-    margin-bottom: 0 !important;
+  .input-row .ui-btn {
+    padding: 2px 8px !important;
+    height: 28px !important;
+  }
+
+  /* Error message handling - make it small overlay or tight */
+  .error-msg {
+    margin: 0 !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Footer compacting */
+  .modal-actions {
+    margin-top: 0 !important;
+    gap: 5px !important;
+    padding-top: 4px !important;
+  }
+
+  /* --- Text Content Optimizations (About Dialog) --- */
+  .modal-body p {
+    margin: 4px 0 !important;
+    font-size: 0.85rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .modal-body {
+    overflow-y: auto;
+    padding-top: 2px !important;
   }
 }
