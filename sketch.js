@@ -497,13 +497,10 @@ function oneTimeInit() {
   if (btnHideHours) btnHideHours.mousePressed(() => {
     if (mobiusRenderer.active) {
       const isVisible = mobiusRenderer.toggleHourNumbers();
-      if (!isVisible) {
+      if (isVisible) {
         btnHideHours.addClass('toggled-on');
-        btnHideHours.html("Show Hours");
       } else {
         btnHideHours.removeClass('toggled-on');
-        btnHideHours.html("Hide Hours");
-        btnHideHours.html("Hide Hours");
       }
       // Update URL hash
       updateUrlHash();
@@ -960,12 +957,10 @@ function applyInitialState() {
       mobiusRenderer.hoursVisible = state.showHours;
       const btnHideHours = select('#btn-hide-hours');
       if (btnHideHours) {
-        if (!state.showHours) {
+        if (state.showHours) {
           btnHideHours.addClass('toggled-on');
-          btnHideHours.html("Show Hours");
         } else {
           btnHideHours.removeClass('toggled-on');
-          btnHideHours.html("Hide Hours");
         }
       }
     }
