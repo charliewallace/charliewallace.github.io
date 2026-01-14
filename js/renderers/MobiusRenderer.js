@@ -126,6 +126,13 @@ class MobiusRenderer extends ClockRenderer {
         this.hoursVisible = true;
 
         this.edgePath = [];
+
+        // Animation State
+        this.isTransitioning = false;
+        this.transitionStartTime = 0;
+        this.transitionDuration = 1000; // 1 second
+        this.currentTwistMultiplier = 1;
+        this.targetTwistMultiplier = 1;
     }
 
     init() {
@@ -220,6 +227,38 @@ class MobiusRenderer extends ClockRenderer {
             this.mobiusGroup.rotation.y += 0.005;
         } else {
             this.mobiusGroup.rotation.y = 0;
+        }
+
+        // Dali Transition Logic
+        if (this.isTransitioning) {
+            const now = millis();
+            const elapsed = now - this.transitionStartTime;
+            const t = Math.min(elapsed / this.transitionDuration, 1.0);
+
+            // Easing (optional, linear for now)
+            // const easeT = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t; 
+            const easeT = t;
+
+            // Interpolate twist multiplier
+            // Start value is implicit: we interpolating from previous current to target
+            // But to be cleaner, we can store startTwistMultiplier
+            const startVal = this.daliMode ? 1 : 3; // If we are going TO dali (true), we started at 1. If going FROM dali (false), started at 3.
+
+            // Correction: we should store start value in state to be robust
+            if (!this.startTwistMultiplier) this.startTwistMultiplier = startVal;
+
+            this.currentTwistMultiplier = this.startTwistMultiplier + (this.targetTwistMultiplier - this.startTwistMultiplier) * easeT;
+
+            // Regenerate geometry
+            this.generateMobius3dPoints(this.currentTwistMultiplier);
+            this.createMobiusStripMesh();
+            this.createHourNumbers(); // Refresh numbers to stick to strip
+
+            if (t >= 1.0) {
+                this.isTransitioning = false;
+                this.currentTwistMultiplier = this.targetTwistMultiplier;
+                this.startTwistMultiplier = null; // Reset
+            }
         }
 
         // Light Animation
@@ -380,16 +419,23 @@ class MobiusRenderer extends ClockRenderer {
 
     // --- Core Mobius Logic ---
 
-    // In this fcn we initialize the point arrays.  Later in createMobiusStripMesh() we will push all the points
-    //  into the "vertices" array.  We use indices into that array to indirectly refer to the points when
-    //  we create the triangles of the model by adding them to the "indices" array.
-    generateMobius3dPoints() {
+    // In this fcn we initialize the point arrays.
+    generateMobius3dPoints(twistMultiplierOverride = null) {
         const m_Theta = (Math.PI * 2) / this.NRECT;
-        let m_RotationPerRect = this.m_RotationPerRect;
+        let m_RotationPerRect = Math.PI / this.NRECT; // Base rotation
 
-        if (this.daliMode) {
-            m_RotationPerRect *= 3; // The "Dali" effect: extra twists
+        let multiplier = 1;
+        if (twistMultiplierOverride !== null) {
+            multiplier = twistMultiplierOverride;
+        } else {
+            // Static fallback (init or non-animated update)
+            // If we are mid-transition, we should use currentTwistMultiplier? 
+            // Usually this is called with override during animation.
+            // On init, use state.
+            if (this.daliMode) multiplier = 3;
         }
+
+        m_RotationPerRect *= multiplier;
 
         const s = Math.sqrt(this.m_Len * this.m_Len + this.m_Ht * this.m_Ht) / 2;
         const beta = Math.asin(this.m_Ht / (2 * s));
@@ -708,13 +754,11 @@ class MobiusRenderer extends ClockRenderer {
     setDaliMode(enabled) {
         if (this.daliMode === enabled) return;
         this.daliMode = enabled;
-        // Must regenerate points and mesh because the geometry changes
-        this.generateMobius3dPoints();
-        this.createMobiusStripMesh();
 
-        // If hour markers need to follow the surface, they might need adjustment, 
-        // but since they are placed based on edgePath which is updated in generateMobius3dPoints,
-        // we just need to refresh their positions.
-        this.createHourNumbers();
+        // Start Transition
+        this.isTransitioning = true;
+        this.transitionStartTime = millis();
+        this.targetTwistMultiplier = enabled ? 3 : 1;
+        this.startTwistMultiplier = enabled ? 1 : 3; // Explicitly set start
     }
 }
