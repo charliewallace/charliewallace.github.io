@@ -1,8 +1,61 @@
 
 /**
- * MobiusRenderer.js
- * Implements the Mobius Strip Clock visualization using THREE.js.
- */
+MobiusRenderer.js
+Implements the Mobius Strip Clock visualization using THREE.js.
+
+THEORY of how the Mobius strip is constructed:
+We start with a circle of radius m_Radius. This is not actually drawn on the screen, it's simply a theoretical
+circle that forms the centerline of the Mobius strip. Picture it positioned vertically.
+
+The next theoretical step: picture a series of NRECT long slender rectangles
+placed on the circle such that it passes perpendicularly through the center of each rectangle.  The first one 
+is at the bottom of the circle, positioned so the long axis is horizontal.  We can imagine initially all of them in this
+orientation; next we will rotate each one around it's center by an angle of m_Theta = 2*PI/NRECT more than the previous one.
+This angle is chosen so that the last rectangle will be rotated 180 degrees from the first one, creating the Mobius strip.
+ 
+We don't draw these; instead we create a set of points (vertices) on each rectangle.  For now, consider the four corners.
+In order to define the shape of the mobius strip, we need to connect the points of a given rectangle to the points of the
+adjacent rectangles using a series of triangles.  Keep in mind that the edges of those adjacent rectangles are NOT 
+parallel the the edges of the given rectangle due to the rotation of the rectangles.  That's why we need to use 
+triangles to connect the points.  
+ 
+For our strip, we define 4 points on each long edge of each rectangle, front and back. The outer points we already
+described above; these are the corners of the rectangle.  The inner points are one third of the way in from the edge
+(corner) towards the middle (along the wide side, not the edge).  We call these "thirdway" points.  The thirdway
+points are used to define the minute and second tick marks that occupy the middle of the strip.  
+The hour tick marks are the full width of the strip.
+ 
+First we calculate the x/y/z coordinates for each of the 8 points per rectangle and store them in arrays.
+Then we use those arrays to create a set of vertices (3D points) that are "pushed" into the master vertices buffer.  
+Next, we create the "indices" buffer that defines the triangles that make up the strip. The name "indices" is a bit 
+confusing; it contains our triangles as a series of sets of three indices that point into the vertices buffer. Note
+that the order of the indices determines which way they point (front vs back), using the right hand rule.
+
+ATTN: there's a special case for the last segment, where the last rectangle is rotated 180 degrees from the first one.
+This is because the last rectangle is connected to the first one, and the first one is rotated 180 degrees from the last one.
+This means that the last rectangle is connected to the first one in the opposite direction, and the indices need to be reversed.
+ 
+So now we have the triangles we need, but we still need to "add" them to our "geometry" object in form of a 
+series of "groups".  Each group shares the same "material" which determines its color, transparency, reflectivity, etc.
+ 
+Going back to our original theoretical rectangles, consider each pair of rectangles that are side by side.
+We need to connect the points of one rectangle to the points of the adjacent rectangle using a series of triangles.
+Let's call each of these a "segment". The strip is formed by NRECT segments.  
+ 
+Most segments will be all the same color, but segments that include a minute/second "tick" mark in the middle third 
+will require more than one color. Thus we need to define and add two groups for each segment, one for the middle third,
+and one for the outer thirds, just in case the two are different colors. For an hour tick both will be dark; for a 
+minute/second tick, only the middle third is dark; for segments that don't include a tick mark, both will be light. 
+This assumes we have chosen the the tick mark mode with both hours and minutes/seconds; we have several other modes.
+ 
+Once we have added all the groups to our geometry object, we can create a mesh from it and add it to the scene.
+We will use the material we created earlier for the mesh. We also define some light sources to illuminate the strip, and
+the camera location
+ 
+We also need to define the hour, minute, and second indicators. For this we use standard geometry objects such as 
+spheres and cylinders, and position them relative to the center of the strip.
+ 
+*********/
 
 class MobiusRenderer extends ClockRenderer {
     constructor(containerId) {
@@ -25,10 +78,12 @@ class MobiusRenderer extends ClockRenderer {
         // Constants
         this.NRECT = 360;
         this.m_NumPoints = 360;
-        this.m_Radius = 3.4;
-        this.m_Len = 1.9;
-        this.m_Ht = 0.2;
+        this.m_Radius = 3.4; // Radius of the circle that forms the centerline of the mobius strip
+        this.m_Len = 1.9; // Width of the mobius strip
+        this.m_Ht = 0.2; // Thickness of the mobius strip
+        this.m_RotationPerRect = Math.PI / this.NRECT; // base rotation
 
+        // Constants for the indicators
         this.m_SecondsRadius = 0.35;
         this.m_MinutesRadius = 0.45;
         this.m_HourSphereRadius = 0.55;
@@ -41,10 +96,23 @@ class MobiusRenderer extends ClockRenderer {
         this.m_BackOuterCorner3DPtArray = [];
 
         // Thirdway Arrays (for ticks)
-        this.m_ThirdwayFromFrontToBackInner3DPtArray = [];
-        this.m_ThirdwayFromBackToFrontInner3DPtArray = [];
-        this.m_ThirdwayFromFrontToBackOuter3DPtArray = [];
-        this.m_ThirdwayFromBackToFrontOuter3DPtArray = [];
+        // "Thirdway" refers to a point one third of the way
+        //   in from the edge (corner) towards the middle
+        //   of the strip (along the wide side, not the edge),
+        //   along a line connecting front to back, or back to front,
+        //   for inner and outer.
+        // Purpose: for minute/second tick marks that don't extend all the way 
+        //   across the strip; these sit in the inner third, occupying the part of the
+        //   strip where the minute and second indicators move. As compared to the hour indicators
+        //   that go all the way across.
+        // These terms (inner/outer/front/back) only make sense at the start of the strip at the bottom, 
+        //  while it's laying flat;later at the top it will be vertical at the top of the arch, 
+        // so "inner" and "outer" no longer make sense in that context, but we keep the terms
+        // for consistency.
+        this.m_ThirdwayFromFrontToBackInner3DPtArray = []; // A third towards middle, from front inner to back inner
+        this.m_ThirdwayFromBackToFrontInner3DPtArray = []; // A third towards middle, from back inner to front inner
+        this.m_ThirdwayFromFrontToBackOuter3DPtArray = []; // A third towards middle, from front outer to back outer
+        this.m_ThirdwayFromBackToFrontOuter3DPtArray = []; // A third towards middle, from back outer to front outer
 
         this.initialized = false;
 
@@ -53,6 +121,7 @@ class MobiusRenderer extends ClockRenderer {
         this.fastMode = false;
         this.indicatorShapes = { hours: 'outer-ring', minutes: 'ring', seconds: 'sphere' };
         this.tickScheme = 'standard';
+        this.daliMode = false;
         this.timeStyle = 'ampm';
         this.hoursVisible = true;
 
@@ -311,9 +380,16 @@ class MobiusRenderer extends ClockRenderer {
 
     // --- Core Mobius Logic ---
 
+    // In this fcn we initialize the point arrays.  Later in createMobiusStripMesh() we will push all the points
+    //  into the "vertices" array.  We use indices into that array to indirectly refer to the points when
+    //  we create the triangles of the model by adding them to the "indices" array.
     generateMobius3dPoints() {
         const m_Theta = (Math.PI * 2) / this.NRECT;
-        const m_RotationPerRect = Math.PI / this.NRECT;
+        let m_RotationPerRect = this.m_RotationPerRect;
+
+        if (this.daliMode) {
+            m_RotationPerRect *= 3; // The "Dali" effect: extra twists
+        }
 
         const s = Math.sqrt(this.m_Len * this.m_Len + this.m_Ht * this.m_Ht) / 2;
         const beta = Math.asin(this.m_Ht / (2 * s));
@@ -366,6 +442,9 @@ class MobiusRenderer extends ClockRenderer {
         const vertices = [];
         const indices = [];
 
+        // Load all of the points into the vertices array.  We will refer to them via their indexes (indices) into this 
+        //   vertices array when defining the triangles that will go into the confusingly-named indices array below.
+        //   Seems like the indices array should have been called the triangles array, but oh well.
         for (let i = 0; i < this.m_NumPoints; i++) {
             vertices.push(this.m_FrontInnerCorner3DPtArray[i].x, this.m_FrontInnerCorner3DPtArray[i].y, this.m_FrontInnerCorner3DPtArray[i].z);
             vertices.push(this.m_BackInnerCorner3DPtArray[i].x, this.m_BackInnerCorner3DPtArray[i].y, this.m_BackInnerCorner3DPtArray[i].z);
@@ -377,27 +456,63 @@ class MobiusRenderer extends ClockRenderer {
             vertices.push(this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].x, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].y, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].z);
         }
 
+        // Guide to var names. Note that these are indexes into the vertices array.  
+        // fi = front inner (inner=facing the center of the strip, front = closer to observer)
+        // bi = back inner (inner=facing the center of the strip, back = further from observer)
+        // fo = front outer (outer=facing away from the center of the strip, front = closer to observer)
+        // bo = back outer (outer=facing away from the center of the strip, back = further from observer)
+        // The numbers 1,2 are used to refer to the ends of a segment of one of the edges of the strip;
+        // 1 is part of the trailing rectangle and 2 is part of the leading rectangle.
+        // The numbers 3,4 refer to the corresponding vertices of the inner third of a slice.
+        //
+        // ATTN: The terms "front, back" etc are in the context of the first slice,
+        // located at the bottom of the mobius strip; might not make sense later
+        // after we've rotated the slice.
         for (let i = 0; i < this.m_NumPoints; i++) {
+            // we make one pass thru this loop for each slice of the mobius strip.
+            // A slice is like a cross-section of the mobius strip, with a leading (1) and trailing (2) face.
+            // The center third of the slice (the thirdway) is like a bridge 
+            // connecting the front and back of the slice.
             let r1 = i;
-            let r2 = (i + 1) % this.m_NumPoints;
-            let fi1 = r1 * 8; let bi1 = fi1 + 1; let fo1 = fi1 + 2; let bo1 = fi1 + 3;
+            let r2 = (i + 1) % this.m_NumPoints; // prevent wrap-around; r2 goes to 0 at the end of the loop
+
+            let fi1 = r1 * 8;
+            let bi1 = fi1 + 1; let fo1 = fi1 + 2; let bo1 = fi1 + 3;
             let fi3 = fi1 + 4; let bi3 = fi1 + 5; let fo3 = fi1 + 6; let bo3 = fi1 + 7;
-            let fi2 = r2 * 8; let bi2 = fi2 + 1; let fo2 = fi2 + 2; let bo2 = fi2 + 3;
+
+            let fi2 = r2 * 8;
+            let bi2 = fi2 + 1; let fo2 = fi2 + 2; let bo2 = fi2 + 3;
             let fi4 = fi2 + 4; let bi4 = fi2 + 5; let fo4 = fi2 + 6; let bo4 = fi2 + 7;
 
             if (i === this.m_NumPoints - 1) {
+                // must alter the order for last slice due to 180 rotation
+                //  where the ends meet. r2 is now 0.
+                // We are here referring back to the entries for the first slice
+                fi2 = 0; fi3 = 1; fi1 = 2; fi2 = 3;
                 bo2 = 0; fo2 = 1; bi2 = 2; fi2 = 3;
                 bo4 = 4; fo4 = 5; bi4 = 6; fi4 = 7;
+
+                // This should work but doesn't.
+                //fi1 = 3; bi1 = 2; fo1 = 1; bo1 = 0;
+                //fi3 = 7; bi3 = 6; fo3 = 5; bo3 = 4;
+
             }
 
-            indices.push(fi2, fi3, fi1); indices.push(fi2, fi4, fi3);
-            indices.push(fo1, fo3, fo2); indices.push(fo4, fo2, fo3);
-            indices.push(fo1, fi2, fi1); indices.push(fo2, fi2, fo1);
-            indices.push(bi4, bi1, bi3); indices.push(bi4, bi2, bi1);
-            indices.push(bo4, bo3, bo1); indices.push(bo4, bo1, bo2);
-            indices.push(bi2, bo1, bi1); indices.push(bi2, bo2, bo1);
-            indices.push(fi4, bi3, fi3); indices.push(fi4, bi4, bi3);
-            indices.push(fo4, fo3, bo3); indices.push(fo4, bo3, bo4);
+            // The following must push the points using the right-hand rule:
+            //  the direction of the normal vector for each triangle points outward.
+            // These share the same material.   
+            indices.push(fi2, fi3, fi1); indices.push(fi2, fi4, fi3); // front inner
+            indices.push(fo1, fo3, fo2); indices.push(fo4, fo2, fo3); // front outer
+            indices.push(fo1, fi2, fi1); indices.push(fo2, fi2, fo1); // Front edge of strip
+
+            indices.push(bi4, bi1, bi3); indices.push(bi4, bi2, bi1); // back inner
+            indices.push(bo4, bo3, bo1); indices.push(bo4, bo1, bo2); // back outer
+            indices.push(bi2, bo1, bi1); indices.push(bi2, bo2, bo1); // Back edge of strip
+
+            // The "thirdway" bridge connecting the front and back of the strip.
+            // The minutes and second indicators move along this central part of the strip.
+            indices.push(fi4, bi3, fi3); indices.push(fi4, bi4, bi3); // inner facing 
+            indices.push(fo4, fo3, bo3); indices.push(fo4, bo3, bo4); // outer facing
         }
 
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
@@ -405,9 +520,18 @@ class MobiusRenderer extends ClockRenderer {
 
         // Tick Scheme Groups
         const indicesPerSegment = 48;
-        const indicesOuterThirds = 36;
+        const indicesOuterThirds = 36;  // 18 for front edge, 18 for back edge
         const indicesMiddleThird = 12;
 
+        // TODO: recode to handle day and night if enabled. That means we need to
+        // use different materials for the front and back edges of the strip; and we need
+        // to handle the fact that the front and back of the strip are different
+        // colors when day and night are enabled. The transitions from day to night and vice versa
+        // will correspond to specific slice indices that we'll need to calculate.
+        // I have prepared by this by separating the front and back edges into different groups.
+        // This will allow us to use different materials for the front and back edges.  
+        // We'll need to add day and night materials to the material[] array.
+        // ISSUE: some tick schemes are not ideal for day and night mode. Whadda do?? Ignore for now.
         for (let i = 0; i < this.m_NumPoints; i++) {
             let matOuter = 0, matMiddle = 0;
             const isHourTick = (i % 30 === 0);
@@ -434,15 +558,31 @@ class MobiusRenderer extends ClockRenderer {
                     break;
             }
 
-            geometry.addGroup(i * indicesPerSegment, indicesOuterThirds, matOuter);
+            // Originally we had both sides of the strip as one group.
+            //geometry.addGroup(i * indicesPerSegment, indicesOuterThirds, matOuter);
+
+            // Now we have the front and back of the strip as separate groups.
+            // This allows them to be different materials/colors
+            geometry.addGroup(i * indicesPerSegment, indicesOuterThirds / 2, matOuter);
+            geometry.addGroup(i * indicesPerSegment + indicesOuterThirds / 2, indicesOuterThirds / 2, matOuter);
+
             geometry.addGroup(i * indicesPerSegment + indicesOuterThirds, indicesMiddleThird, matMiddle);
         }
 
         geometry.computeVertexNormals();
         const materials = [
-            new THREE.MeshStandardMaterial({ color: 0xD3D3D3, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 }),
-            new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1 }),
-            new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
+            new THREE.MeshStandardMaterial({
+                color: 0xD3D3D3, side: THREE.DoubleSide, metalness: 0.5,
+                roughness: 0.1, transparent: true, opacity: 0.95
+            }),
+            new THREE.MeshStandardMaterial({
+                color: 0x222222, side: THREE.DoubleSide, metalness: 0.5,
+                roughness: 0.1
+            }),
+            new THREE.MeshStandardMaterial({
+                color: 0x222222, side: THREE.DoubleSide, metalness: 0.5,
+                roughness: 0.1, transparent: true, opacity: 0.95
+            })
         ];
 
         if (this.mobiusMesh) this.mobiusGroup.remove(this.mobiusMesh);
@@ -561,6 +701,20 @@ class MobiusRenderer extends ClockRenderer {
     toggleHourNumbers() {
         this.hoursVisible = !this.hoursVisible;
         if (this.hourNumbersGroup) this.hourNumbersGroup.visible = this.hoursVisible;
+        if (this.hourNumbersGroup) this.hourNumbersGroup.visible = this.hoursVisible;
         return this.hoursVisible;
+    }
+
+    setDaliMode(enabled) {
+        if (this.daliMode === enabled) return;
+        this.daliMode = enabled;
+        // Must regenerate points and mesh because the geometry changes
+        this.generateMobius3dPoints();
+        this.createMobiusStripMesh();
+
+        // If hour markers need to follow the surface, they might need adjustment, 
+        // but since they are placed based on edgePath which is updated in generateMobius3dPoints,
+        // we just need to refresh their positions.
+        this.createHourNumbers();
     }
 }

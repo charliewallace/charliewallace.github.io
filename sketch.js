@@ -182,6 +182,7 @@ var WasMobileLandscapeLastCheck = false;
 var IsZenMode = false;
 var WasFullScreenLastCheck = false;
 
+
 // Robust tracking of browser timezone
 var BrowserTzOffset;
 
@@ -502,8 +503,20 @@ function oneTimeInit() {
       } else {
         btnHideHours.removeClass('toggled-on');
         btnHideHours.html("Hide Hours");
+        btnHideHours.html("Hide Hours");
       }
       // Update URL hash
+      updateUrlHash();
+    }
+  });
+
+  var btnDali = select('#btn-dali');
+  if (btnDali) btnDali.mousePressed(() => {
+    if (mobiusRenderer.active) {
+      const newState = !mobiusRenderer.daliMode;
+      mobiusRenderer.setDaliMode(newState);
+      if (newState) btnDali.addClass('toggled-on');
+      else btnDali.removeClass('toggled-on');
       updateUrlHash();
     }
   });
@@ -665,6 +678,8 @@ function oneTimeInit() {
   // Must be called after the url hash is parsed.
   applyInitialState();
 
+  // Window.IsDaliMode check removed - handled via applyInitialState
+
   // The url didn't contain a location. Check if we have location permission? 
   if (!locationFoundInUrlHash && navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
@@ -752,6 +767,7 @@ function parseUrlHash() {
   var tz = params.get('tz');
   var city = params.get('city');
   var zen = params.get('zen') || params.get('focus');
+  var dali = params.get('dali'); // TEST, FINDME
 
   // Zen mode
   if (zen === '1') {
@@ -759,6 +775,9 @@ function parseUrlHash() {
     document.body.classList.add('zen-mode');
     BkColor = 0; // Black
   }
+
+  // Dali mode
+  // stored in initialMobiusState below
 
   // Clock mode - store for later application (after renderers are initialized)
   var clockMode = params.get('clock');
@@ -775,7 +794,7 @@ function parseUrlHash() {
   // Mobius state - store for later application
   // Only parse if we have at least one Mobius parameter
   if (params.has('timeStyle') || params.has('shapeHours') || params.has('rotation') ||
-    params.has('demo') || params.has('showHours')) {
+    params.has('demo') || params.has('showHours') || params.has('dali')) {
     window._initialMobiusState = {
       timeStyle: params.get('timeStyle') || 'ampm',
       shapeHours: params.get('shapeHours') || 'outer-ring',
@@ -784,7 +803,8 @@ function parseUrlHash() {
       tickScheme: params.get('tickScheme') || 'standard',
       rotation: params.get('rotation') === '1',
       demo: params.get('demo') === '1',
-      showHours: params.get('showHours') !== '0' // Default true
+      showHours: params.get('showHours') !== '0', // Default true
+      dali: params.get('dali') === '1'
     };
   }
 
@@ -950,10 +970,21 @@ function applyInitialState() {
       }
     }
 
+    // Apply Dali mode
+    if (state.dali !== undefined) {
+      mobiusRenderer.setDaliMode(state.dali);
+      const btnDali = select('#btn-dali');
+      if (btnDali) {
+        if (state.dali) btnDali.addClass('toggled-on');
+        else btnDali.removeClass('toggled-on');
+      }
+    }
+
     delete window._initialMobiusState; // Clean up
   }
 
   console.log("  ✅ Initial state applied");
+  updateUrlHash(); // Ensure URL reflects all applied state
 }
 
 // Update URL hash with current state
@@ -968,7 +999,7 @@ function updateUrlHash() {
   const managedKeys = [
     'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
-    'tickScheme', 'rotation', 'demo', 'showHours'
+    'tickScheme', 'rotation', 'demo', 'showHours', 'dali'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1041,6 +1072,9 @@ function updateUrlHash() {
     }
     if (mobiusRenderer.hoursVisible !== true) {
       params.set('showHours', '0');
+    }
+    if (mobiusRenderer.daliMode === true) {
+      params.set('dali', '1');
     }
   }
 
