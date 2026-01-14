@@ -16,7 +16,7 @@
   --input-bg: #222;
   --input-border: #444;
   --link-color: #ADFF2F;
-  --warning-color: #ffcc00;
+  --warning-color: #e6cf60;
   --modal-overlay-bg: rgba(0, 0, 0, 0.85);
   --modal-bg: #1a1a1a;
 }
@@ -486,7 +486,7 @@ body {
 }
 
 .ui-btn.warning-bg {
-  background-color: #ffcc00 !important;
+  background-color: var(--warning-color) !important;
   color: #000 !important;
   border-color: #aa8800 !important;
 }
@@ -583,10 +583,14 @@ body {
   padding: 20px;
   width: 90%;
   max-width: 400px;
+  max-height: 90vh;
+  /* Constraint height */
   display: flex;
   flex-direction: column;
   gap: 15px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  /* Container doesn't scroll, body does */
 }
 
 .modal-content.hidden {
@@ -604,6 +608,8 @@ body {
   color: var(--text-color);
   border-bottom: 1px solid var(--btn-border);
   padding-bottom: 10px;
+  flex-shrink: 0;
+  /* Header doesn't shrink */
 }
 
 /* Compact modal layout */
@@ -616,10 +622,10 @@ body {
   font-size: 0.9rem;
   color: var(--text-color);
   line-height: 1.4;
-  overflow-y: visible;
-  /* No scroll */
-  max-height: 90vh;
-  /* Relaxed constraint */
+  overflow-y: auto;
+  /* Scroll internally */
+  flex-grow: 1;
+  /* Fill available space */
   padding: 0 5px;
 }
 
@@ -1363,7 +1369,41 @@ body.zen-mode #btn-zen-desktop:hover {
   /* ensure it stays in flow but allows overflow */
 }
 
-/* Hide scrollbar for cleaner look if possible */
-.ios-fullscreen-fix::-webkit-scrollbar {
-  display: none;
+/* --- Mobile Landscape Dialog Tweaks --- */
+@media screen and (max-height: 500px) {
+  .modal-content {
+    padding: 10px !important;
+    gap: 10px !important;
+    max-height: 95vh !important;
+  }
+
+  .modal-content>h2 {
+    font-size: 1rem !important;
+    padding-bottom: 5px !important;
+  }
+
+  /* Compact preset buttons in landscape */
+  .preset-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  .ui-btn.preset-modal {
+    padding: 6px 4px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .location-section h3 {
+    margin: 5px 0 !important;
+    font-size: 0.9rem !important;
+  }
+
+  .separator {
+    margin: 5px 0 !important;
+  }
+
+  /* Ensure input rows are compact */
+  .input-row {
+    margin-bottom: 0 !important;
+  }
 }
