@@ -1350,3 +1350,18 @@ body.zen-mode #btn-zen-desktop:hover {
     gap: 15px;
   }
 }
+
+/* --- iPhone Full Screen Workaround --- */
+.ios-fullscreen-fix {
+  height: calc(100vh + 1px) !important;
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch;
+  /* smooth scrolling */
+  position: relative;
+  /* ensure it stays in flow but allows overflow */
+}
+
+/* Hide scrollbar for cleaner look if possible */
+.ios-fullscreen-fix::-webkit-scrollbar {
+  display: none;
+}

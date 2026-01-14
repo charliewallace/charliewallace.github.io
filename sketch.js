@@ -1097,40 +1097,51 @@ function updateUrlHash() {
 // Helper to check fullscreen state across browsers
 // Helper to check fullscreen state across browsers
 function isFullScreen() {
+  // Check standard Fullscreen API
   var std = document.fullscreenElement;
   var webkit = document.webkitFullscreenElement;
   var moz = document.mozFullScreenElement;
   var ms = document.msFullscreenElement;
 
   var hasElement = (std || webkit || moz || ms) != null;
-  var isMQ = false;
 
-  // Use Media Query as a tiebreaker/validator if available
-  if (window.matchMedia) {
-    var mq = window.matchMedia('(display-mode: fullscreen)');
-    isMQ = mq.matches;
-    if (mq.media !== 'not all') {
-      // If we have an element but MQ says no, we are likely not in FS
-      if (hasElement && !isMQ) {
-        // hasElement = false; // logic attempted previously
-      }
-    }
+  // Check for our custom iOS fixes
+  if (!hasElement && document.body.classList.contains('ios-fullscreen-fix')) {
+    return true;
   }
 
-  // Debug logging - Always log if we suspect an issue (or just throttle?)
-  // For this debug session, let's log frequently but maybe check a global?
-  // User explicitly asked for logs.
-  // Debug logging - Removed for final version
   return hasElement;
 }
 
 
-
 // Toggle Full Screen Mode
 function toggleFullScreen() {
-  var fs = isFullScreen();
-  fullscreen(!fs);
-  // UI update is handled by onFullScreenChange event listener
+  // Detect iOS (iPhone/iPad)
+  // Note: iPad can report as Macintosh if 'Request Desktop Website' is on, 
+  // but checking maxTouchPoints helps distinguish.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    if (document.body.classList.contains('ios-fullscreen-fix')) {
+      // Turn OFF
+      document.body.classList.remove('ios-fullscreen-fix');
+      window.scrollTo(0, 0); // Reset scroll
+    } else {
+      // Turn ON
+      document.body.classList.add('ios-fullscreen-fix');
+      // Prompt user
+      alert("Swipe UP to hide the address bar.");
+      // Attempt to help scrolling
+      setTimeout(() => window.scrollTo(0, 1), 100);
+    }
+    // Force UI update since no 'fullscreenchange' event fires for class changes
+    onFullScreenChange();
+  } else {
+    // Standard Desktop/Android
+    var fs = isFullScreen();
+    fullscreen(!fs);
+  }
 }
 
 // Handle fullscreen change events (from button or ESC key)
