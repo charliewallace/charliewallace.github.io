@@ -321,15 +321,15 @@ function handleIpFallback(requestId, error) {
 
   var tzString = str(TzOffset);
   if (TzOffset > 0) tzString = "+" + str(TzOffset);
-  TzInput.value(tzString);
+  if (TzInput) TzInput.value(tzString);
   LastTz = TzOffset;
 
   var latString = str(Latitude);
-  LatInput.value(latString);
+  if (LatInput) LatInput.value(latString);
   LastLat = Latitude;
 
   var longString = str(Longitude);
-  LngInput.value(longString);
+  if (LngInput) LngInput.value(longString);
   LastLong = Longitude;
 }
 
@@ -400,16 +400,13 @@ function oneTimeInit() {
   });
 
   // --- MODAL SUBMIT BUTTONS ---
-  select('#btn-city-submit-modal').mousePressed(handleCitySubmitModal);
-  select('#btn-coords-submit-modal').mousePressed(handleCoordsSubmitModal);
+  // City search button in the Select Location modal
+  var citySrchBtn = select('#btn-city-search');
+  if (citySrchBtn) citySrchBtn.mousePressed(handleCitySubmitUnified);
 
-  // --- PRESET MODAL BUTTONS ---
-  select('#btn-loc-silverado-m').mousePressed(() => { setSilverado(); closeAllModals(); });
-  select('#btn-loc-berkeley-m').mousePressed(() => { setBerkeley(); closeAllModals(); });
-  select('#btn-loc-sandiego-m').mousePressed(() => { setSanDiego(); closeAllModals(); });
-  select('#btn-loc-london-m').mousePressed(() => { setLondon(); closeAllModals(); });
-  select('#btn-loc-kc-m').mousePressed(() => { setKansasCity(); closeAllModals(); });
-  select('#btn-loc-melbourne-m').mousePressed(() => { setMelbourne(); closeAllModals(); });
+  // Manual coords submit button
+  var coordsSubmitBtn = select('#btn-manual-apply');
+  if (coordsSubmitBtn) coordsSubmitBtn.mousePressed(handleCoordsSubmitUnified);
 
 
   GmtDisplayButtonLabel = "Show GMT";
@@ -418,20 +415,15 @@ function oneTimeInit() {
 
   //    Location buttons - Removed old inline buttons, now using unified modal bindings below
 
-  //     Input fields setup - Point to Shared Manual Modal Inputs
-  //     We do NOT bind .input() events because we use explicit submit buttons now.
-  TzInput = select('#input-tz-modal');
-  TzInput.value("100")
-  // TzInput.input(tzInputEvent); // Disable auto-update
+  //     Input fields setup - Point to modal inputs
+  TzInput = select('#input-tz');
+  if (TzInput) TzInput.value("100");
 
-  LatInput = select('#input-lat-modal');
-  // LatInput.input(latInputEvent); // Disable auto-update
-
-  LngInput = select('#input-lng-modal');
-  // LngInput.input(longInputEvent); // Disable auto-update
+  LatInput = select('#input-lat');
+  LngInput = select('#input-lon');
 
   //    City Name Input
-  CityNameInput = select('#input-city-modal-unified');
+  CityNameInput = select('#city-search-input');
   //    City Submit Button (Unified handled below)
 
   //    Full Screen Button
@@ -453,10 +445,25 @@ function oneTimeInit() {
   });
 
   // Setup Button for Day Spiral Clock
-  var setupBtn = select('#btn-setup');
+  var setupBtn = select('#btn-setup-dayspiral');
   if (setupBtn) setupBtn.mousePressed(() => {
-    alert("Setup - Future Feature");
+    openModal('modal-setup-dayspiral');
   });
+
+  // DaySpiral Style Buttons
+  select('#btn-style-classic').mousePressed(() => setDaySpiralStyle('Classic'));
+  select('#btn-style-spiral').mousePressed(() => setDaySpiralStyle('SpiralHours'));
+
+  // DaySpiral Time Format Dropdown
+  var timeFormatSelect = select('#select-dayspiral-time-format');
+  if (timeFormatSelect) timeFormatSelect.changed(() => {
+    const format = timeFormatSelect.value();
+    if (daySpiralRenderer) {
+      daySpiralRenderer.setTimeFormat(format);
+      updateUrlHash();
+    }
+  });
+
 
   // Select Different Location Button
   var selectLocBtn = select('#btn-select-loc');
@@ -561,32 +568,41 @@ function oneTimeInit() {
 
 
   // NEW: Unified Modal Bindings
-  select('#btn-city-submit-unified').mousePressed(handleCitySubmitUnified);
+  // City search is already bound above via #btn-city-search
 
-  // "Manual Location" button in Select Modal -> Opens Manual Coords Modal
-  select('#btn-open-manual-loc').mousePressed(() => {
-    closeAllModals();
-    openModal('modal-coords'); // Uses existing manually-coords modal
+  // Preset buttons in Select Location modal
+  var presetBtns = selectAll('.preset');
+  presetBtns.forEach(btn => {
+    btn.mousePressed(() => {
+      const lat = parseFloat(btn.attribute('data-lat'));
+      const lon = parseFloat(btn.attribute('data-lon'));
+      const tz = parseFloat(btn.attribute('data-tz'));
+      const city = btn.attribute('data-city');
+
+      // Set location
+      Latitude = lat;
+      Longitude = lon;
+      TzOffset = tz;
+      LocaleTitle = city;
+      IsUserInitiatedLocation = true;
+      IsDisplayingUserLocation = false;
+
+      // Update UI
+      if (LatInput) LatInput.value(str(lat));
+      if (LngInput) LngInput.value(str(lon));
+      if (TzInput) {
+        let tzStr = str(tz);
+        if (tz > 0) tzStr = '+' + tzStr;
+        TzInput.value(tzStr);
+      }
+
+      // Recalculate times
+      IsSunRiseSetObtained = false;
+      updateTimeThisDay();
+      updateUrlHash();
+      closeAllModals();
+    });
   });
-
-  // "Your Location" button in Select Modal -> Auto Locate
-  select('#btn-use-your-loc').mousePressed(() => {
-    closeAllModals();
-    usePreciseLocation(false);
-  });
-
-  // Unified Manual Coords Submit (from the Manual Modal)
-  var coordsSubmitBtn = select('#btn-coords-submit-modal');
-  if (coordsSubmitBtn) coordsSubmitBtn.mousePressed(handleCoordsSubmitUnified); // Reuse unified handler
-
-
-  // Bind unified presets
-  select('#btn-loc-silverado-u').mousePressed(() => { setSilverado(); closeAllModals(); });
-  select('#btn-loc-berkeley-u').mousePressed(() => { setBerkeley(); closeAllModals(); });
-  select('#btn-loc-sandiego-u').mousePressed(() => { setSanDiego(); closeAllModals(); });
-  select('#btn-loc-london-u').mousePressed(() => { setLondon(); closeAllModals(); });
-  select('#btn-loc-kc-u').mousePressed(() => { setKansasCity(); closeAllModals(); });
-  select('#btn-loc-melbourne-u').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
   // get local time zone of the user's browser ============.
   // ATTN: by convention, this returns positive value when
@@ -788,6 +804,15 @@ function parseUrlHash() {
     window._initialGmtEnabled = true;
   }
 
+  var daySpiralStyle = params.get('daySpiralStyle');
+  var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
+  if (daySpiralStyle || daySpiralTimeFormat) {
+    window._initialDaySpiralState = {
+      style: daySpiralStyle || 'Classic',
+      timeFormat: daySpiralTimeFormat || '12'
+    };
+  }
+
   // Mobius state - store for later application
   // Only parse if we have at least one Mobius parameter
   if (params.has('timeStyle') || params.has('shapeHours') || params.has('rotation') ||
@@ -896,6 +921,39 @@ function applyInitialState() {
     delete window._initialGmtEnabled; // Clean up
   }
 
+  // Apply DaySpiral state if specified (regardless of active renderer)
+  if (window._initialDaySpiralState) {
+    console.log("  ⚙️ Applying DaySpiral settings:", window._initialDaySpiralState);
+    const state = window._initialDaySpiralState;
+
+    if (state.style) {
+      daySpiralRenderer.setStyle(state.style);
+      // Update UI buttons
+      const btnClassic = select('#btn-style-classic');
+      const btnSpiral = select('#btn-style-spiral');
+      const btnGmt = select('#btn-gmt');
+
+      if (state.style === 'Classic') {
+        if (btnClassic) btnClassic.addClass('toggled-on');
+        if (btnSpiral) btnSpiral.removeClass('toggled-on');
+        if (btnGmt) btnGmt.show();
+      } else {
+        if (btnClassic) btnClassic.removeClass('toggled-on');
+        if (btnSpiral) btnSpiral.addClass('toggled-on');
+        // Hide GMT button in SpiralHours mode
+        if (btnGmt) btnGmt.hide();
+      }
+    }
+
+    if (state.timeFormat) {
+      daySpiralRenderer.setTimeFormat(state.timeFormat);
+      const selTimeFormat = select('#select-dayspiral-time-format');
+      if (selTimeFormat) selTimeFormat.value(state.timeFormat);
+    }
+
+    delete window._initialDaySpiralState; // Clean up
+  }
+
   // Apply Mobius state if specified (regardless of active renderer)
   if (window._initialMobiusState) {
     console.log("  ⚙️ Applying Mobius settings:", window._initialMobiusState);
@@ -993,6 +1051,7 @@ function updateUrlHash() {
   // Clear managed parameters to re-add them based on current state
   const managedKeys = [
     'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
+    'daySpiralStyle', 'daySpiralTimeFormat',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali'
   ];
@@ -1039,6 +1098,16 @@ function updateUrlHash() {
     const gmtBtn = select('#btn-gmt');
     if (gmtBtn && gmtBtn.hasClass('toggled-on')) {
       params.set('gmt', '1');
+    }
+
+    // Add DaySpiral style
+    if (daySpiralRenderer.style && daySpiralRenderer.style !== 'Classic') {
+      params.set('daySpiralStyle', daySpiralRenderer.style);
+    }
+
+    // Add DaySpiral time format
+    if (daySpiralRenderer.timeFormat && daySpiralRenderer.timeFormat !== '12') {
+      params.set('daySpiralTimeFormat', daySpiralRenderer.timeFormat);
     }
   }
 
