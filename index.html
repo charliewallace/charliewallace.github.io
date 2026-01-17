@@ -17,6 +17,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>CoolweirdClocks</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="modal-fixes.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
   <!-- Google tag (gtag.js) -->
@@ -100,6 +101,7 @@
           <!-- DaySpiral Specific Controls -->
           <div id="controls-dayspiral" class="controls-group">
             <button id="btn-gmt" class="ui-btn">Show GMT</button>
+            <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
           </div>
 
           <!-- Mobius Specific Controls (Hidden by default) -->
@@ -116,13 +118,102 @@
         </div>
       </div>
 
+      <!-- End UI Layer -->
     </div>
+    <!-- End Clock Container -->
 
-    <!-- Modals Overlay -->
+    <!-- ========================================= -->
+    <!-- MODALS -->
+    <!-- ========================================= -->
+
     <div id="modal-overlay" class="hidden">
 
-      <!-- About Modal -->
+      <!-- Modal: Select Location -->
+      <div id="modal-select-location" class="modal-content compact hidden">
+        <div class="modal-content">
+          <button class="modal-close">&times;</button>
+          <h2>Select Location</h2>
+
+          <!-- Preset Grid -->
+          <div class="preset-grid">
+            <button class="ui-btn preset" data-lat="51.5074" data-lon="-0.1278" data-tz="0"
+              data-city="London">London</button>
+            <button class="ui-btn preset" data-lat="40.7128" data-lon="-74.0060" data-tz="-5" data-city="New York">New
+              York</button>
+            <button class="ui-btn preset" data-lat="35.6895" data-lon="139.6917" data-tz="9"
+              data-city="Tokyo">Tokyo</button>
+            <button class="ui-btn preset" data-lat="-33.8688" data-lon="151.2093" data-tz="11"
+              data-city="Sydney">Sydney</button>
+            <button class="ui-btn preset" data-lat="48.8566" data-lon="2.3522" data-tz="1"
+              data-city="Paris">Paris</button>
+            <button class="ui-btn preset" data-lat="34.0522" data-lon="-118.2437" data-tz="-8"
+              data-city="Los Angeles">Los Angeles</button>
+          </div>
+
+          <div class="separator"></div>
+
+          <!-- City Lookup Section -->
+          <div class="location-section">
+            <h3>Search City</h3>
+            <div class="input-row">
+              <input type="text" id="city-search-input" class="modal-input"
+                placeholder="Enter city name (e.g. Chicago)">
+              <button id="btn-city-search" class="ui-btn">Search</button>
+            </div>
+            <div id="city-search-results" class="results-list hidden"></div>
+          </div>
+
+          <div class="separator"></div>
+
+          <!-- Manual Lat/Lon Section -->
+          <div class="location-section">
+            <h3>Manual Coordinates</h3>
+            <div class="input-row">
+              <input type="number" id="input-lat" class="modal-input" placeholder="Lat" step="any">
+              <input type="number" id="input-lon" class="modal-input" placeholder="Lon" step="any">
+            </div>
+            <div class="input-row">
+              <input type="number" id="input-tz" class="modal-input" placeholder="UTC Offset" step="0.5">
+              <button id="btn-manual-apply" class="ui-btn">Go</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Modal: DaySpiral Setup -->
+      <div id="modal-setup-dayspiral" class="modal-content hidden">
+        <button class="modal-close">&times;</button>
+        <h2>DaySpiral Settings</h2>
+        <div class="modal-body">
+
+          <div class="settings-section">
+            <h3>Clock Style</h3>
+            <div class="style-choice-container">
+              <button id="btn-style-classic" class="ui-btn wide-btn toggled-on">Classic</button>
+              <button id="btn-style-spiral" class="ui-btn wide-btn">Hours in Spiral</button>
+            </div>
+          </div>
+
+          <hr class="separator">
+
+          <div class="settings-section">
+            <h3>Time Format</h3>
+            <select id="select-dayspiral-time-format" class="modal-input">
+              <option value="12" selected>12-hour (AM/PM)</option>
+              <option value="24">24-hour (0-23)</option>
+            </select>
+          </div>
+
+        </div>
+        <div class="modal-actions">
+          <button class="ui-btn btn-close-modal">OK</button>
+        </div>
+      </div>
+
+      <!-- Modal: About -->
       <div id="modal-about" class="modal-content hidden">
+        <button class="modal-close">&times;</button>
         <h2>About Day Spiral Clock</h2>
         <div class="modal-body" id="about-description">
           <!-- Content injected via JS -->
@@ -130,132 +221,9 @@
         <button class="ui-btn btn-close-modal">OK</button>
       </div>
 
-      <!-- Details Modal -->
-      <div id="modal-details" class="modal-content hidden">
-        <h2>Location Details</h2>
-        <div class="modal-body" id="details-content">
-          <!-- Content injected via JS -->
-        </div>
-        <button class="ui-btn btn-close-modal">OK</button>
-      </div>
-
-      <!-- New Unified Select Location Modal -->
-      <div id="modal-select-location" class="modal-content compact hidden">
-        <h2>Select Location</h2>
-        <div class="modal-body">
-
-          <!-- Section 1: Presets (Prioritized) -->
-          <div class="location-section">
-            <h3>Preset Locations</h3>
-            <div class="preset-grid">
-              <button id="btn-loc-silverado-u" class="ui-btn preset-modal">Silverado</button>
-              <button id="btn-loc-berkeley-u" class="ui-btn preset-modal">Berkeley</button>
-              <button id="btn-loc-sandiego-u" class="ui-btn preset-modal">San Diego</button>
-              <button id="btn-loc-london-u" class="ui-btn preset-modal">London</button>
-              <button id="btn-loc-kc-u" class="ui-btn preset-modal">Kansas City</button>
-              <button id="btn-loc-melbourne-u" class="ui-btn preset-modal">Melbourne</button>
-            </div>
-          </div>
-
-          <hr class="separator">
-
-          <!-- Section 2: City Lookup -->
-          <div class="location-section">
-            <h3>City Lookup</h3>
-            <div class="input-row">
-              <input type="text" id="input-city-modal-unified" placeholder="City Name" class="modal-input">
-              <button id="btn-city-submit-unified" class="ui-btn">Go</button>
-            </div>
-            <div id="city-error-msg-unified" class="error-msg"></div>
-          </div>
-
-          <hr class="separator">
-
-          <!-- Section 3: Navigation Buttons -->
-          <div class="location-section button-row-split">
-            <button id="btn-open-manual-loc" class="ui-btn secondary">Manual Lat/Long</button>
-            <button id="btn-use-your-loc" class="ui-btn secondary">Your Location</button>
-          </div>
-
-        </div>
-        <div class="modal-actions">
-          <button class="ui-btn btn-close-modal">Close</button>
-        </div>
-      </div>
-
-
-      <!-- City Lookup Modal (Keep for Mobile) -->
-      <div id="modal-city" class="modal-content hidden">
-        <h2>Lookup City</h2>
-        <div class="modal-body">
-          <p class="help-text">Please enter city, state or province, and country if not in the USA.</p>
-          <input type="text" id="input-city-modal" placeholder="City Name" class="modal-input">
-          <div id="city-error-msg" class="error-msg"></div>
-        </div>
-        <div class="modal-actions">
-          <button id="btn-city-submit-modal" class="ui-btn">OK</button>
-          <button class="ui-btn secondary btn-close-modal">Cancel</button>
-        </div>
-      </div>
-
-      <!-- Manual Lat/Long Modal (Keep for Mobile) -->
-      <div id="modal-coords" class="modal-content hidden">
-        <h2>Manual Coordinates</h2>
-        <div class="modal-body">
-          <div class="coord-form">
-            <div class="form-row">
-              <label>Latitude:</label>
-              <input type="text" id="input-lat-modal" class="modal-input small">
-            </div>
-            <div class="form-row">
-              <label>Longitude:</label>
-              <input type="text" id="input-lng-modal" class="modal-input small">
-            </div>
-            <div class="form-row">
-              <label>Time Zone:</label>
-              <input type="text" id="input-tz-modal" class="modal-input small">
-            </div>
-            <p class="help-text" style="margin-top: 10px;">Use negative hour offset for cities west of London.</p>
-            <div id="coords-error-msg" class="error-msg"></div>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button id="btn-coords-submit-modal" class="ui-btn">OK</button>
-          <button class="ui-btn secondary btn-close-modal">Cancel</button>
-        </div>
-      </div>
-
-      <!-- More Locations Modal (Keep for Mobile) -->
-      <div id="modal-locations" class="modal-content hidden">
-        <h2>Select Location</h2>
-        <div class="modal-body">
-          <div class="preset-grid">
-            <button id="btn-loc-silverado-m" class="ui-btn preset-modal">Silverado</button>
-            <button id="btn-loc-berkeley-m" class="ui-btn preset-modal">Berkeley</button>
-            <button id="btn-loc-sandiego-m" class="ui-btn preset-modal">San Diego</button>
-            <button id="btn-loc-london-m" class="ui-btn preset-modal">London</button>
-            <button id="btn-loc-kc-m" class="ui-btn preset-modal">Kansas City</button>
-            <button id="btn-loc-melbourne-m" class="ui-btn preset-modal">Melbourne</button>
-          </div>
-        </div>
-        <button class="ui-btn btn-close-modal">Cancel</button>
-      </div>
-
-      <!-- Readme Modal -->
-      <div id="modal-readme" class="modal-content large hidden">
-        <h2>Readme</h2>
-        <div class="modal-body markdown-body" id="readme-content"
-          style="max-height: 70vh; overflow-y: auto; background: white; color: black; padding: 20px; border-radius: 4px;">
-          <!-- Content injected via JS -->
-          Loading...
-        </div>
-        <div class="modal-actions">
-          <button class="ui-btn btn-close-modal">Close</button>
-        </div>
-      </div>
-
-      <!-- Mobius Setup Modal -->
+      <!-- Modal: Mobius Settings -->
       <div id="modal-setup-mobius" class="modal-content hidden">
+        <button class="modal-close">&times;</button>
         <h2>Mobius Settings</h2>
         <div class="modal-body">
 
@@ -316,6 +284,8 @@
       </div>
 
     </div>
+
+  </div>
   </div>
 
   <!-- THREE.js -->
@@ -329,6 +299,7 @@
   <script src="js/ClockRenderer.js"></script>
   <script src="js/renderers/DaySpiralRenderer.js"></script>
   <script src="js/renderers/MobiusRenderer.js"></script>
+  <script src="js/daySpiralHelper.js"></script>
 </body>
 
 </html>
