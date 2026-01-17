@@ -82,7 +82,7 @@ class DaySpiralRenderer extends ClockRenderer {
             this.spiralStrokeWeight = radius * 0.2;
 
             // Adjust ClockDiameter/Face for this mode?
-            // Legacy: InnerFaceRadius = ClockDiameter/2;
+            // Legacy: InnerFaceRadius = ClockDiameter/2; 
             // In SpiralHours mode, the gray face background might need to behave differently,
             // but for now we'll stick to the spiral dimensions.
         } else {
@@ -544,7 +544,7 @@ class DaySpiralRenderer extends ClockRenderer {
         stroke(handColor);
         strokeCap(ROUND);
 
-        // Classic logic (Time on the outer ring mostly, but Hour hand follows spiral?
+        // Classic logic (Time on the outer ring mostly, but Hour hand follows spiral? 
         // Actually DaySpiral description says "Hour hand tip follows the day spiral")
         // So Classic should ALSO follow the spiral for the hour hand?
         // "Hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM."
@@ -583,7 +583,7 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeWeight(Math.max(3, this.secondaryStrokeWeight * 1.2));
         line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour);
 
-        // Classic mode has no circle at tip usually?
+        // Classic mode has no circle at tip usually? 
         // The original DaySpiralRenderer I wrote didn't have it.
 
         pop();
