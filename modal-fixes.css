@@ -1,0 +1,46 @@
+/* Modal close button styling */
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: #999;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+    color: #fff;
+}
+
+/* Settings section styling */
+.settings-section {
+    margin-bottom: 15px;
+}
+
+.settings-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: #ddd;
+    border-bottom: 1px solid #444;
+    padding-bottom: 4px;
+}
+
+/* Style choice container for DaySpiral setup */
+.style-choice-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.wide-btn {
+    min-width: 140px;
+}
