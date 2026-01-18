@@ -1567,19 +1567,19 @@ function openDetailsModal() {
         <!-- Column 2: Location Data -->
         <div class="details-column">
           <p>
-            <span class="label">City / Name</span>
+            <span class="label">City</span>
             <span class="value">${LocaleTitle}</span>
           </p>
           <p>
-            <span class="label">Coordinates</span>
-            <span class="value">${Latitude}, ${Longitude}</span>
+            <span class="label">Lat / Lng</span>
+            <span class="value">${nfc(Latitude, 2)}, ${nfc(Longitude, 2)}</span>
           </p>
           <p>
-            <span class="label">Time Zone Offset</span>
+            <span class="label">Time Zone</span>
             <span class="value">GMT ${tzStr}</span>
           </p>
            <p>
-            <span class="label">Daylight Savings</span>
+            <span class="label">DST</span>
             <span class="value">${dstStr}</span>
           </p>
         </div>

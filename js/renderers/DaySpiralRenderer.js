@@ -457,45 +457,48 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawGMT(locManager) {
-        // Draw GMT hours inside the spiral (like local hours)
         if (!locManager || !locManager.hasValidLocation) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
-        // Get GMT time
-        let now = new Date();
-        let gmtHours = now.getUTCHours();
-
         fill(255, 255, 0); // Yellow
         noStroke();
-        textSize(this.fontSize * 1.0); // Smaller font size to match original
+        textSize(this.fontSize * 0.9);
         textStyle(BOLD);
-        textAlign(CENTER, CENTER);
 
-        let totalPoints = this.radiusSpiral.length;
+        let totalPoints = this.numPointsPerTurn * this.numTurns;
 
-        // Draw GMT hours 0-23 inside the spiral
-        for (let h = 0; h <= 23; h++) {
-            let displayStr = str(h);
-
-            // Calculate index in the spiral array
-            let idx = Math.floor((h / 24.0) * (this.numPointsPerTurn * 2));
-
-            // Clamp
+        for (let h = 0; h <= 24; h++) {
+            // Find spiral index for this hour (0..24)
+            let idx = Math.floor((h / 24.0) * totalPoints);
             if (idx >= this.radiusSpiral.length) idx = this.radiusSpiral.length - 1;
 
-            let r = this.radiusSpiral[idx];
+            // Calc GMT Hour
+            let gmtH = h - locManager.tzOffset;
+            gmtH = gmtH % 24;
+            if (gmtH < 0) gmtH += 24;
 
-            // Calculate angle
+            let label = str(Math.floor(gmtH));
+            let r = this.radiusSpiral[idx];
             let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
             // Legacy tweak
             let ri2 = r * 1.008;
-
-            // Calculate x,y with tweak
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
-            text(displayStr, x, y);
+            // Special case for start of spiral: Right justify "GMT" to the left
+            if (h === 0) {
+                textAlign(CENTER, CENTER);
+                text(label, x, y);
+
+                // Draw "GMT " to the left of the centered number
+                textAlign(RIGHT, CENTER);
+                let spacing = textWidth(label) / 2 + 2;
+                text("GMT ", x - spacing, y);
+            } else {
+                textAlign(CENTER, CENTER);
+                text(label, x, y);
+            }
         }
 
         textStyle(NORMAL);

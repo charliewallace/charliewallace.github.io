@@ -1373,9 +1373,9 @@ body.zen-mode #btn-zen-desktop:hover {
 /* --- Mobile Landscape Dialog Tweaks --- */
 @media screen and (max-height: 500px) {
   .modal-content {
-    padding: 8px !important;
+    padding: 8px 16px !important;
     gap: 4px !important;
-    max-height: 98vh !important;
+    max-height: 94vh !important; /* Slightly more headroom for mobile bars */
     max-width: 640px !important;
     width: 98% !important;
   }
@@ -1474,6 +1474,26 @@ body.zen-mode #btn-zen-desktop:hover {
   .modal-body {
     overflow-y: auto;
     padding-top: 2px !important;
+  }
+
+  /* Compacting Location Details specifically */
+  .details-grid {
+    gap: 12px !important;
+    margin-top: 4px !important;
+  }
+  .details-column {
+    gap: 2px !important; /* Significantly reduced from 12px */
+  }
+  .details-column p {
+    gap: 0 !important;
+    margin: 0 !important;
+  }
+  .details-column .label {
+    font-size: 0.65rem !important;
+    margin-bottom: -1px !important;
+  }
+  .details-column .value {
+    font-size: 0.85rem !important;
   }
 }
 /* Location Details Modal Styles */
