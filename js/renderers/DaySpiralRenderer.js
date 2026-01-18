@@ -195,7 +195,7 @@ class DaySpiralRenderer extends ClockRenderer {
     drawSpiral(tk, loc) {
         // Color scheme
         // Even closer to legacy blue for better contrast
-        let dayColor = color(100, 180, 220); // Legacy daytime blue
+        let dayColor = color(92, 171, 226); // Halfway between current and legacy darker blue
         let nightColor = color(20, 80, 100); // Dark blue for night
         let baseColor = color(90); // Dark Gray for the track
 
