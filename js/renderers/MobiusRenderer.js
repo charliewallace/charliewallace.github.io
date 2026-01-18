@@ -503,16 +503,6 @@ class MobiusRenderer extends ClockRenderer {
             vertices.push(this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].x, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].y, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].z);
         }
 
-        if (this.mobiusMesh) {
-            const posAttr = this.mobiusMesh.geometry.getAttribute('position');
-            if (posAttr && posAttr.array.length === vertices.length) {
-                posAttr.copyArray(vertices);
-                posAttr.needsUpdate = true;
-                this.mobiusMesh.geometry.computeVertexNormals();
-                return;
-            }
-        }
-
         const geometry = new THREE.BufferGeometry();
 
         for (let i = 0; i < this.m_NumPoints; i++) {
