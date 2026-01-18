@@ -391,25 +391,25 @@ class DaySpiralRenderer extends ClockRenderer {
 
                 // Draw hour number
                 let hourStr = str(hour12);
-                let hourWidth = textWidth(hourStr);
                 text(hourStr, x, y);
 
                 // Draw stacked AM/PM indicator - aligned to right edge of number
                 push();
-                let ampmSize = this.fontSize * 0.35;
-                textSize(ampmSize);
-                textStyle(BOLD); // Ensure bold for AM/PM too for consistency
+                textSize(this.fontSize * 0.3); // Even smaller
+
+                // Measure the width of the hour number to position AM/PM from its right edge
+                let numberWidth = textWidth(hourStr);
 
                 // Position AM/PM to the right of the number's right edge
-                let margin = this.fontSize * 0.12;
-                let offsetX = (hourWidth / 2) + margin;
+                let offsetX = numberWidth / 2 + this.fontSize * 0.15; // Half width + small gap
 
-                // Draw 'A' or 'P' slightly above middle, 'M' slightly below
-                textAlign(LEFT, CENTER);
-                let verticalSpacing = ampmSize * 0.42;
+                // Draw 'M' first (bottom)
+                textAlign(LEFT, TOP);
+                text('M', x + offsetX, y);
 
-                text(ampm, x + offsetX, y - verticalSpacing);
-                text('M', x + offsetX, y + verticalSpacing);
+                // Draw 'A' or 'P' above 'M'
+                textAlign(LEFT, BOTTOM);
+                text(ampm, x + offsetX, y);
 
                 pop();
             }
