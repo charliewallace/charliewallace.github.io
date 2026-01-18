@@ -3,21 +3,15 @@ function setDaySpiralStyle(styleName) {
     if (daySpiralRenderer) {
         daySpiralRenderer.setStyle(styleName);
 
-        // Update UI buttons
-        let btnClassic = select('#btn-style-classic');
-        let btnSpiral = select('#btn-style-spiral');
-        let btnGmt = select('#btn-gmt');
+        // UI Feedback (active class) is handled globally in updateUIElements() in sketch.js
 
+        // Manage GMT button visibility based on style
+        let btnGmt = select('#btn-gmt');
         if (styleName === 'Classic') {
-            if (btnClassic) btnClassic.addClass('toggled-on');
-            if (btnSpiral) btnSpiral.removeClass('toggled-on');
             // Show GMT button in Classic mode
             if (btnGmt) btnGmt.show();
         } else {
-            // SpiralHours mode
-            if (btnClassic) btnClassic.removeClass('toggled-on');
-            if (btnSpiral) btnSpiral.addClass('toggled-on');
-            // Hide GMT button in SpiralHours mode (no room for GMT display)
+            // SpiralHours mode - Hide GMT button (no room for GMT display)
             if (btnGmt) {
                 btnGmt.hide();
                 // Also turn off GMT if it was on

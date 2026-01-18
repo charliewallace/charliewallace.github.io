@@ -81,7 +81,7 @@
 
       <!-- Bottom Left: View Controls -->
       <div id="bottom-left-container" class="ui-corner">
-        <div id="clock-selector">
+        <div id="clock-selector" class="selector-box">
           <div class="selector-title">Select Clock</div>
           <div class="selector-options">
             <span id="opt-dayspiral" class="selector-opt active">DaySpiral</span>
@@ -100,8 +100,17 @@
 
           <!-- DaySpiral Specific Controls -->
           <div id="controls-dayspiral" class="controls-group">
-            <button id="btn-gmt" class="ui-btn">Show GMT</button>
-            <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
+            <div id="style-selector" class="selector-box">
+              <div class="selector-title">Select Style</div>
+              <div class="selector-options">
+                <span id="opt-style-classic" class="selector-opt active">Classic</span>
+                <span id="opt-style-spiral" class="selector-opt">Hours in Spiral</span>
+              </div>
+            </div>
+            <div class="horizontal-row">
+              <button id="btn-gmt" class="ui-btn">Show GMT</button>
+              <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
+            </div>
           </div>
 
           <!-- Mobius Specific Controls (Hidden by default) -->
@@ -210,14 +219,6 @@
         <button class="modal-close">&times;</button>
         <h2>DaySpiral Settings</h2>
         <div class="modal-body">
-          <div class="settings-section">
-            <h3>Clock Style</h3>
-            <div class="style-choice-container">
-              <button id="btn-style-classic" class="ui-btn wide-btn">Classic</button>
-              <button id="btn-style-spiral" class="ui-btn wide-btn">Hours in Spiral</button>
-            </div>
-          </div>
-          <hr class="separator">
           <div class="settings-section">
             <h3>Time Format</h3>
             <select id="select-dayspiral-time-format" class="modal-input">

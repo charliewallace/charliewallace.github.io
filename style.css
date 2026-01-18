@@ -129,8 +129,8 @@ body {
   gap: 8px;
 }
 
-/* --- Clock Selector (Bottom Left) --- */
-#clock-selector {
+/* --- Selector Boxes (Bottom Left/Right) --- */
+.selector-box {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1229,7 +1229,7 @@ body.zen-mode #btn-fullscreen {
 }
 
 /* Hide Clock Mode selector in Zen Mode */
-body.zen-mode #clock-selector {
+body.zen-mode .selector-box {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
@@ -1375,7 +1375,8 @@ body.zen-mode #btn-zen-desktop:hover {
   .modal-content {
     padding: 8px 16px !important;
     gap: 4px !important;
-    max-height: 94vh !important; /* Slightly more headroom for mobile bars */
+    max-height: 94vh !important;
+    /* Slightly more headroom for mobile bars */
     max-width: 640px !important;
     width: 98% !important;
   }
@@ -1481,58 +1482,64 @@ body.zen-mode #btn-zen-desktop:hover {
     gap: 12px !important;
     margin-top: 4px !important;
   }
+
   .details-column {
-    gap: 2px !important; /* Significantly reduced from 12px */
+    gap: 2px !important;
+    /* Significantly reduced from 12px */
   }
+
   .details-column p {
     gap: 0 !important;
     margin: 0 !important;
   }
+
   .details-column .label {
     font-size: 0.65rem !important;
     margin-bottom: -1px !important;
   }
+
   .details-column .value {
     font-size: 0.85rem !important;
   }
 }
+
 /* Location Details Modal Styles */
 .details-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 10px;
 }
 
 .details-column {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .details-column p {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .details-column .label {
-    font-size: 0.7rem;
-    color: #aaa;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .details-column .value {
-    font-size: 0.95rem;
-    color: #fff;
-    font-weight: 500;
+  font-size: 0.95rem;
+  color: #fff;
+  font-weight: 500;
 }
 
 @media screen and (max-width: 600px) {
-    .details-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
 }

@@ -467,8 +467,8 @@ function oneTimeInit() {
   });
 
   // DaySpiral Style Buttons
-  select('#btn-style-classic').mousePressed(() => setDaySpiralStyle('Classic'));
-  select('#btn-style-spiral').mousePressed(() => setDaySpiralStyle('SpiralHours'));
+  select('#opt-style-classic').mousePressed(() => setDaySpiralStyle('Classic'));
+  select('#opt-style-spiral').mousePressed(() => setDaySpiralStyle('SpiralHours'));
 
   // DaySpiral Time Format Dropdown
   var timeFormatSelect = select('#select-dayspiral-time-format');
@@ -946,18 +946,12 @@ function applyInitialState() {
 
     if (state.style) {
       daySpiralRenderer.setStyle(state.style);
-      // Update UI buttons
-      const btnClassic = select('#btn-style-classic');
-      const btnSpiral = select('#btn-style-spiral');
-      const btnGmt = select('#btn-gmt');
+      // UI Feedback (active class) is handled globally in updateUIElements()
 
+      const btnGmt = select('#btn-gmt');
       if (state.style === 'Classic') {
-        if (btnClassic) btnClassic.addClass('toggled-on');
-        if (btnSpiral) btnSpiral.removeClass('toggled-on');
         if (btnGmt) btnGmt.show();
       } else {
-        if (btnClassic) btnClassic.removeClass('toggled-on');
-        if (btnSpiral) btnSpiral.addClass('toggled-on');
         // Hide GMT button in SpiralHours mode
         if (btnGmt) btnGmt.hide();
       }
@@ -1444,6 +1438,17 @@ function updateUIElements() {
   } else {
     if (optSpiral) optSpiral.removeClass('active');
     if (optMobius) optMobius.addClass('active');
+  }
+
+  // Update DaySpiral Style Selector Highlighting
+  var optClassic = select('#opt-style-classic');
+  var optSpiralHours = select('#opt-style-spiral');
+  if (daySpiralRenderer && daySpiralRenderer.style === 'Classic') {
+    if (optClassic) optClassic.addClass('active');
+    if (optSpiralHours) optSpiralHours.removeClass('active');
+  } else {
+    if (optClassic) optClassic.removeClass('active');
+    if (optSpiralHours) optSpiralHours.addClass('active');
   }
 }
 
