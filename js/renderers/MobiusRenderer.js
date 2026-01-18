@@ -133,6 +133,11 @@ class MobiusRenderer extends ClockRenderer {
         this.transitionDuration = 1000; // 1 second
         this.currentTwistMultiplier = 1;
         this.targetTwistMultiplier = 1;
+        this.startTwistMultiplier = 1;
+
+        // Cached Objects for Performance
+        this.cachedFont = null;
+        this.hourLabels = []; // Track existing label groups
     }
 
     init() {
@@ -249,10 +254,10 @@ class MobiusRenderer extends ClockRenderer {
 
             this.currentTwistMultiplier = this.startTwistMultiplier + (this.targetTwistMultiplier - this.startTwistMultiplier) * easeT;
 
-            // Regenerate geometry
+            // Optimized geometry update
             this.generateMobius3dPoints(this.currentTwistMultiplier);
-            this.createMobiusStripMesh();
-            this.createHourNumbers(); // Refresh numbers to stick to strip
+            this.updateMobiusStripVertices();
+            this.updateHourNumberPositions();
 
             if (t >= 1.0) {
                 this.isTransitioning = false;
@@ -484,13 +489,9 @@ class MobiusRenderer extends ClockRenderer {
     }
 
     createMobiusStripMesh() {
-        const geometry = new THREE.BufferGeometry();
         const vertices = [];
         const indices = [];
 
-        // Load all of the points into the vertices array.  We will refer to them via their indexes (indices) into this 
-        //   vertices array when defining the triangles that will go into the confusingly-named indices array below.
-        //   Seems like the indices array should have been called the triangles array, but oh well.
         for (let i = 0; i < this.m_NumPoints; i++) {
             vertices.push(this.m_FrontInnerCorner3DPtArray[i].x, this.m_FrontInnerCorner3DPtArray[i].y, this.m_FrontInnerCorner3DPtArray[i].z);
             vertices.push(this.m_BackInnerCorner3DPtArray[i].x, this.m_BackInnerCorner3DPtArray[i].y, this.m_BackInnerCorner3DPtArray[i].z);
@@ -502,25 +503,21 @@ class MobiusRenderer extends ClockRenderer {
             vertices.push(this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].x, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].y, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].z);
         }
 
-        // Guide to var names. Note that these are indexes into the vertices array.  
-        // fi = front inner (inner=facing the center of the strip, front = closer to observer)
-        // bi = back inner (inner=facing the center of the strip, back = further from observer)
-        // fo = front outer (outer=facing away from the center of the strip, front = closer to observer)
-        // bo = back outer (outer=facing away from the center of the strip, back = further from observer)
-        // The numbers 1,2 are used to refer to the ends of a segment of one of the edges of the strip;
-        // 1 is part of the trailing rectangle and 2 is part of the leading rectangle.
-        // The numbers 3,4 refer to the corresponding vertices of the inner third of a slice.
-        //
-        // ATTN: The terms "front, back" etc are in the context of the first slice,
-        // located at the bottom of the mobius strip; might not make sense later
-        // after we've rotated the slice.
+        if (this.mobiusMesh) {
+            const posAttr = this.mobiusMesh.geometry.getAttribute('position');
+            if (posAttr && posAttr.array.length === vertices.length) {
+                posAttr.copyArray(vertices);
+                posAttr.needsUpdate = true;
+                this.mobiusMesh.geometry.computeVertexNormals();
+                return;
+            }
+        }
+
+        const geometry = new THREE.BufferGeometry();
+
         for (let i = 0; i < this.m_NumPoints; i++) {
-            // we make one pass thru this loop for each slice of the mobius strip.
-            // A slice is like a cross-section of the mobius strip, with a leading (1) and trailing (2) face.
-            // The center third of the slice (the thirdway) is like a bridge 
-            // connecting the front and back of the slice.
             let r1 = i;
-            let r2 = (i + 1) % this.m_NumPoints; // prevent wrap-around; r2 goes to 0 at the end of the loop
+            let r2 = (i + 1) % this.m_NumPoints;
 
             let fi1 = r1 * 8;
             let bi1 = fi1 + 1; let fo1 = fi1 + 2; let bo1 = fi1 + 3;
@@ -531,53 +528,28 @@ class MobiusRenderer extends ClockRenderer {
             let fi4 = fi2 + 4; let bi4 = fi2 + 5; let fo4 = fi2 + 6; let bo4 = fi2 + 7;
 
             if (i === this.m_NumPoints - 1) {
-                // must alter the order for last slice due to 180 rotation
-                //  where the ends meet. r2 is now 0.
-                // We are here referring back to the entries for the first slice
-                fi2 = 0; fi3 = 1; fi1 = 2; fi2 = 3;
-                bo2 = 0; fo2 = 1; bi2 = 2; fi2 = 3;
-                bo4 = 4; fo4 = 5; bi4 = 6; fi4 = 7;
-
-                // This should work but doesn't.
-                //fi1 = 3; bi1 = 2; fo1 = 1; bo1 = 0;
-                //fi3 = 7; bi3 = 6; fo3 = 5; bo3 = 4;
-
+                // Connect back to the first slice (index 0) but with 180-degree twist
+                fi2 = 1; bi2 = 0; fo2 = 3; bo2 = 2;
+                fi4 = 5; bi4 = 4; fo4 = 7; bo4 = 6;
             }
 
-            // The following must push the points using the right-hand rule:
-            //  the direction of the normal vector for each triangle points outward.
-            // These share the same material.   
-            indices.push(fi2, fi3, fi1); indices.push(fi2, fi4, fi3); // front inner
-            indices.push(fo1, fo3, fo2); indices.push(fo4, fo2, fo3); // front outer
-            indices.push(fo1, fi2, fi1); indices.push(fo2, fi2, fo1); // Front edge of strip
-
-            indices.push(bi4, bi1, bi3); indices.push(bi4, bi2, bi1); // back inner
-            indices.push(bo4, bo3, bo1); indices.push(bo4, bo1, bo2); // back outer
-            indices.push(bi2, bo1, bi1); indices.push(bi2, bo2, bo1); // Back edge of strip
-
-            // The "thirdway" bridge connecting the front and back of the strip.
-            // The minutes and second indicators move along this central part of the strip.
-            indices.push(fi4, bi3, fi3); indices.push(fi4, bi4, bi3); // inner facing 
-            indices.push(fo4, fo3, bo3); indices.push(fo4, bo3, bo4); // outer facing
+            indices.push(fi2, fi3, fi1); indices.push(fi2, fi4, fi3);
+            indices.push(fo1, fo3, fo2); indices.push(fo4, fo2, fo3);
+            indices.push(fo1, fi2, fi1); indices.push(fo2, fi2, fo1);
+            indices.push(bi4, bi1, bi3); indices.push(bi4, bi2, bi1);
+            indices.push(bo4, bo3, bo1); indices.push(bo4, bo1, bo2);
+            indices.push(bi2, bo1, bi1); indices.push(bi2, bo2, bo1);
+            indices.push(fi4, bi3, fi3); indices.push(fi4, bi4, bi3);
+            indices.push(fo4, fo3, bo3); indices.push(fo4, bo3, bo4);
         }
 
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
         geometry.setIndex(indices);
 
-        // Tick Scheme Groups
         const indicesPerSegment = 48;
-        const indicesOuterThirds = 36;  // 18 for front edge, 18 for back edge
+        const indicesOuterThirds = 36;
         const indicesMiddleThird = 12;
 
-        // TODO: recode to handle day and night if enabled. That means we need to
-        // use different materials for the front and back edges of the strip; and we need
-        // to handle the fact that the front and back of the strip are different
-        // colors when day and night are enabled. The transitions from day to night and vice versa
-        // will correspond to specific slice indices that we'll need to calculate.
-        // I have prepared by this by separating the front and back edges into different groups.
-        // This will allow us to use different materials for the front and back edges.  
-        // We'll need to add day and night materials to the material[] array.
-        // ISSUE: some tick schemes are not ideal for day and night mode. Whadda do?? Ignore for now.
         for (let i = 0; i < this.m_NumPoints; i++) {
             let matOuter = 0, matMiddle = 0;
             const isHourTick = (i % 30 === 0);
@@ -604,36 +576,44 @@ class MobiusRenderer extends ClockRenderer {
                     break;
             }
 
-            // Originally we had both sides of the strip as one group.
-            //geometry.addGroup(i * indicesPerSegment, indicesOuterThirds, matOuter);
-
-            // Now we have the front and back of the strip as separate groups.
-            // This allows them to be different materials/colors
             geometry.addGroup(i * indicesPerSegment, indicesOuterThirds / 2, matOuter);
             geometry.addGroup(i * indicesPerSegment + indicesOuterThirds / 2, indicesOuterThirds / 2, matOuter);
-
             geometry.addGroup(i * indicesPerSegment + indicesOuterThirds, indicesMiddleThird, matMiddle);
         }
 
         geometry.computeVertexNormals();
         const materials = [
-            new THREE.MeshStandardMaterial({
-                color: 0xD3D3D3, side: THREE.DoubleSide, metalness: 0.5,
-                roughness: 0.1, transparent: true, opacity: 0.95
-            }),
-            new THREE.MeshStandardMaterial({
-                color: 0x222222, side: THREE.DoubleSide, metalness: 0.5,
-                roughness: 0.1
-            }),
-            new THREE.MeshStandardMaterial({
-                color: 0x222222, side: THREE.DoubleSide, metalness: 0.5,
-                roughness: 0.1, transparent: true, opacity: 0.95
-            })
+            new THREE.MeshStandardMaterial({ color: 0xD3D3D3, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 }),
+            new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1 }),
+            new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
         ];
 
-        if (this.mobiusMesh) this.mobiusGroup.remove(this.mobiusMesh);
+        if (this.mobiusMesh) {
+            this.mobiusGroup.remove(this.mobiusMesh);
+            this.mobiusMesh.geometry.dispose();
+        }
         this.mobiusMesh = new THREE.Mesh(geometry, materials);
         this.mobiusGroup.add(this.mobiusMesh);
+    }
+
+    // New optimized vertex update
+    updateMobiusStripVertices() {
+        if (!this.mobiusMesh) return;
+        const positions = [];
+        for (let i = 0; i < this.m_NumPoints; i++) {
+            positions.push(this.m_FrontInnerCorner3DPtArray[i].x, this.m_FrontInnerCorner3DPtArray[i].y, this.m_FrontInnerCorner3DPtArray[i].z);
+            positions.push(this.m_BackInnerCorner3DPtArray[i].x, this.m_BackInnerCorner3DPtArray[i].y, this.m_BackInnerCorner3DPtArray[i].z);
+            positions.push(this.m_FrontOuterCorner3DPtArray[i].x, this.m_FrontOuterCorner3DPtArray[i].y, this.m_FrontOuterCorner3DPtArray[i].z);
+            positions.push(this.m_BackOuterCorner3DPtArray[i].x, this.m_BackOuterCorner3DPtArray[i].y, this.m_BackOuterCorner3DPtArray[i].z);
+            positions.push(this.m_ThirdwayFromFrontToBackInner3DPtArray[i].x, this.m_ThirdwayFromFrontToBackInner3DPtArray[i].y, this.m_ThirdwayFromFrontToBackInner3DPtArray[i].z);
+            positions.push(this.m_ThirdwayFromBackToFrontInner3DPtArray[i].x, this.m_ThirdwayFromBackToFrontInner3DPtArray[i].y, this.m_ThirdwayFromBackToFrontInner3DPtArray[i].z);
+            positions.push(this.m_ThirdwayFromFrontToBackOuter3DPtArray[i].x, this.m_ThirdwayFromFrontToBackOuter3DPtArray[i].y, this.m_ThirdwayFromFrontToBackOuter3DPtArray[i].z);
+            positions.push(this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].x, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].y, this.m_ThirdwayFromBackToFrontOuter3DPtArray[i].z);
+        }
+        const posAttr = this.mobiusMesh.geometry.getAttribute('position');
+        posAttr.copyArray(positions);
+        posAttr.needsUpdate = true;
+        this.mobiusMesh.geometry.computeVertexNormals();
     }
 
     createHourNumbers() {
@@ -641,9 +621,10 @@ class MobiusRenderer extends ClockRenderer {
         this.hourNumbersGroup = new THREE.Group();
         this.hourNumbersGroup.visible = this.hoursVisible;
         this.mobiusGroup.add(this.hourNumbersGroup);
+        this.hourLabels = []; // Reset tracked labels
 
-        const loader = new THREE.FontLoader();
-        loader.load('https://unpkg.com/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+        const onFontLoaded = (font) => {
+            this.cachedFont = font;
             const textMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
             for (let h = 1; h <= 24; h++) {
                 let hourNumStr, suffixStr = '';
@@ -685,9 +666,34 @@ class MobiusRenderer extends ClockRenderer {
                 const centerPt = this.m_RectCenter3DPtArray[centerIndex];
                 const dir = new THREE.Vector3().subVectors(p, centerPt).normalize();
                 const pos = new THREE.Vector3().copy(p).add(dir.multiplyScalar(0.53));
+
                 hourGroup.position.copy(pos);
                 this.hourNumbersGroup.add(hourGroup);
+                this.hourLabels.push({ h, group: hourGroup });
             }
+        };
+
+        if (this.cachedFont) {
+            onFontLoaded(this.cachedFont);
+        } else {
+            const loader = new THREE.FontLoader();
+            loader.load('https://unpkg.com/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', onFontLoaded);
+        }
+    }
+
+    updateHourNumberPositions() {
+        if (!this.hourLabels || this.hourLabels.length === 0) return;
+        this.hourLabels.forEach(label => {
+            const h = label.h;
+            const hourGroup = label.group;
+
+            let idx = ((180 - (h * 30)) % 720 + 720) % 720;
+            const p = this.edgePath[idx];
+            const centerIndex = idx % this.m_NumPoints;
+            const centerPt = this.m_RectCenter3DPtArray[centerIndex];
+            const dir = new THREE.Vector3().subVectors(p, centerPt).normalize();
+            const pos = new THREE.Vector3().copy(p).add(dir.multiplyScalar(0.53));
+            hourGroup.position.copy(pos);
         });
     }
 
