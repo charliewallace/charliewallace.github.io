@@ -1476,3 +1476,43 @@ body.zen-mode #btn-zen-desktop:hover {
     padding-top: 2px !important;
   }
 }
+/* Location Details Modal Styles */
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.details-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.details-column p {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.details-column .label {
+    font-size: 0.7rem;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.details-column .value {
+    font-size: 0.95rem;
+    color: #fff;
+    font-weight: 500;
+}
+
+@media screen and (max-width: 600px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+}

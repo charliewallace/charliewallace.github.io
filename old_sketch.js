@@ -1,7 +1,5 @@
 /** ===========================================================
- * CoolweirdClocks: A container for multiple clock types.
- * 
- * DaySpiral: Sunrise & Sunset shown on 12-hr clock face.
+ * Day Spiral Clock V2: Sunrise & Sunset shown on 12-hr clock face.
  * This clock shows the current 24-hour day as a spiral, with 2 turns because
  * of AM and PM on the 12-hour clock face.  
  *
@@ -11,15 +9,10 @@
  * That call requires a free account; if you clone this project, please
  * create your own login and revise the url.  However no API key is needed.
  *
- * MobiusClock: A 12-hour clock face showing the current time using a Mobius strip, with the
- * hour indicator moving along the edge of the strip, so it requires 2 turns to 
- * complete a full day. The minute and second indicators move along the center
- * of the strip. 
- *   
  * By Charlie Wallace coolweird.net
  * 
 
-TODO Fix Bugs -----------------------
+TODO Fixes  Bugs -----------------------
   * Replace lots of bare numeric color values with variables centrally set, used in fill()
   *   and stroke() calls.  Similar needed for other bare constants like podition offsets.
   * Fix to recalc the IsDst state on new day
@@ -37,16 +30,21 @@ Future Enhancement Ideas ------------
   *  Will set ClockMode to indicate type.
   * Idea: add mode where the current time is always in the middle of the spiral, so
   *  both past and future are equally shown
+  * Idea: add today+tomorrow mode showing 2 days, or 4 turns of the spiral
   * Idea: an option to show a diff location's time in the spiral (like GMT) while  
   *  the hands show the local time. So both are viewable in one display
   *  ALT: add a second hour hand for the non-local time.
   * Consider using GeoNames for both location and timezone, thus eliminating
   *  need for nominatim.openstreetmap.org call; or could use it as fallback
+  * Add Save Location button, makes cookie (?)
   * Implement 24 hour mode
  
 ==== IMPL / FEATURE NOTES  =====
 * The logic depends on the GMT offset that it fetches to be auto-adjusted 
    for daylight savings time. This appears to be the case.
+* ATTN, on first launch, browser will ask user for permission to get the location in
+   order to fetch the lat/long needed for sunrise/sunset calcs. I added a message
+   assuring user that it's not saved. The popup can be hard to find...
 * FEATURE: input field validation via delay - when I immediately remove invalid numbers,
    this doesn't allow temporarily wrong content, like a minus sign with nothing else. 
    FIX: allow invalid content to sit for a 2 seconds before overwriting, so the 
@@ -67,9 +65,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.4.6 ©2026 Charlie Wallace";
-
-console.log("📦 CoolweirdClocks loaded");
+console.log("📦 Day Spiral Clock loaded");
 var WebsiteLink;
 var CityNameInput;
 
@@ -103,10 +99,7 @@ var TzOffset, TzOffsetLocal;
 var LastTz;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
-var TimezoneWarningShown = false;  // true if timezone mismatch warning has been shown
 var IsPreciseLocation = false; // true if using GPS location
-var IsRequestingPrecise = false; // true if a GPS request is currently in flight
-var LocationFetchSerial = 0; // Incrementing ID to track async location requests
 var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 
@@ -183,47 +176,18 @@ var IsZenMode = false;
 var WasFullScreenLastCheck = false;
 
 
-// Robust tracking of browser timezone
-var BrowserTzOffset;
-
-// Track if we are showing the user's own location (auto/IP/GPS) vs a remote manual location
-var IsDisplayingUserLocation = true;
-
-// == NEW CONTROLLERS ==
-var timeKeeper;
-var locManager;
-var daySpiralRenderer;
-var mobiusRenderer;
-var activeRenderer;
-
-
-
+// ================================================================
 // Fetch approximate location from IP geolocation API
 function fetchIpLocation() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] Fetching approximate location from IP...`);
-  IsRequestingPrecise = false; // Cancel any pending GPS request results
+  console.log("Fetching approximate location from IP...");
   setLoadingState();
-  IsDisplayingUserLocation = true; // We are tracking user location
   IsPreciseLocation = false;
   IsUserInitiatedLocation = false; // IP location is automatic, not user-initiated
-
-  // Using ipwho.is (CORS-friendly, no API key required for low-volume)
-  fetch('https://ipwho.is/')
+  // Using ipapi.co (free, no API key required)
+  fetch('https://ipapi.co/json/')
     .then(response => response.json())
     .then(data => {
-      if (requestId !== LocationFetchSerial) {
-        console.log(`[${requestId}] IP location fetch results ignored (stale/cancelled).`);
-        return;
-      }
-
-      if (!data.success) {
-        console.log(`[${requestId}] IP location API returned failure:`, data.message);
-        handleIpFallback(requestId, data.message);
-        return;
-      }
-
-      console.log(`[${requestId}] IP Geolocation data:`, data);
+      console.log("IP Geolocation data:", data);
 
       // Extract and validate coordinates
       Latitude = parseFloat(data.latitude);
@@ -243,40 +207,36 @@ function fetchIpLocation() {
 
       if (city) {
         locationString = "Near " + city; // Add "Near" prefix for IP-based location
+        if (region) {
+          // Optional: could add region too, but keeping it short for now
+          // locationString += ", " + region;
+        }
       }
 
+      // CityNameInput.value(locationString); // Keep empty as per user request
       LocaleTitle = locationString;
       LocaleTitleLocal = locationString; // Save for fallback
 
       // Check for timezone mismatch (VPN detection)
       var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      var ipTimezone = data.timezone ? data.timezone.id : null;
+      var ipTimezone = data.timezone; // from ipapi.co
 
       console.log("Browser timezone:", browserTimezone);
       console.log("IP location timezone:", ipTimezone);
 
       // Compare timezones - if different, might be using VPN
-      if (ipTimezone) {
-        IsTimezoneMismatch = (browserTimezone !== ipTimezone);
-      }
+      IsTimezoneMismatch = (browserTimezone !== ipTimezone);
 
-      // Allow testing VPN warning via URL hash parameter.
+      // Allow testing VPN warning via URL hash parameter
+      // TODO: REMOVE THIS TEST CODE
       var urlHash = window.location.hash.toLowerCase();
-      if (urlHash.includes('testvpn') || urlHash.includes('simulatevpn')) {
+      if (urlHash === '#testvpn' || urlHash === '#simulatevpn') {
         IsTimezoneMismatch = true;
         console.log("🧪 TEST MODE: VPN simulation enabled via URL hash");
       }
 
       if (IsTimezoneMismatch) {
-        if (!TimezoneWarningShown) {
-          console.log("⚠️ Timezone mismatch detected - possible VPN/proxy usage");
-          alert("⚠️ Timezone mismatch detected - possible VPN/proxy usage." +
-            " This may affect the accuracy of the clock and sunrise/sunset times." +
-            " To avoid this issue, select the GPS OK button."
-          );
-          IsTimezoneMismatch = false; // Reset flag after showing warning
-          TimezoneWarningShown = true;
-        }
+        console.log("⚠️ Timezone mismatch detected - possible VPN/proxy usage");
       }
 
       // Update UI fields
@@ -290,47 +250,51 @@ function fetchIpLocation() {
       LngLocal = Longitude;
       LastLong = Longitude;
 
+      // DO NOT update URL hash for IP-based location on initial load
+      // Only user-initiated actions should update URL (GPS, presets, city lookup)
+
       // Get timezone using existing GeoNames function
-      getTzUsingLatLong(Latitude, Longitude, requestId);
+      getTzUsingLatLong(Latitude, Longitude);
     })
     .catch(error => {
-      handleIpFallback(requestId, error);
+      clearLoadingState();
+      exitZenMode(); // Ensure UI is visible to show details of fallback
+      console.log("IP geolocation failed:", error);
+      console.log("Using fallback location (Melbourne)");
+
+      // Fallback to Melbourne
+      Latitude = -37.8;
+      Longitude = 144.96;
+      TzOffset = 10; // assume DST
+
+      LatLocal = Latitude;
+      LngLocal = Longitude;
+      TzOffsetLocal = TzOffset;
+      LocaleTitleLocal = "Melbourne";
+      LocaleTitle = "Melbourne";
+
+      alert("IP-based location detection failed. Defaulting to Melbourne, Australia.");
+
+      var tzString = str(TzOffset);
+      // Add in a plus sign if not negative
+      if (TzOffset > 0) {
+        tzString = "+" + str(TzOffset);
+      }
+      // init the UI field
+      TzInput.value(tzString);
+      LastTz = TzOffset;
+
+      var latString = str(Latitude);
+      LatInput.value(latString);
+      LastLat = Latitude;
+
+      var longString = str(Longitude);
+      LngInput.value(longString);
+      LastLong = Longitude;
+
+      // DO NOT update URL hash for fallback location
+      // Only user-initiated actions should update URL
     });
-}
-
-// Helper for consistent IP fallback
-function handleIpFallback(requestId, error) {
-  if (requestId !== LocationFetchSerial) return;
-  clearLoadingState();
-  exitZenMode(); // Ensure UI is visible to show details of fallback
-  console.log("IP geolocation failed:", error);
-  console.log("Using fallback location (Melbourne)");
-
-  // Fallback to Melbourne
-  Latitude = -37.8;
-  Longitude = 144.96;
-  TzOffset = 10; // assume DST
-
-  LatLocal = Latitude;
-  LngLocal = Longitude;
-  TzOffsetLocal = TzOffset;
-  LocaleTitleLocal = "Melbourne";
-  LocaleTitle = "Melbourne";
-
-  alert("IP-based location detection failed. Defaulting to Melbourne, Australia.");
-
-  var tzString = str(TzOffset);
-  if (TzOffset > 0) tzString = "+" + str(TzOffset);
-  if (TzInput) TzInput.value(tzString);
-  LastTz = TzOffset;
-
-  var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
-  LastLat = Latitude;
-
-  var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
-  LastLong = Longitude;
 }
 
 // This only runs at startup, see Init() below
@@ -339,39 +303,37 @@ function oneTimeInit() {
   console.log("🔍 Current URL:", window.location.href);
   console.log("🔍 URL Hash:", window.location.hash);
 
-  // DaySpiral globals declared here.  ------------
-  XSpiralArray = [];
-  YSpiralArray = [];
-  RadiusSpiralArray = [];
-  NumSpiralPointsPerTurn = 300;
-  NumSpiralTurns = 2;  // must set this in the init
-  BkColor = 34; // Default Dark Gray (#222)
-  LastMillisec = 0;
-  HourDigitColor = color(25, 25, 25); //0xe8, 0xe0, 0x22);
+  // state vars.  Preserve these thru window resize.
 
-  // DaySpiral state vars.  Preserve these thru window resize.
+  // IsDaySpiral = true; // Removed
   IsGmtShown = false; //true; // false; //
+
   ClockMode = 0;
 
 
-  // Prepare renderers for each clock type.
-  daySpiralRenderer = new DaySpiralRenderer('canvas-container');
-  daySpiralRenderer.init();
-
-  mobiusRenderer = new MobiusRenderer('mobius-container');
-  mobiusRenderer.init();
-
-  // Select the default renderer and activate it.
-  activeRenderer = daySpiralRenderer; // Start with default
-  activeRenderer.activate();
-  activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
-
-
-  // Overall app initialization ----------------
-
   // Use this to allow customizing layout for windows vs mobile
   IsWindows = (window.navigator.platform == "Win32");
+  /******************************	
+    if (IsWindows)
+    {
+      window.alert('Windows detected.');
+    }
+    else
+    {
+      window.alert('Windows not detected.');
+    }
+  	
+    if (window.navigator.platform.indexOf("Mac") === 0)
+    {
+      window.alert('Mac detected.');
+    }
+    else
+    {
+      window.alert('Mac not detected.');
+    }	
+  ************************/
 
+  // ==240212a
   // IsDesktop is now calculated in reInit() to support dynamic toggling
   console.log("IsWindows=" + IsWindows);
 
@@ -379,20 +341,25 @@ function oneTimeInit() {
   var cnv = createCanvas(window.innerWidth, window.innerHeight);
   cnv.parent('canvas-container');
 
-  // Init app-level controllers.
-  timeKeeper = new TimeKeeper();
-  locManager = new LocationManager();
-  locManager.init(); // Minimal init
 
-  // Fetch IP-based location - this is our fallback if no location is found in the URL
-  fetchIpLocation();
   // (Location fetch logic moved to end of function to ensure UI is ready)
+
 
   // ==== Bind to existing HTML elements ======
   // NOTE: CSS handles all positioning now (responsive design)
 
+  //     misc buttons
+  ResetToLocalButton = select('#btn-reset-loc');
+  ResetToLocalButton.mousePressed(usePreciseLocation);
+
+
   // --- NEW MODAL BUTTONS ---
   select('#btn-about').mousePressed(() => openModal('modal-about'));
+  select('#btn-about-desktop').mousePressed(() => openModal('modal-about'));
+  select('#btn-details').mousePressed(openDetailsModal);
+  select('#btn-lookup-city').mousePressed(() => openModal('modal-city'));
+  select('#btn-manual-coords').mousePressed(openManualCoordsModal);
+  select('#btn-more-locs').mousePressed(() => openModal('modal-locations'));
 
   // --- MODAL CLOSE BUTTONS ---
   selectAll('.btn-close-modal').forEach(btn => {
@@ -400,29 +367,17 @@ function oneTimeInit() {
   });
 
   // --- MODAL SUBMIT BUTTONS ---
-  // City search button in the Select Location modal
-  var citySrchBtn = select('#btn-city-submit-unified');
-  if (citySrchBtn) citySrchBtn.mousePressed(handleCitySubmitUnified);
+  select('#btn-city-submit-modal').mousePressed(handleCitySubmitModal);
+  select('#btn-coords-submit-modal').mousePressed(handleCoordsSubmitModal);
 
-  // Manual coords submit button
-  var coordsSubmitBtn = select('#btn-coords-submit-modal');
-  if (coordsSubmitBtn) coordsSubmitBtn.mousePressed(handleCoordsSubmitUnified);
+  // --- PRESET MODAL BUTTONS ---
+  select('#btn-loc-silverado-m').mousePressed(() => { setSilverado(); closeAllModals(); });
+  select('#btn-loc-berkeley-m').mousePressed(() => { setBerkeley(); closeAllModals(); });
+  select('#btn-loc-sandiego-m').mousePressed(() => { setSanDiego(); closeAllModals(); });
+  select('#btn-loc-london-m').mousePressed(() => { setLondon(); closeAllModals(); });
+  select('#btn-loc-kc-m').mousePressed(() => { setKansasCity(); closeAllModals(); });
+  select('#btn-loc-melbourne-m').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
-  // Manual Lat/Long button (opens modal-coords)
-  var openManualBtn = select('#btn-open-manual');
-  if (openManualBtn) openManualBtn.mousePressed(openManualCoordsModal);
-
-  // Your Location button in modal
-  var useGpsBtn = select('#btn-use-gps');
-  if (useGpsBtn) useGpsBtn.mousePressed(() => { usePreciseLocation(false); closeAllModals(); });
-
-  // --- PRESET MODAL BUTTONS (Unified) ---
-  select('#btn-loc-silverado-u').mousePressed(() => { setSilverado(); closeAllModals(); });
-  select('#btn-loc-berkeley-u').mousePressed(() => { setBerkeley(); closeAllModals(); });
-  select('#btn-loc-sandiego-u').mousePressed(() => { setSanDiego(); closeAllModals(); });
-  select('#btn-loc-london-u').mousePressed(() => { setLondon(); closeAllModals(); });
-  select('#btn-loc-kc-u').mousePressed(() => { setKansasCity(); closeAllModals(); });
-  select('#btn-loc-melbourne-u').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
 
   GmtDisplayButtonLabel = "Show GMT";
@@ -431,15 +386,20 @@ function oneTimeInit() {
 
   //    Location buttons - Removed old inline buttons, now using unified modal bindings below
 
-  //     Input fields setup - Point to modal inputs
-  TzInput = select('#input-tz');
-  if (TzInput) TzInput.value("100");
+  //     Input fields setup - Point to Unified Modal Inputs
+  //     We do NOT bind .input() events because we use explicit submit buttons now.
+  TzInput = select('#input-tz-unified');
+  TzInput.value("100")
+  // TzInput.input(tzInputEvent); // Disable auto-update
 
-  LatInput = select('#input-lat');
-  LngInput = select('#input-lon');
+  LatInput = select('#input-lat-unified');
+  // LatInput.input(latInputEvent); // Disable auto-update
+
+  LngInput = select('#input-lng-unified');
+  // LngInput.input(longInputEvent); // Disable auto-update
 
   //    City Name Input
-  CityNameInput = select('#city-search-input');
+  CityNameInput = select('#input-city-modal-unified');
   //    City Submit Button (Unified handled below)
 
   //    Full Screen Button
@@ -449,188 +409,54 @@ function oneTimeInit() {
   }
 
   select('#btn-zen').mousePressed(toggleZenMode);
+  // Desktop specific bindings
+  var zenDesktop = select('#btn-zen-desktop');
+  if (zenDesktop) zenDesktop.mousePressed(toggleZenMode);
 
-  // "GPS OK?" Button(s)
-  var gpsBtns = [select('#btn-gps-ok'), select('#btn-gps-ok-mobile')];
-  gpsBtns.forEach(btn => {
-    if (btn) btn.mousePressed(() => {
-      // If yellow/warning, it means we want to fetch precise. 
-      // If not, maybe just re-fetch?
-      usePreciseLocation(false);
-    });
+  var fsDesktop = select('#btn-fullscreen-desktop');
+  if (fsDesktop) fsDesktop.mousePressed(toggleFullScreen);
+
+  // NEW: GPS OK Button
+  var gpsBtn = select('#btn-gps-ok');
+  if (gpsBtn) gpsBtn.mousePressed(() => {
+    // If yellow/warning, it means we want to fetch precise. 
+    // If not, maybe just re-fetch?
+    usePreciseLocation();
   });
 
-  // Setup Button for Day Spiral Clock
-  var setupBtn = select('#btn-setup-dayspiral');
+  // NEW: Setup Button
+  var setupBtn = select('#btn-setup');
   if (setupBtn) setupBtn.mousePressed(() => {
-    openModal('modal-setup-dayspiral');
+    alert("Setup - Future Feature");
   });
 
-  // DaySpiral Style Buttons
-  select('#btn-style-classic').mousePressed(() => setDaySpiralStyle('Classic'));
-  select('#btn-style-spiral').mousePressed(() => setDaySpiralStyle('SpiralHours'));
-
-  // DaySpiral Time Format Dropdown
-  var timeFormatSelect = select('#select-dayspiral-time-format');
-  if (timeFormatSelect) timeFormatSelect.changed(() => {
-    const format = timeFormatSelect.value();
-    if (daySpiralRenderer) {
-      daySpiralRenderer.setTimeFormat(format);
-      updateUrlHash();
-    }
-  });
-
-
-  // Select Different Location Button
+  // NEW: Select Different Location Button
   var selectLocBtn = select('#btn-select-loc');
   if (selectLocBtn) selectLocBtn.mousePressed(() => openModal('modal-select-location'));
 
-  // Location Details Button (opens same details modal)
-  var detailsBtn = select('#btn-details-desktop');
-  if (detailsBtn) detailsBtn.mousePressed(openDetailsModal);
-
-  // Renderer Switching logic
-  select('#opt-dayspiral').mousePressed(() => setClockMode('dayspiral'));
-  select('#opt-mobius').mousePressed(() => setClockMode('mobius'));
-
-  // --- MOBIUS SPECIFIC CONTROLS ---
-  var btnRotate = select('#btn-rotate');
-  if (btnRotate) btnRotate.mousePressed(() => {
-    if (mobiusRenderer.active) {
-      mobiusRenderer.rotationEnabled = !mobiusRenderer.rotationEnabled;
-      if (mobiusRenderer.rotationEnabled) btnRotate.addClass('toggled-on');
-      else btnRotate.removeClass('toggled-on');
-      // Update URL hash
-      updateUrlHash();
-    }
-  });
-
-  var btnDemo = select('#btn-demo');
-  if (btnDemo) btnDemo.mousePressed(() => {
-    if (mobiusRenderer.active) {
-      mobiusRenderer.fastMode = !mobiusRenderer.fastMode;
-      if (mobiusRenderer.fastMode) btnDemo.addClass('toggled-on');
-      else btnDemo.removeClass('toggled-on');
-      // Update URL hash
-      updateUrlHash();
-    }
-  });
-
-  var btnHideHours = select('#btn-hide-hours');
-  if (btnHideHours) btnHideHours.mousePressed(() => {
-    if (mobiusRenderer.active) {
-      const isVisible = mobiusRenderer.toggleHourNumbers();
-      if (isVisible) {
-        btnHideHours.addClass('toggled-on');
-      } else {
-        btnHideHours.removeClass('toggled-on');
-      }
-      // Update URL hash
-      updateUrlHash();
-    }
-  });
-
-  var btnDali = select('#btn-dali');
-  if (btnDali) btnDali.mousePressed(() => {
-    if (mobiusRenderer.active) {
-      const newState = !mobiusRenderer.daliMode;
-      mobiusRenderer.setDaliMode(newState);
-      if (newState) btnDali.addClass('toggled-on');
-      else btnDali.removeClass('toggled-on');
-      updateUrlHash();
-    }
-  });
-
-  var btnSetupMobius = select('#btn-setup-mobius');
-  if (btnSetupMobius) btnSetupMobius.mousePressed(() => {
-    openModal('modal-setup-mobius');
-  });
-
-  // Setup Modal Change Listeners
-  var selHours = select('#select-shape-hours');
-  if (selHours) selHours.changed(() => {
-    mobiusRenderer.setIndicatorShape('hours', selHours.value());
-    // Update URL hash
-    updateUrlHash();
-  });
-
-  var selMinutes = select('#select-shape-minutes');
-  if (selMinutes) selMinutes.changed(() => {
-    mobiusRenderer.setIndicatorShape('minutes', selMinutes.value());
-    // Update URL hash
-    updateUrlHash();
-  });
-
-  var selSeconds = select('#select-shape-seconds');
-  if (selSeconds) selSeconds.changed(() => {
-    mobiusRenderer.setIndicatorShape('seconds', selSeconds.value());
-    // Update URL hash
-    updateUrlHash();
-  });
-
-  var selTicks = select('#select-tick-scheme');
-  if (selTicks) selTicks.changed(() => {
-    mobiusRenderer.setTickScheme(selTicks.value());
-    // Update URL hash
-    updateUrlHash();
-  });
-
-  var selStyle = select('#select-time-style');
-  if (selStyle) selStyle.changed(() => {
-    mobiusRenderer.setTimeStyle(selStyle.value());
-    // Update URL hash
-    updateUrlHash();
-  });
-
+  // NEW: Location Details Desktop Button (opens same details modal)
+  var detailsDesktopBtn = select('#btn-details-desktop');
+  if (detailsDesktopBtn) detailsDesktopBtn.mousePressed(openDetailsModal);
 
   // NEW: Unified Modal Bindings
-  // City search is already bound above via #btn-city-search
+  select('#btn-city-submit-unified').mousePressed(handleCitySubmitUnified);
+  select('#btn-coords-submit-unified').mousePressed(handleCoordsSubmitUnified);
 
-  // PRESET MODAL BINDINGS (Legacy / Other - Keeping class-based for safety if used elsewhere)
-  var presetBtns = selectAll('.preset');
-  presetBtns.forEach(btn => {
-    btn.mousePressed(() => {
-      const lat = parseFloat(btn.attribute('data-lat'));
-      const lon = parseFloat(btn.attribute('data-lon'));
-      const tz = parseFloat(btn.attribute('data-tz'));
-      const city = btn.attribute('data-city');
-
-      // Set location
-      if (!isNaN(lat)) Latitude = lat;
-      if (!isNaN(lon)) Longitude = lon;
-      if (!isNaN(tz)) TzOffset = tz;
-      if (city) LocaleTitle = city;
-      IsUserInitiatedLocation = true;
-      IsDisplayingUserLocation = false;
-
-      // Update UI
-      if (LatInput && !isNaN(lat)) LatInput.value(str(lat));
-      if (LngInput && !isNaN(lon)) LngInput.value(str(lon));
-      if (TzInput && !isNaN(tz)) {
-        let tzStr = str(tz);
-        if (tz > 0) tzStr = '+' + tzStr;
-        TzInput.value(tzStr);
-      }
-
-      // Recalculate times
-      IsSunRiseSetObtained = false;
-      updateTimeThisDay();
-      updateUrlHash();
-      closeAllModals();
-    });
-  });
+  // Bind unified presets
+  select('#btn-loc-silverado-u').mousePressed(() => { setSilverado(); closeAllModals(); });
+  select('#btn-loc-berkeley-u').mousePressed(() => { setBerkeley(); closeAllModals(); });
+  select('#btn-loc-sandiego-u').mousePressed(() => { setSanDiego(); closeAllModals(); });
+  select('#btn-loc-london-u').mousePressed(() => { setLondon(); closeAllModals(); });
+  select('#btn-loc-kc-u').mousePressed(() => { setKansasCity(); closeAllModals(); });
+  select('#btn-loc-melbourne-u').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
   // get local time zone of the user's browser ============.
   // ATTN: by convention, this returns positive value when
   //   it should be negative. Returns minutes, must convert to hours.
   // ATTN: the returned gmt offset takes daylight savings
   //   into account.  
-
-  // Use a constant for the browser's actual local timezone to avoid overwrites
-  BrowserTzOffset = (-new Date().getTimezoneOffset()) / 60;
-
-  TzOffset = BrowserTzOffset;
-  TzOffsetLocal = BrowserTzOffset;
+  TzOffset = (-new Date().getTimezoneOffset()) / 60;
+  TzOffsetLocal = TzOffset;
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
   if (TzOffset > 0) {
@@ -644,21 +470,30 @@ function oneTimeInit() {
   console.log(">> DST is ", IsDst);
 
   // init the time zone field on screen
-  if (TzInput) {
-    TzInput.value(tzString);
-  }
+  TzInput.value(tzString);
   LastTz = TzOffset;
 
-  SecondsSoFar = 0;
-  MsFromStartToResetTime = 0;
+  XSpiralArray = [];
+  YSpiralArray = [];
+  RadiusSpiralArray = [];
+  NumSpiralPointsPerTurn = 300;
+  NumSpiralTurns = 2;  // must set this in the init
+
 
   CityName = ""
   LocaleTitle = "Local Time"
   PrevLocaleTitle = "";
 
+  BkColor = 34; // Default Dark Gray (#222)
+  LastMillisec = 0;
+  HourDigitColor = color(25, 25, 25); //0xe8, 0xe0, 0x22);
+
+  SecondsSoFar = 0;
+  MsFromStartToResetTime = 0;
+
   // init to unique value to allow detection when set properly
   Latitude = 99999;  // an illegal value
-  Longitude = 99999;
+  longitude = 99999;
   NewLatitude = 99999;
   NewLongitude = 99999;
   LastLat = 99999;
@@ -690,173 +525,89 @@ function oneTimeInit() {
   // Watchdog to ensure UI stays in sync if events are missed (robust fallback)
   setInterval(onFullScreenChange, 500);
 
-  // ==== Initialize About Modal Content ====
-  updateAboutModalContent();
+  // ==== Initialize About Modal Content (Static) ====
+  var aboutDescEl = document.getElementById('about-description');
+  if (aboutDescEl) {
+    var descText = 'To show night and day you need a 24-hour clock; ' +
+      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
+      'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
+      'The darker part of the spiral indicates night.';
+
+    //OLD description
+    //'The hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM.' + 
+    //' The darker part of the spiral indicates night.';
+
+    // Get version and attribution from desktop elements if possible, or use defaults
+    var versionVal = document.getElementById('app-version') ? document.getElementById('app-version').textContent : 'v0.2.7 ©2026 by Charlie Wallace';
+    var linkHref = document.getElementById('link-website') ? document.getElementById('link-website').href : 'http://coolweird.com';
+    var linkText = document.getElementById('link-website') ? document.getElementById('link-website').textContent : 'Coolweird.com';
+
+    // To revise the contact form see
+    //   https://docs.google.com/forms/d/1hq7Dh8_8xkXrNdjJgcGIx47aLDTvX6pujLPpMV21gY4/edit
+    aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
+      '<p style="margin-top: 15px; font-weight: bold;">' + versionVal + '</p>' +
+      '<p style="margin-top: 5px;">' +
+      '<a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">' + linkText + '</a>' +
+      '<span style="margin: 0 10px; color: #666;">|</span>' +
+      '<a href="https://forms.gle/3zAVfRJFH6Kj5drR8" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Contact Me</a>' +
+      '<span style="margin: 0 10px; color: #666;">|</span>' +
+      '<a href="#" onclick="showReadme(); return false;" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Readme</a>' +
+      '</p>' +
+      '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
+  }
 
   // ==== Initial Location Fetch (Moved here) ====
 
-  // Parse URL hash. This grabs app settings, clock settings, current clock selection, 
-  //    and Location if provided. 
-  // Returns true if location is in the URL hash
-  var locationFoundInUrlHash = false;
-  if (parseUrlHash()) {
+
+  // First, check if location is in the URL hash
+  if (parseUrlLocation()) {
     console.log("Location found in URL hash, using it.");
-    // parseUrlHash already sets the globals and calls updateTimeThisDay
-    locationFoundInUrlHash = true;
+    // parseUrlLocation already sets the globals and calls updateTimeThisDay
+    return;
   }
 
-  // Apply initial state from URL parameters (clock mode, settings, not location)
-  // Must be called after the url hash is parsed.
-  applyInitialState();
-
-  // Window.IsDaliMode check removed - handled via applyInitialState
-
-  // The url didn't contain a location. Check if we have location permission? 
-  if (!locationFoundInUrlHash && navigator.permissions && navigator.permissions.query) {
+  // Check if we have permission? 
+  if (navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
-      // Logic for initial check
-      function checkPerm(state) {
-        if (state === 'granted') {
-          console.log("Location permission already granted, using precise.");
-          usePreciseLocation(true);
-        } else if (state === 'prompt') {
-          console.log("Location permission prompt, defaulting to IP.");
-          fetchIpLocation();
-        } else {
-          console.log("Location permission denied, defaulting to IP.");
-          fetchIpLocation();
-        }
+      if (result.state === 'granted') {
+        console.log("Location permission already granted, using precise.");
+        usePreciseLocation();
+      } else if (result.state === 'prompt') {
+        console.log("Location permission prompt, defaulting to IP.");
+        fetchIpLocation();
+      } else {
+        console.log("Location permission denied, defaulting to IP.");
+        fetchIpLocation();
       }
-
-      checkPerm(result.state);
-
-      // Listen for permission changes (e.g. user resets permission via URL bar)
-      result.onchange = function () {
-        console.log("Location permission changed to:", result.state);
-        // If it was reset to prompt or denied, we should revert to IP
-        if (result.state !== 'granted') {
-          // If we were using precise or waiting for it, fall back
-          if (IsPreciseLocation || IsRequestingPrecise) {
-            console.log("Permission retracted, reverting to IP location.");
-            IsRequestingPrecise = false; // Stop any GPS success callback from proceeding
-            IsPreciseLocation = false;
-            IsUserInitiatedLocation = false; // Back to automatic mode
-            NewLatitude = 99999; // Clear any pending fetch flags
-            NewLongitude = 99999;
-
-            // Revert to cached local values immediately if we have them
-            if (LatLocal !== 99999 && LngLocal !== 99999) {
-              console.log("Instantly restoring cached approximate location.");
-              Latitude = LatLocal;
-              Longitude = LngLocal;
-              if (LocaleTitleLocal) LocaleTitle = LocaleTitleLocal;
-              IsDisplayingUserLocation = true; // Ensure we are back in local mode
-
-              // Update UI input fields to match restored location
-              LatInput.value(str(Latitude));
-              LngInput.value(str(Longitude));
-              // Note: TzOffset is left as is, getTzUsingLatLong will refresh it if needed
-              clearLoadingState(); // Instant revert complete
-            } else {
-              // If no cache, we have to fetch IP-based location.
-              fetchIpLocation();
-            }
-
-            // Now update URL and UI (Latitude/Longitude are now local or we are "Finding you...")
-            //updateUrlHash(); We no longer update the URL based on user location.
-            updateUIElements();
-
-            // Recalculate times to match the restored location
-            IsSunRiseSetObtained = false;
-            updateTimeThisDay();
-          }
-        } else {
-          // If it was granted (unlikely to happen mid-session without prompt, but possible)
-          if (!IsPreciseLocation) {
-            usePreciseLocation(true);
-          }
-        }
-      };
     });
-    //} else {  // ATTN: we already called this earlier
-    //  fetchIpLocation();
+  } else {
+    fetchIpLocation();
   }
 }  // end of oneTimeInit()  ====================
 
-
-// Parse location and state from URL hash
-function parseUrlHash() {
+// Parse location from URL hash (lat,lon,tz,city)
+function parseUrlLocation() {
   var hash = window.location.hash.substring(1); // remove #
   if (!hash) return false;
 
-  // Expected format: lat=33.743&lon=-117.643&tz=-8&city=Silverado&clock=mobius&...
-  // or legacy comma separated: 33.743,-117.643,-8,Silverado
+  // Expected format: lat=33.743&lon=-117.643&tz=-8&city=Silverado
+  // or just comma separated: 33.743,-117.643,-8,Silverado
 
   var params = new URLSearchParams(hash);
   var lat = params.get('lat');
   var lon = params.get('lon');
   var tz = params.get('tz');
   var city = params.get('city');
-  var zen = params.get('zen') || params.get('focus');
-  var dali = params.get('dali'); // TEST, FINDME
+  var zen = params.get('zen');
 
-  // Zen mode
   if (zen === '1') {
     IsZenMode = true;
     document.body.classList.add('zen-mode');
     BkColor = 0; // Black
   }
 
-  // Dali mode
-  // stored in initialMobiusState below
-
-  // Clock mode - store for later application (after renderers are initialized)
-  var clockMode = params.get('clock');
-  if (clockMode === 'mobius' || clockMode === 'dayspiral') {
-    window._initialClockMode = clockMode;
-  }
-
-  // DaySpiral state - store for later application
-  var gmt = params.get('gmt');
-  if (gmt === '1') {
-    window._initialGmtEnabled = true;
-  }
-
-  var daySpiralStyle = params.get('daySpiralStyle');
-  var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
-  if (daySpiralStyle || daySpiralTimeFormat) {
-    window._initialDaySpiralState = {
-      style: daySpiralStyle || 'Classic',
-      timeFormat: daySpiralTimeFormat || '12'
-    };
-  }
-
-  // Mobius state - store for later application
-  // Only parse if we have at least one Mobius parameter
-  if (params.has('timeStyle') || params.has('shapeHours') || params.has('rotation') ||
-    params.has('demo') || params.has('showHours') || params.has('dali')) {
-    window._initialMobiusState = {
-      timeStyle: params.get('timeStyle') || 'ampm',
-      shapeHours: params.get('shapeHours') || 'outer-ring',
-      shapeMinutes: params.get('shapeMinutes') || 'ring',
-      shapeSeconds: params.get('shapeSeconds') || 'sphere',
-      tickScheme: params.get('tickScheme') || 'standard',
-      rotation: params.get('rotation') === '1',
-      demo: params.get('demo') === '1',
-      showHours: params.get('showHours') !== '0', // Default true
-      dali: params.get('dali') === '1'
-    };
-  }
-
-  // Helper to validate coordinate strings from URL
-  function isValidCoord(val) {
-    if (!val || val === "undefined" || val === "NaN") return false;
-    let n = parseFloat(val);
-    return !isNaN(n) && n !== 99999;
-  }
-
   // Fallback to comma separated if not key-value
-  if (!isValidCoord(lat) && hash.includes(',')) {
+  if (!lat && hash.includes(',')) {
     var parts = hash.split(',');
     if (parts.length >= 2) {
       lat = parts[0];
@@ -866,7 +617,7 @@ function parseUrlHash() {
     }
   }
 
-  if (isValidCoord(lat) && isValidCoord(lon)) {
+  if (lat && lon) {
     console.log("Parsed URL location:", { lat, lon, tz, city });
     IsUserInitiatedLocation = true; // URL location is intentional (someone shared it)
     Latitude = parseFloat(lat);
@@ -899,6 +650,13 @@ function parseUrlHash() {
     }
     LocaleTitleLocal = LocaleTitle;
 
+    if (!IsPreciseLocation) {
+      // transition to true
+      // Just in case manual coords button was hidden, show it.
+      var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      //alert("showing manual coords button on transition to precise location");
+      manualCoordsBtn.style.display = "block";
+    }
     IsPreciseLocation = true; // Treating URL location as precise/intentional
     IsTimezoneMismatch = false;
 
@@ -911,267 +669,43 @@ function parseUrlHash() {
   return false;
 }
 
-// Apply initial state from URL parameters (called after renderers are initialized)
-function applyInitialState() {
-  console.log("🎨 Applying initial state from URL parameters...");
-
-  // Apply clock mode if specified
-  if (window._initialClockMode) {
-    console.log("  📍 Applying clock mode:", window._initialClockMode);
-    setClockMode(window._initialClockMode);
-    delete window._initialClockMode; // Clean up
-  }
-
-  // Apply DaySpiral GMT state if specified (regardless of active renderer)
-  if (window._initialGmtEnabled) {
-    console.log("  🌍 Enabling GMT display");
-    const gmtBtn = select('#btn-gmt');
-    if (gmtBtn) {
-      // Directly set the state without checking active renderer
-      if (!gmtBtn.hasClass('toggled-on')) {
-        // Manually apply the GMT state
-        IsGmtShown = true;
-        GmtDisplayButtonLabel = "Hide GMT";
-        gmtBtn.html(GmtDisplayButtonLabel);
-        gmtBtn.addClass('toggled-on');
-      }
-    }
-    delete window._initialGmtEnabled; // Clean up
-  }
-
-  // Apply DaySpiral state if specified (regardless of active renderer)
-  if (window._initialDaySpiralState) {
-    console.log("  ⚙️ Applying DaySpiral settings:", window._initialDaySpiralState);
-    const state = window._initialDaySpiralState;
-
-    if (state.style) {
-      daySpiralRenderer.setStyle(state.style);
-      // Update UI buttons
-      const btnClassic = select('#btn-style-classic');
-      const btnSpiral = select('#btn-style-spiral');
-      const btnGmt = select('#btn-gmt');
-
-      if (state.style === 'Classic') {
-        if (btnClassic) btnClassic.addClass('toggled-on');
-        if (btnSpiral) btnSpiral.removeClass('toggled-on');
-        if (btnGmt) btnGmt.show();
-      } else {
-        if (btnClassic) btnClassic.removeClass('toggled-on');
-        if (btnSpiral) btnSpiral.addClass('toggled-on');
-        // Hide GMT button in SpiralHours mode
-        if (btnGmt) btnGmt.hide();
-      }
-    }
-
-    if (state.timeFormat) {
-      daySpiralRenderer.setTimeFormat(state.timeFormat);
-      const selTimeFormat = select('#select-dayspiral-time-format');
-      if (selTimeFormat) selTimeFormat.value(state.timeFormat);
-    }
-
-    delete window._initialDaySpiralState; // Clean up
-  }
-
-  // Apply Mobius state if specified (regardless of active renderer)
-  if (window._initialMobiusState) {
-    console.log("  ⚙️ Applying Mobius settings:", window._initialMobiusState);
-    const state = window._initialMobiusState;
-
-    // Apply time style
-    if (state.timeStyle) {
-      mobiusRenderer.setTimeStyle(state.timeStyle);
-      const selStyle = select('#select-time-style');
-      if (selStyle) selStyle.value(state.timeStyle);
-    }
-
-    // Apply indicator shapes
-    if (state.shapeHours) {
-      mobiusRenderer.setIndicatorShape('hours', state.shapeHours);
-      const selHours = select('#select-shape-hours');
-      if (selHours) selHours.value(state.shapeHours);
-    }
-    if (state.shapeMinutes) {
-      mobiusRenderer.setIndicatorShape('minutes', state.shapeMinutes);
-      const selMinutes = select('#select-shape-minutes');
-      if (selMinutes) selMinutes.value(state.shapeMinutes);
-    }
-    if (state.shapeSeconds) {
-      mobiusRenderer.setIndicatorShape('seconds', state.shapeSeconds);
-      const selSeconds = select('#select-shape-seconds');
-      if (selSeconds) selSeconds.value(state.shapeSeconds);
-    }
-
-    // Apply tick scheme
-    if (state.tickScheme) {
-      mobiusRenderer.setTickScheme(state.tickScheme);
-      const selTicks = select('#select-tick-scheme');
-      if (selTicks) selTicks.value(state.tickScheme);
-    }
-
-    // Apply rotation state
-    if (state.rotation !== undefined) {
-      mobiusRenderer.rotationEnabled = state.rotation;
-      const btnRotate = select('#btn-rotate');
-      if (btnRotate) {
-        if (state.rotation) btnRotate.addClass('toggled-on');
-        else btnRotate.removeClass('toggled-on');
-      }
-    }
-
-    // Apply demo/fast mode
-    if (state.demo !== undefined) {
-      mobiusRenderer.fastMode = state.demo;
-      const btnDemo = select('#btn-demo');
-      if (btnDemo) {
-        if (state.demo) btnDemo.addClass('toggled-on');
-        else btnDemo.removeClass('toggled-on');
-      }
-    }
-
-    // Apply hour visibility
-    if (state.showHours !== undefined) {
-      mobiusRenderer.hoursVisible = state.showHours;
-      const btnHideHours = select('#btn-hide-hours');
-      if (btnHideHours) {
-        if (state.showHours) {
-          btnHideHours.addClass('toggled-on');
-        } else {
-          btnHideHours.removeClass('toggled-on');
-        }
-      }
-    }
-
-    // Apply Dali mode
-    if (state.dali !== undefined) {
-      mobiusRenderer.setDaliMode(state.dali);
-      const btnDali = select('#btn-dali');
-      if (btnDali) {
-        if (state.dali) btnDali.addClass('toggled-on');
-        else btnDali.removeClass('toggled-on');
-      }
-    }
-
-    delete window._initialMobiusState; // Clean up
-  }
-
-  console.log("  ✅ Initial state applied");
-  updateUrlHash(); // Ensure URL reflects all applied state
-}
-
-// Update URL hash with current state
+// Update URL hash with current location
 function updateUrlHash() {
   console.log("🔗 updateUrlHash() called");
+  console.log("  Latitude:", Latitude);
+  console.log("  Longitude:", Longitude);
+  console.log("  TzOffset:", TzOffset);
+  console.log("  LocaleTitle:", LocaleTitle);
 
-  // Use URLSearchParams to preserve non-state parameters (like #testvpn)
-  var currentHash = window.location.hash.substring(1);
-  var params = new URLSearchParams(currentHash);
-
-  // Clear managed parameters to re-add them based on current state
-  const managedKeys = [
-    'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
-    'daySpiralStyle', 'daySpiralTimeFormat',
-    'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
-    'tickScheme', 'rotation', 'demo', 'showHours', 'dali'
-  ];
-  managedKeys.forEach(key => params.delete(key));
-
-  // PRIVACY-FIRST LOCATION HANDLING:
-  // Only include location if it was MANUALLY SELECTED (preset/city/manual entry)
-  // Do NOT include user's current location (GPS or IP-based)
-  if (!IsDisplayingUserLocation && Latitude !== 99999 && Longitude !== 99999 &&
-    !isNaN(Latitude) && !isNaN(Longitude)) {
-    var city = LocaleTitle || "";
-    // Don't include generic location names
-    if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
-      city = "";
-    }
-
-    params.set('lat', Latitude);
-    params.set('lon', Longitude);
-    params.set('tz', TzOffset);
-    if (city) {
-      params.set('city', city);
-    }
-    console.log("  📍 Including manually-selected location in URL");
-  } else if (IsDisplayingUserLocation) {
-    console.log("  🔒 Privacy: Not including user's current location in URL");
+  if (Latitude == 99999 || Longitude == 99999) {
+    console.log("  ❌ Early return: Latitude or Longitude is 99999");
+    return;
   }
 
-  // Zen mode
+  var city = LocaleTitle || "";
+  // Don't include "Approximate Location" or "Precise Location" as city name in URL if possible
+  if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
+    city = "";
+  }
+
+  var hash = `lat=${Latitude}&lon=${Longitude}&tz=${TzOffset}`;
+  if (city) {
+    hash += `&city=${encodeURIComponent(city)}`;
+  }
+
   if (IsZenMode) {
-    params.set('zen', '1');
-  }
-
-  // Clock mode
-  if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined') {
-    if (activeRenderer === mobiusRenderer) {
-      params.set('clock', 'mobius');
-    } else {
-      params.set('clock', 'dayspiral');
-    }
-  }
-
-  // DaySpiral-specific state
-  if (typeof daySpiralRenderer !== 'undefined') {
-    const gmtBtn = select('#btn-gmt');
-    if (gmtBtn && gmtBtn.hasClass('toggled-on')) {
-      params.set('gmt', '1');
-    }
-
-    // Add DaySpiral style
-    if (daySpiralRenderer.style && daySpiralRenderer.style !== 'Classic') {
-      params.set('daySpiralStyle', daySpiralRenderer.style);
-    }
-
-    // Add DaySpiral time format
-    if (daySpiralRenderer.timeFormat && daySpiralRenderer.timeFormat !== '12') {
-      params.set('daySpiralTimeFormat', daySpiralRenderer.timeFormat);
-    }
-  }
-
-  // Mobius-specific state
-  if (typeof mobiusRenderer !== 'undefined') {
-    if (mobiusRenderer.timeStyle !== 'ampm') {
-      params.set('timeStyle', mobiusRenderer.timeStyle);
-    }
-    if (mobiusRenderer.indicatorShapes.hours !== 'outer-ring') {
-      params.set('shapeHours', mobiusRenderer.indicatorShapes.hours);
-    }
-    if (mobiusRenderer.indicatorShapes.minutes !== 'ring') {
-      params.set('shapeMinutes', mobiusRenderer.indicatorShapes.minutes);
-    }
-    if (mobiusRenderer.indicatorShapes.seconds !== 'sphere') {
-      params.set('shapeSeconds', mobiusRenderer.indicatorShapes.seconds);
-    }
-    if (mobiusRenderer.tickScheme !== 'standard') {
-      params.set('tickScheme', mobiusRenderer.tickScheme);
-    }
-    if (mobiusRenderer.rotationEnabled !== false) {
-      params.set('rotation', '1');
-    }
-    if (mobiusRenderer.fastMode !== false) {
-      params.set('demo', '1');
-    }
-    if (mobiusRenderer.hoursVisible !== true) {
-      params.set('showHours', '0');
-    }
-    if (mobiusRenderer.daliMode === true) {
-      params.set('dali', '1');
-    }
-  }
-
-  var hash = params.toString().replace(/=(&|$)/g, '$1');
-  console.log("  📝 Generated hash (refined):", hash);
-
-  // Update URL without triggering hashchange
-  var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-  if (hash) {
-    newUrl += "#" + hash;
+    hash += "&zen=1";
   } else {
-    console.log("  🧹 Hash is empty, clearing URL hash");
+    hash += "&zen=0";
   }
 
-  console.log("  🌐 Final URL:", newUrl);
+  console.log("  📝 Generated hash:", hash);
+
+  // Update without triggering hashchange if we were listening for it (we aren't yet)
+  // window.location.hash = hash; 
+  // Using history.replaceState to avoid adding to browser history on every update
+  var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "#" + hash;
+  console.log("  🌐 New URL:", newUrl);
   window.history.replaceState({ path: newUrl }, '', newUrl);
   console.log("  ✅ URL updated successfully");
 }
@@ -1179,51 +713,40 @@ function updateUrlHash() {
 // Helper to check fullscreen state across browsers
 // Helper to check fullscreen state across browsers
 function isFullScreen() {
-  // Check standard Fullscreen API
   var std = document.fullscreenElement;
   var webkit = document.webkitFullscreenElement;
   var moz = document.mozFullScreenElement;
   var ms = document.msFullscreenElement;
 
   var hasElement = (std || webkit || moz || ms) != null;
+  var isMQ = false;
 
-  // Check for our custom iOS fixes
-  if (!hasElement && document.body.classList.contains('ios-fullscreen-fix')) {
-    return true;
+  // Use Media Query as a tiebreaker/validator if available
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(display-mode: fullscreen)');
+    isMQ = mq.matches;
+    if (mq.media !== 'not all') {
+      // If we have an element but MQ says no, we are likely not in FS
+      if (hasElement && !isMQ) {
+        // hasElement = false; // logic attempted previously
+      }
+    }
   }
 
+  // Debug logging - Always log if we suspect an issue (or just throttle?)
+  // For this debug session, let's log frequently but maybe check a global?
+  // User explicitly asked for logs.
+  // Debug logging - Removed for final version
   return hasElement;
 }
 
 
+
 // Toggle Full Screen Mode
 function toggleFullScreen() {
-  // Detect iOS (iPhone/iPad)
-  // Note: iPad can report as Macintosh if 'Request Desktop Website' is on, 
-  // but checking maxTouchPoints helps distinguish.
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  if (isIOS) {
-    if (document.body.classList.contains('ios-fullscreen-fix')) {
-      // Turn OFF
-      document.body.classList.remove('ios-fullscreen-fix');
-      window.scrollTo(0, 0); // Reset scroll
-    } else {
-      // Turn ON
-      document.body.classList.add('ios-fullscreen-fix');
-      // Prompt user
-      alert("Swipe UP to hide the address bar.");
-      // Attempt to help scrolling
-      setTimeout(() => window.scrollTo(0, 1), 100);
-    }
-    // Force UI update since no 'fullscreenchange' event fires for class changes
-    onFullScreenChange();
-  } else {
-    // Standard Desktop/Android
-    var fs = isFullScreen();
-    fullscreen(!fs);
-  }
+  var fs = isFullScreen();
+  fullscreen(!fs);
+  // UI update is handled by onFullScreenChange event listener
 }
 
 // Handle fullscreen change events (from button or ESC key)
@@ -1240,10 +763,33 @@ function onFullScreenChange(e) {
     // transition to/from full screen mode
     fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
 
-
+    if (!IsDesktop && fs && !WasFullScreenLastCheck) {
+      // We just transitioned into full screen mode on mobile
+      // Show the manual coords button just in case it was hidden
+      var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      //alert("showing manual coords button on transition to full screen mode on mobile");
+      manualCoordsBtn.style.display = "block";
+    }
+    else if (!IsDesktop && !fs && WasFullScreenLastCheck) {
+      // We just transitioned out of full screen mode on mobile
+      // Hide the manual coords button if we are not in precise location mode
+      if (!IsPreciseLocation) {
+        var manualCoordsBtn = document.getElementById('btn-manual-coords');
+        manualCoordsBtn.style.display = "none";
+      }
+    }
   }
 
-
+  // NEW: Update Desktop Fullscreen Button
+  var fsBtnDesktop = document.getElementById('btn-fullscreen-desktop');
+  if (fsBtnDesktop) {
+    fsBtnDesktop.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
+    if (fs) {
+      fsBtnDesktop.classList.add('toggled-on');
+    } else {
+      fsBtnDesktop.classList.remove('toggled-on');
+    }
+  }
 
 
 
@@ -1264,26 +810,17 @@ function onFullScreenChange(e) {
 function updateUIElements() {
   // Update title based on mode
   var titleEl = document.getElementById('app-title');
-  var versionEl = document.getElementById('app-version');
-  var descEl = document.getElementById('app-description');
-
-  if (versionEl) {
-    let verOnly = APP_VERSION.split(' ')[0]; // e.g. "v0.4.3"
-    versionEl.textContent = 'CoolweirdClocks ' + verOnly;
+  if (titleEl) {
+    titleEl.textContent = 'Day Spiral Clock'; // Always Day Spiral
   }
 
-  if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
-    if (titleEl) titleEl.textContent = 'Mobius Clock';
-    // Show condensed Mobius description for desktop
-    var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
-      'The hour indicator makes 2 full turns to return to its starting point.';
-    if (descEl) descEl.textContent = mobiusDescText;
-  } else {
-    if (titleEl) titleEl.textContent = 'Day Spiral Clock';
-    var descText = 'To show night and day you need a 24-hour clock; ' +
-      'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ' +
-      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
-    if (descEl) descEl.textContent = descText;
+  // Update description based on mode
+  var descText = 'To show night and day you need a 24-hour clock; ' +
+    'using a spiral is a way to squeeze 24 hours into a 12-hour clock face.';
+
+  var descEl = document.getElementById('app-description');
+  if (descEl) {
+    descEl.textContent = descText;
   }
 
   // About modal text is now static and set in oneTimeInit()
@@ -1327,59 +864,23 @@ function updateUIElements() {
   // NEW: Large Time Display
   var timeLargeEl = document.getElementById('time-display-large');
   if (timeLargeEl) {
-    if (IsLoadingLocation) {
-      timeLargeEl.textContent = "..."; // Blank out or show placeholder during loading
-    } else if (TimeString) {
-      // Calculate target time based on Time Zone Offset difference
-      let now = new Date();
-      // TzOffset and TzOffsetLocal are in hours.
-      let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
-      let offsetDiffHours = TzOffset - localTz;
-      let targetTime = new Date(now.getTime() + (offsetDiffHours * 3600000));
-
-      let h = targetTime.getHours();
-      let m = targetTime.getMinutes();
-      let s = targetTime.getSeconds();
-
-      let ampm = h >= 12 ? 'PM' : 'AM';
-      let h12 = h % 12;
-      h12 = h12 ? h12 : 12; // hour '0' should be '12'
-
-      let mStr = nf(m, 2, 0); // Use p5 nf() for zero padding
-      let sStr = nf(s, 2, 0);
-
-      let formattedTime = `${h12}:${mStr}:${sStr} ${ampm}`;
-
-      timeLargeEl.textContent = formattedTime;
-
-      // Also update mobile time display
-      if (timeEl) timeEl.textContent = formattedTime;
-
-    } else { // Fallback if TimeString is not available or loading
+    if (TimeString) {
       timeLargeEl.textContent = TimeString;
     }
   }
 
-  // NEW: Update GPS OK Button(s) State
-  // We only show the button when we are in user location mode but NOT YET precise.
-  var gpsBtnDesktop = document.getElementById('btn-gps-ok');
-  var gpsBtnMobile = document.getElementById('btn-gps-ok-mobile');
-  [gpsBtnDesktop, gpsBtnMobile].forEach(btn => {
-    if (btn) {
-      if (IsDisplayingUserLocation && !IsPreciseLocation) {
-        // Show button (yellow) if we are in user mode but don't have GPS yet
-        btn.classList.add('gps-show');
-        btn.classList.add('warning-bg');
-      } else {
-        // Hide if looking at a manual/preset location OR if already precise
-        if (btn.classList.contains('gps-show')) {
-          console.log(`Hiding GPS button. IsDisplayingUserLocation=${IsDisplayingUserLocation}, IsPreciseLocation=${IsPreciseLocation}`);
-        }
-        btn.classList.remove('warning-bg');
-        btn.classList.remove('gps-show');
-      }
+  // NEW: Update GPS OK Button State
+  var gpsBtn = document.getElementById('btn-gps-ok');
+  if (gpsBtn) {
+    if (IsPreciseLocation) {
+      // Hide button if location is precise
+      gpsBtn.style.display = 'none';
+    } else {
+      // Show and set yellow
+      gpsBtn.style.display = 'block';
+      gpsBtn.classList.add('warning-bg');
     }
-  });
+  }
 
   // Update date display
   var dateEl = document.getElementById('date-display');
@@ -1428,22 +929,24 @@ function updateUIElements() {
     }
   }
 
+  // Update VPN warning visibility
+  var vpnWarning = document.getElementById('vpn-warning');
+  if (vpnWarning) {
+    if (IsTimezoneMismatch) {
+      vpnWarning.classList.add('visible');
+    } else {
+      vpnWarning.classList.remove('visible');
+    }
+  }
 
-  // Update Zen Mode button labels
-  var zenBtn = document.getElementById('btn-zen');
-  var label = IsZenMode ? "Show Interface" : "Zen";
-
-  if (zenBtn) zenBtn.textContent = label;
-
-  // Update Clock Selector Highlighting
-  var optSpiral = select('#opt-dayspiral');
-  var optMobius = select('#opt-mobius');
-  if (activeRenderer === daySpiralRenderer) {
-    if (optSpiral) optSpiral.addClass('active');
-    if (optMobius) optMobius.removeClass('active');
-  } else {
-    if (optSpiral) optSpiral.removeClass('active');
-    if (optMobius) optMobius.addClass('active');
+  // Update precise location hint visibility
+  var preciseHint = document.getElementById('precise-hint');
+  if (preciseHint) {
+    if (!IsPreciseLocation && !IsTimezoneMismatch && Latitude != 99999) {
+      preciseHint.classList.add('visible');
+    } else {
+      preciseHint.classList.remove('visible');
+    }
   }
 }
 
@@ -1504,9 +1007,9 @@ window.showReadme = function () {
 // --- Helper for Manual Coords Modal ---
 function openManualCoordsModal() {
   // Populate fields with current values if available
-  var latField = select('#input-lat');
-  var lngField = select('#input-lon');
-  var tzField = select('#input-tz');
+  var latField = select('#input-lat-modal');
+  var lngField = select('#input-lng-modal');
+  var tzField = select('#input-tz-modal');
 
   if (typeof Latitude !== 'undefined' && Latitude != 99999) latField.value(Latitude);
   else latField.value('');
@@ -1532,73 +1035,30 @@ function openManualCoordsModal() {
   select('#coords-error-msg').html(''); // Clear error message when opening
 }
 
-// Open the details modal and populate with live data
 function openDetailsModal() {
-  var content = document.getElementById('details-content');
+  var content = '';
+  if (Latitude != 99999) {
+    content += '<p><strong>Place:</strong> ' + (LocaleTitle || 'Entered Location') + '</p>';
+    content += '<p><strong>Latitude:</strong> ' + Latitude + '</p>';
+    content += '<p><strong>Longitude:</strong> ' + Longitude + '</p>';
 
-  if (content) {
-    // Generate Time Zone String
-    var tzStr = (TzOffset >= 0 ? "+" : "") + TzOffset;
-    var dstStr = (typeof IsDst !== 'undefined') ? (IsDst ? "Active" : "Standard Time") : "Unknown";
+    // Add a visual separator for clarity
+    content += '<hr style="border:0; border-top:1px solid #444; margin:10px 0;">';
 
-    // 2-Column Grid Layout
-    content.innerHTML = `
-      <div class="details-grid">
-        <!-- Column 1: Time & Date -->
-        <div class="details-column">
-          <p>
-            <span class="label">Time</span>
-            <span class="value" id="modal-time-display">${TimeString} ${IsAM ? 'AM' : 'PM'}</span>
-          </p>
-          <p>
-            <span class="label">Date</span>
-            <span class="value" id="modal-date-display">${DateString}</span>
-          </p>
-          <p>
-            <span class="label">Sunrise</span>
-            <span class="value">${getFormattedTime(SunriseHour, SunriseMin)}</span>
-          </p>
-          <p>
-            <span class="label">Sunset</span>
-            <span class="value">${getFormattedTime(SunsetHour, SunsetMin)}</span>
-          </p>
-        </div>
+    content += '<p><strong>Time at this location:</strong> <span id="modal-time-display">' + TimeString + (IsAM ? ' AM' : ' PM') + '</span></p>';
+    content += '<p><strong>Date at this location:</strong> <span id="modal-date-display">' + DateString + '</span></p>';
+    content += '<p><strong>Day:</strong> ' + (typeof IDow !== 'undefined' ? getDayStringLong(IDow) : '') + '</p>';
+    content += '<p><strong>DST:</strong> ' + (IsDst ? 'Yes' : 'No') + '</p>';
 
-        <!-- Column 2: Location Data -->
-        <div class="details-column">
-          <p>
-            <span class="label">City / Name</span>
-            <span class="value">${LocaleTitle}</span>
-          </p>
-          <p>
-            <span class="label">Coordinates</span>
-            <span class="value">${Latitude}, ${Longitude}</span>
-          </p>
-          <p>
-            <span class="label">Time Zone Offset</span>
-            <span class="value">GMT ${tzStr}</span>
-          </p>
-           <p>
-            <span class="label">Daylight Savings</span>
-            <span class="value">${dstStr}</span>
-          </p>
-        </div>
-      </div>
-    `;
+    if (SunriseHour >= 0) {
+      content += '<p><strong>Sunrise:</strong> ' + SunriseHourString + ':' + SunriseMinString + SunriseAmpmString + '</p>';
+      content += '<p><strong>Sunset:</strong> ' + SunsetHourString + ':' + SunsetMinString + SunsetAmpmString + '</p>';
+    }
+  } else {
+    content = '<p>Location not set.</p>';
   }
+  document.getElementById('details-content').innerHTML = content;
   openModal('modal-details');
-}
-
-// Helper to format HH:MM for sunrise/sunset display
-function getFormattedTime(h, m) {
-  if (h == -1) return "Always Light (Midnight Sun)";
-  if (h == -2) return "Always Dark";
-
-  let ampm = h >= 12 ? "PM" : "AM";
-  let h12 = h % 12;
-  h12 = h12 ? h12 : 12;
-  let mStr = nf(m, 2, 0);
-  return `${h12}:${mStr} ${ampm}`;
 }
 
 function handleCitySubmitModal() {
@@ -1727,10 +1187,8 @@ function setup() {
 // This is run at startup and also when window size changes
 function reInit() {
   // Update environment state
-  // Mobile/Compact mode is width <= 950 OR height <= 600.
-  // Desktop/Regular mode is width > 950 AND height > 600.
-  IsDesktop = (window.innerWidth > 950) && (window.innerHeight > 600);
-  console.log("📐 reInit: IsDesktop=" + IsDesktop + " Width=" + window.innerWidth + " Height=" + window.innerHeight);
+  IsDesktop = (IsWindows || (window.navigator.platform.indexOf("Mac") === 0)) && (window.innerWidth > 950);
+  console.log("📐 reInit: IsDesktop=" + IsDesktop + " Width=" + window.innerWidth);
 
   // On phones, height looks ok, but width is too big
   TheHeight = window.innerHeight; //*0.8; //height * 0.7;
@@ -1763,12 +1221,29 @@ function reInit() {
   // No more .position() calls needed here
 
   // --- Fullscreen Attention Cue Logic ---
-  // Mobile Landscape is when we are in compact/mobile mode AND width > height
   var isLandscape = (window.innerWidth > window.innerHeight);
   var isMobileLandscape = (!IsDesktop && isLandscape);
 
+  if (!isMobileLandscape && WasMobileLandscapeLastCheck) {
+    // We just transitioned out of mobile landscape.
+    // Show the manual coords button just in case it was hidden
+    var manualCoordsBtn = document.getElementById('btn-manual-coords');
+    //alert("showing manual coords button on transition out of mobile landscape");
+    manualCoordsBtn.style.display = "block";
+
+  }
+
   if (isMobileLandscape && !WasMobileLandscapeLastCheck) {
     // We just transitioned into mobile landscape.
+    // Hide the manual coords button if the screen is too small
+    //alert("window height = " + window.innerHeight.toString());
+
+    if (window.innerHeight < 300 && !IsPreciseLocation) {
+      //alert("window height < 400, hide manual coords button");
+      var manualCoordsBtn = document.getElementById('btn-manual-coords');
+      manualCoordsBtn.style.display = "none";
+    }
+
     // If not already in fullscreen, draw attention to the button.
     if (!isFullScreen()) {
       var fsBtn = document.getElementById('btn-fullscreen');
@@ -1781,16 +1256,15 @@ function reInit() {
         fsBtn.classList.add('fs-highlight-pulse');
       }
     }
-  } else if (!isMobileLandscape || isFullScreen()) {
-    // If we leave mobile landscape or we enter fullscreen, clear the highlight
+  } else if (!isLandscape) {
+    // If we leave landscape, we can clear the highlight immediately
     var fsBtn = document.getElementById('btn-fullscreen');
     if (fsBtn) {
       fsBtn.classList.remove('fs-highlight-pulse');
     }
   }
 
-  // Update tracking var
-  // We only track the transition when NOT in fullscreen to avoid loop glitches
+  // Update tracking var (only when NOT in fullscreen to avoid FS-toggle logic glitches)
   if (!isFullScreen()) {
     WasMobileLandscapeLastCheck = isMobileLandscape;
   }
@@ -1824,11 +1298,6 @@ Date.prototype.dst = function () {
 function windowResized() {
   console.log("Resize Detected;")
   resizeCanvas(window.innerWidth, window.innerHeight);
-
-  if (activeRenderer) {
-    activeRenderer.resize(window.innerWidth, window.innerHeight);
-  }
-
   reInit();
   // Ensure fullscreen UI is synced on resize (often triggered by FS toggle)
   onFullScreenChange();
@@ -2055,9 +1524,6 @@ function calcSunRiseSet() {
 // ========================================================
 // Update time-related vars.
 function updateTimeThisDay() {
-  // Sync TimeKeeper
-  if (timeKeeper) timeKeeper.update(TzOffset);
-
 
   IDowPrevious = IDow; // save the previous day of week
 
@@ -2069,13 +1535,10 @@ function updateTimeThisDay() {
 
   // if time zone GMT offset differs from local,
   //  adjust the hour and day-of-week accordingly.
-  // Always use the robust BrowserTzOffset if available, else fall back to TzOffsetLocal
-  let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
-
-  if (TzOffset != localTz) {
+  if (TzOffset != TzOffsetLocal) {
 
     // Here is the new simpler logic for tz correction
-    let TzDiffHours = TzOffset - localTz;
+    let TzDiffHours = TzOffset - TzOffsetLocal;
     let TzDiffMs = TzDiffHours * 60 * 60 * 1000;
 
     // Rotate the date by the time zone difference
@@ -2086,37 +1549,16 @@ function updateTimeThisDay() {
     IHour = currDate.getHours();
   }
 
-  // LOGGING for Debug
-  // console.log(`TimeUpdate: LocalTz=${TzOffsetLocal} TargetTz=${TzOffset} IHour=${IHour}`);
-
   // now that we have the new adjusted day of week, check if it changed
   if (IDow != IDowPrevious) {
     // we have started a new day, so need to recompute the sunrise/sunset
     IsSunRiseSetObtained = false;
   }
 
-
-  // Helper to get ms since midnight for interpolation 
-  function msSinceMidnight(d) {
-    var midnight = new Date(d);
-    midnight.setHours(0, 0, 0, 0);
-    return d - midnight;
-  }
-
-  // get the current time from the (possibly shifted) date object =========
-  IMin = currDate.getMinutes();
-  ISec = currDate.getSeconds();
-  IMsSinceDayStart = msSinceMidnight(currDate);
-  // Custom helper or calculation needed for ms since day start? 
-  // Actually IMsSinceDayStart was used for interpolation. 
-  // Let's rely on standard p5 millis() for animation smoothness, 
-  // BUT we need an offset if we want smooth hands in another timezone.
-  // For now, let's keep IMsSinceDayStart based on local millis for smooth animation, 
-  // but we might see a jump if we strictly use IMin/ISec. 
-  // Standard way:
-  // We want the fractional second.
-  let ms = currDate.getMilliseconds();
-  //================================================
+  // get the current time ==========================
+  IMin = minute();
+  ISec = second();
+  IMsSinceDayStart = millis();
   //================================================
 
   var hoursSoFar = IHour;  // range 0-23
@@ -2237,9 +1679,6 @@ function setGmtDisplay()  // Toggling mode button
   } else {
     GmtDisplayButton.removeClass('toggled-on');
   }
-
-  // Update URL hash to reflect GMT state
-  updateUrlHash();
 }
 
 
@@ -2262,7 +1701,7 @@ function handleLocationError(error) {
       break;
     case error.TIMEOUT:
       errorMsg = "Location request timed out";
-      alert("The location request timed out. This can happen if the browser permission prompt was not answered quickly enough. Please try again and click 'Allow' when the popup appears.");
+      alert("The location request timed out. Please try again.");
       break;
     default:
       errorMsg = "Location error occurred";
@@ -2289,7 +1728,6 @@ function handleLocationError(error) {
     if (LocaleTitleLocal) {
       LocaleTitle = LocaleTitleLocal;
     }
-    IsPreciseLocation = false; // We are back to IP/approximate location
 
     // Restore timezone
     getTzUsingLatLong(Latitude, Longitude);
@@ -2297,7 +1735,6 @@ function handleLocationError(error) {
     // Recalculate times
     IsSunRiseSetObtained = false;
     updateTimeThisDay();
-    updateUIElements();
 
     // Clear mismatch flag since we are back to IP location
     // (or keep it if we want to warn about VPN still? 
@@ -2312,7 +1749,6 @@ function handleLocationError(error) {
     console.log("No fallback location available. Trying IP location.");
     fetchIpLocation();
     IsPreciseLocation = false;
-    updateUIElements();
   }
 }
 
@@ -2363,34 +1799,32 @@ function toggleZenMode() {
 //-----------------------------------------------------------------
 // Handler for the Use Precise Location button
 // Requests browser GPS coordinates (will show permission prompt)
-function usePreciseLocation(isAuto = false) {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] Requesting precise GPS location (isAuto=${isAuto})...`);
-  IsRequestingPrecise = true;
+function usePreciseLocation() {
+  console.log("Requesting precise GPS location...");
   setLoadingState();
-
-  IsDisplayingUserLocation = true; // We are tracking user location
-
   IsTimezoneMismatch = false; // User intentionally requesting location
-  IsUserInitiatedLocation = !isAuto; // Trigger URL update only if NOT auto-fetch
+  IsUserInitiatedLocation = true; // User clicked button to fetch GPS location
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
 
   // Options for getCurrentPosition call below, designed for speed over accuracy.
   const options = {
     enableHighAccuracy: false,
-    timeout: 30000,
+    timeout: 10000,
     maximumAge: 120000 // Allow a location up to 2 minutes old
   };
 
   navigator.geolocation.getCurrentPosition(
     // Success callback
     function (position) {
-      if (requestId !== LocationFetchSerial) {
-        console.log(`[${requestId}] GPS callback ignored (stale/cancelled).`);
-        return;
+      console.log("GPS location obtained:", position.coords);
+
+      if (!IsPreciseLocation) {
+        // transition to true
+        // Just in case manual coords button was hidden, show it.
+        var manualCoordsBtn = document.getElementById('btn-manual-coords');
+        //alert("showing manual coords button on transition to precise location");
+        manualCoordsBtn.style.display = "block";
       }
-      IsRequestingPrecise = false;
-      console.log(`[${requestId}] GPS location obtained:`, position.coords);
 
       IsPreciseLocation = true;
 
@@ -2415,19 +1849,12 @@ function usePreciseLocation(isAuto = false) {
       LastLong = Longitude;
 
       CityNameInput.value("");
-      // LocaleTitle = "Precise Location"; // Temporarily set until reverse geocode returns
+      LocaleTitle = "Precise Location";
 
-      // Get reverse geocoding info from Nominatim
-      let revGeoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${Latitude}&lon=${Longitude}`;
-      console.log(`[${requestId}] Reverse geocoding URL:`, revGeoUrl);
-      loadJSON(revGeoUrl, (data) => gotReverseGeocodeData(data, requestId), handleNetworkError);
-
-      if (IsUserInitiatedLocation) {
-        updateUrlHash();
-      }
+      updateUrlHash();
 
       // Get timezone using existing GeoNames function
-      getTzUsingLatLong(Latitude, Longitude, requestId);
+      getTzUsingLatLong(Latitude, Longitude);
 
       // Location changed, recalculate sunrise/sunset
       IsSunRiseSetObtained = false;
@@ -2435,11 +1862,7 @@ function usePreciseLocation(isAuto = false) {
     },
 
     // Error callback
-    function (error) {
-      if (requestId !== LocationFetchSerial) return;
-      IsRequestingPrecise = false;
-      handleLocationError(error);
-    },
+    handleLocationError,
 
     // Options, see above
     options
@@ -2451,13 +1874,10 @@ function usePreciseLocation(isAuto = false) {
 // Set location and timezone to Silverado
 //  
 function setSilverado() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setSilverado()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("Silverado, CA, USA");
+  CityNameInput.value("Silverado, CA, USA");
   LocaleTitle = "Silverado";
 
   // Skip Nominatim and go direct to Tz lookup
@@ -2473,15 +1893,15 @@ function setSilverado() {
   }
 
   // init the UI field
-  if (TzInput) TzInput.value(tzString);
+  TzInput.value(tzString);
   LastTz = TzOffset;
 
   var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
+  LatInput.value(latString);
   LastLat = Latitude;
 
   var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
+  LngInput.value(longString);
   LastLong = Longitude;
 
   // Location may have changed, so need to regen spiral point array.
@@ -2497,20 +1917,17 @@ function setSilverado() {
 // Set location and timezone to London England
 //  
 function setLondon() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setLondon()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("London, UK");
+  CityNameInput.value("London, UK");
   LocaleTitle = "London";
 
   // Skip Nominatim and go direct to Tz lookup
   Latitude = 51.507;
   Longitude = -0.127;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2519,15 +1936,15 @@ function setLondon() {
   }
 
   // init the UI field
-  if (TzInput) TzInput.value(tzString);
+  TzInput.value(tzString);
   LastTz = TzOffset;
 
   var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
+  LatInput.value(latString);
   LastLat = Latitude;
 
   var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
+  LngInput.value(longString);
   LastLong = Longitude;
 
   // Location may have changed, so need to regen spiral point array.
@@ -2543,20 +1960,17 @@ function setLondon() {
 // Set location and timezone to Berkeley
 //  
 function setBerkeley() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setBerkeley()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("Berkeley, CA, USA");
+  CityNameInput.value("Berkeley, CA, USA");
   LocaleTitle = "Berkeley";
 
   // Skip Nominatim and go direct to Tz lookup
   Latitude = 37.871;
   Longitude = -122.273;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2565,15 +1979,15 @@ function setBerkeley() {
   }
 
   // init the UI field
-  if (TzInput) TzInput.value(tzString);
+  TzInput.value(tzString);
   LastTz = TzOffset;
 
   var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
+  LatInput.value(latString);
   LastLat = Latitude;
 
   var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
+  LngInput.value(longString);
   LastLong = Longitude;
 
   // Location may have changed, so need to regen spiral point array.
@@ -2589,20 +2003,17 @@ function setBerkeley() {
 // Set location and timezone to Kansas City, MO
 //  
 function setKansasCity() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setKansasCity()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("Kansas City, MO, USA");
+  CityNameInput.value("Kansas City, MO, USA");
   LocaleTitle = "Kansas City";
 
   // Skip Nominatim and go direct to Tz lookup
   Latitude = 39.099;
   Longitude = -94.578;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2611,15 +2022,15 @@ function setKansasCity() {
   }
 
   // init the UI field
-  if (TzInput) TzInput.value(tzString);
+  TzInput.value(tzString);
   LastTz = TzOffset;
 
   var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
+  LatInput.value(latString);
   LastLat = Latitude;
 
   var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
+  LngInput.value(longString);
   LastLong = Longitude;
 
   // Location may have changed, so need to regen spiral point array.
@@ -2635,20 +2046,17 @@ function setKansasCity() {
 // Set location and timezone to Melbourne
 //  
 function setMelbourne() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setMelbourne()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("Melbourne, AU");
+  CityNameInput.value("Melbourne, AU");
   LocaleTitle = "Melbourne";
 
   // Skip Nominatim and go direct to Tz lookup
   Latitude = -37.813;
   Longitude = 144.963;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2657,15 +2065,15 @@ function setMelbourne() {
   }
 
   // init the UI field
-  if (TzInput) TzInput.value(tzString);
+  TzInput.value(tzString);
   LastTz = TzOffset;
 
   var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
+  LatInput.value(latString);
   LastLat = Latitude;
 
   var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
+  LngInput.value(longString);
   LastLong = Longitude;
 
   // Location may have changed, so need to regen spiral point array.
@@ -2679,20 +2087,17 @@ function setMelbourne() {
 // ========================================
 // Set location and timezone to San Diego
 function setSanDiego() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setSanDiego()`);
   IsTimezoneMismatch = false; // User manually selected location
   IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
   PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("San Diego, CA, USA");
+  CityNameInput.value("San Diego, CA, USA");
   LocaleTitle = "San Diego";
 
   // Skip Nominatim and go direct to Tz lookup
   Latitude = 32.715;
   Longitude = -117.161;
   setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
+  getTzUsingLatLong(Latitude, Longitude);
 
   var tzString = str(TzOffset);
   // Add in a plus sign if not negative
@@ -2700,15 +2105,15 @@ function setSanDiego() {
     tzString = "+" + str(TzOffset);
   }
   // init the UI field
-  if (TzInput) TzInput.value(tzString);
+  TzInput.value(tzString);
   LastTz = TzOffset;
 
   var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
+  LatInput.value(latString);
   LastLat = Latitude;
 
   var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
+  LngInput.value(longString);
   LastLong = Longitude;
 
   // Location may have changed, so need to regen spiral point array.
@@ -2845,28 +2250,20 @@ function processLongInputEvent() {
 // The entered city name may contain additional fields such as state/province and 
 // country, comma separated.
 function handleCitySubmitUnified() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] handleCitySubmitUnified()`);
-  var input = select('#city-search-input');
+  var input = select('#input-city-modal-unified');
   var city = input.value();
   if (city && city.length > 1) {
-    getLocationUsingCityName(city, requestId);
-    closeAllModals();
+    getLatLongFromCity(city, 'city-error-msg-unified');
+    closeAllModals(); // Close immediately or wait? Usually wait for success but let's close for UX
   } else {
-    var errEl = select('#city-error-msg');
-    if (errEl) errEl.html("Please enter a valid city name.");
+    select('#city-error-msg-unified').html("Please enter a valid city name.");
   }
 }
 
 function handleCoordsSubmitUnified() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] handleCoordsSubmitUnified()`);
-  // Use IDs from #modal-coords (shared mobile/desktop manual modal)
-  var lat = parseFloat(select('#input-lat').value());
-  var lng = parseFloat(select('#input-lon').value());
-  var tz = parseFloat(select('#input-tz').value());
-
-  // Debug Alert - REMOVED
+  var lat = parseFloat(select('#input-lat-unified').value());
+  var lng = parseFloat(select('#input-lng-unified').value());
+  var tz = parseFloat(select('#input-tz-unified').value());
 
   if (isNaN(lat) || isNaN(lng)) {
     // error handling?
@@ -2874,23 +2271,15 @@ function handleCoordsSubmitUnified() {
     return;
   }
 
-  console.log("Submit Manual Coords: Lat=" + lat + " Lng=" + lng + " Tz=" + tz);
-
   Latitude = lat;
-  LastLat = lat;
-
   Longitude = lng;
-  LastLong = lng;
 
   if (!isNaN(tz)) {
     TzOffset = tz;
-    LastTz = tz;
   }
 
   IsPreciseLocation = true; // Manual entry is precise
-  IsDisplayingUserLocation = false; // Manually entered location
   IsUserInitiatedLocation = true;
-  IsLoadingLocation = false; // Ensure not loading
   LocaleTitle = "Manual Location";
 
   updateTimeThisDay();
@@ -2943,16 +2332,13 @@ function handleCitySubmit() {
 
 // ==============
 // Alternate way to set location, timezone, and IsDst using passed city name.
-function getLocationUsingCityName(passedCityName, requestId = 0) {
-  if (requestId === 0) requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] getLocationUsingCityName(${passedCityName})`);
+function getLocationUsingCityName(passedCityName) {
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
   IsUserInitiatedLocation = true; // User entered city name
-  IsDisplayingUserLocation = false; // Looking up a specific city
   CityName = passedCityName;
 
   // url used for OpenStreetmap (Nominatim)
-  let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(CityName)}`;
+  let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
 
   // Make a GET request to the Nominatim API (OpenStreetMap)
   // ATTN: the gotCityLocationDataOpenStMap() fcn will be called a bit later, when the  
@@ -3008,11 +2394,7 @@ function gotCityLocationDataGeoNames(data)
 
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
-function gotCityLocationDataOpenStMap(data, requestId) {
-  if (requestId && requestId !== LocationFetchSerial) {
-    console.log(`[${requestId}] gotCityLocationDataOpenStMap: Ignoring stale callback.`);
-    return;
-  }
+function gotCityLocationDataOpenStMap(data) {
   //console.log("Entering gotCityLocationDataOpenStMap().");
 
   // Check if the response contains any results
@@ -3022,13 +2404,6 @@ function gotCityLocationDataOpenStMap(data, requestId) {
     console.log(data[0]);
 
     let result = data[0]; // Take the first result
-
-    // Extract formatted name for display (e.g. "Boston, Massachusetts, United States")
-    // Use just the first part for LocaleTitle
-    if (result.display_name) {
-      let parts = splitTokens(result.display_name, ',');
-      if (parts.length > 0) LocaleTitle = trim(parts[0]);
-    }
 
     // Extract latitude, longitude, and time zone offset
     let lat = result.lat;
@@ -3078,13 +2453,13 @@ function gotCityLocationDataOpenStMap(data, requestId) {
 
       // Make a GET request using Geonames to get timezone details.
       // The gotCityTzData() fcn will run a bit later when the response arrives.
-      loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId), handleNetworkError);
+      loadJSON(timezoneUrl, gotCityTzData, handleNetworkError);
     }
   }
   else {
     console.log(`No results found for ${CityName}`);
     alert(`Could not find location for: ${CityName}`);
-    if (CityNameInput) CityNameInput.value('');
+    CityNameInput.value('');
     LocaleTitle = PrevLocaleTitle;
     clearLoadingState();
   }
@@ -3096,12 +2471,7 @@ function gotCityLocationDataOpenStMap(data, requestId) {
 // The response to the API call to get the city's time zone offset has arrived.
 // There is a time delay between this and the code above where
 // loadJSON is called.
-function gotCityTzData(data, requestId) {
-  if (requestId && requestId !== LocationFetchSerial) {
-    console.log(`[${requestId}] gotCityTzData: Ignoring stale callback.`);
-    // Note: We don't clear loading state here because a newer request is already in progress
-    return;
-  }
+function gotCityTzData(data) {
   console.log("Entering gotCityTzData().");
 
   // Check if the response contains any results
@@ -3159,9 +2529,9 @@ function gotCityTzData(data, requestId) {
     //console.log("tz after possibly adding leading plus sign:" + tzString);
 
     // Update fields on-screen.
-    if (TzInput) TzInput.value(tzString);
-    if (LatInput) LatInput.value(str(Latitude));
-    if (LngInput) LngInput.value(str(Longitude));
+    TzInput.value(tzString);
+    LatInput.value(str(Latitude));
+    LngInput.value(str(Longitude));
 
     // Location may have changed, so need to regen spiral point array.
     // Clear flag that's checked in updateTimeThisDay()
@@ -3175,10 +2545,10 @@ function gotCityTzData(data, requestId) {
     console.log('==tz based on GeoNames data==')
     console.log(`Time Zone Offset: ${timeZoneOffset} hours`);
 
-    // Only update URL for user-initiated location changes, or ALWAYS for precise locations
-    if (IsUserInitiatedLocation || (IsPreciseLocation && Latitude !== 99999)) {
+    // Only update URL for user-initiated location changes, not automatic IP-based locations
+    if (IsUserInitiatedLocation) {
       updateUrlHash();
-      // We don't reset flag here anymore to avoid race condition with reverse geocode callback
+      IsUserInitiatedLocation = false; // Reset flag after use
     }
     clearLoadingState();
   }
@@ -3198,74 +2568,13 @@ function gotCityTzData(data, requestId) {
   }
 }
 
-// Helper for reverse geocoding results from Nominatim
-function gotReverseGeocodeData(data, requestId) {
-  if (requestId && requestId !== LocationFetchSerial) {
-    console.log(`[${requestId}] gotReverseGeocodeData: Ignoring stale callback.`);
-    return;
-  }
-
-  console.log("Reverse Geocode Data:", data);
-  if (data && data.address) {
-    let addr = data.address;
-    let parts = [];
-
-    // Order of local importance: hamlet, village, town, city, county, state, country
-    let hierarchy = ['hamlet', 'village', 'town', 'city', 'county', 'state', 'country'];
-
-    // Gather all parts first
-    let activeParts = {};
-    for (let key of hierarchy) {
-      if (addr[key]) {
-        // Skip country if it's the USA
-        if (key === 'country' && (addr[key] === 'United States' || addr.country_code === 'us')) {
-          continue;
-        }
-        activeParts[key] = addr[key];
-      }
-    }
-
-    // Function to construct LocaleTitle from activeParts
-    const constructTitle = (partsObj) => {
-      let tempParts = [];
-      for (let key of hierarchy) {
-        if (partsObj[key]) tempParts.push(partsObj[key]);
-      }
-      return tempParts.join(", ");
-    };
-
-    LocaleTitle = constructTitle(activeParts);
-
-    // If too long, remove parts by priority: hamlet, village, town, county, country
-    let removalPriority = ['hamlet', 'village', 'town', 'county', 'country'];
-    for (let key of removalPriority) {
-      if (LocaleTitle.length <= 35) break;
-      if (activeParts[key]) {
-        delete activeParts[key];
-        LocaleTitle = constructTitle(activeParts);
-      }
-    }
-
-    // Fallback if still too long or no parts found
-    if (LocaleTitle.length === 0 && data.display_name) {
-      LocaleTitle = data.display_name.split(',')[0];
-    }
-
-    console.log("Updated LocaleTitle from reverse geocode:", LocaleTitle);
-    if (IsUserInitiatedLocation || IsPreciseLocation) {
-      updateUrlHash();
-    }
-    updateUIElements();
-  }
-}
-
 
 // Instead of using city name, use GeoNames to get the tz and IsDst based on
 // a known lat/long
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
-function getTzUsingLatLong(lat, lon, requestId) {
-  console.log(`[${requestId}] Entering getTzUsingLatLong().`);
+function getTzUsingLatLong(lat, lon) {
+  console.log("Entering getTzUsingLatLong().");
   // Check if the response contains any results
   var isError = false;
 
@@ -3310,22 +2619,10 @@ function getTzUsingLatLong(lat, lon, requestId) {
     // Make a GET request using Geonames to get timezone details.
     // The gotCityTzData() fcn will run a bit later when the response arrives.
     // It sets the global time zone offset and also sets IsDst.
-    loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId), handleNetworkError);
+    loadJSON(timezoneUrl, gotCityTzData, handleNetworkError);
   }
 
-
 }
-
-// Global error handler for JSON requests
-function handleNetworkError(response) {
-  console.log("Network Error details:", response);
-  alert("Network Error: Could not fetch location data. Please check your connection.");
-  clearLoadingState();
-  if (typeof PrevLocaleTitle !== 'undefined' && PrevLocaleTitle) {
-    LocaleTitle = PrevLocaleTitle;
-  }
-}
-
 
 
 
@@ -3358,15 +2655,7 @@ function getTimeZoneOffset(lat, lon) {
 // The main draw routine that is called continuously
 // ==240122a
 // 
-// =====================================================================================
-// The main draw routine that is called continuously
-// 
 function draw() {
-  // Ensure time variables are updated every frame
-  updateTimeThisDay();
-
-  // Ensure UI elements (GPS button, descriptions) are updated
-  updateUIElements();
 
   // handle delayed processing of position & gmt offset fields
   if (TzInputTimestampMs > 0 && millis() - TzInputTimestampMs > InputFieldProcessingTimeout) {
@@ -3381,110 +2670,431 @@ function draw() {
     processLongInputEvent();
   }
 
-  // Sync Location Manager (Bridge)
-  if (typeof Latitude !== 'undefined') {
-    locManager.latitude = Latitude;
-    locManager.longitude = Longitude;
-    locManager.tzOffset = TzOffset;
-    // locManager.cityName = LocaleTitle; // Optional
+
+  if (NewLatitude != 99999 || NewLongitude != 99999) {
+    // We are partway through update of location via web service call
+    // caused by the user entering a city name.
+    // The new lat/long have been fetched but we're still waiting 
+    // for the new time zone.
+    // If we draw now, we'll have incorrect draw.
+    return; // bail out
   }
 
-  // Pass calculated sun times to TimeKeeper if we computed them here (legacy flow)
-  // OR rely on TimeKeeper to do it. 
-  // For now, let's inject the legacy calculated sun times into TimeKeeper so Renderers see them
-  // without re-implementing the connection yet.
-  timeKeeper.sunriseTime.totalSeconds = SecondsToSunrise;
-  timeKeeper.sunsetTime.totalSeconds = SecondsToSunset;
-  // This ensures DaySpiralRenderer works with the existing calc logic in sketch.js
+  // Draw the clock background
+  // we redo this below after successfully getting the lat/long
+  background(BkColor);
 
-  // Update Active Renderer
-  activeRenderer.update(timeKeeper, locManager);
+  fill(100);  // gray
+
+  noStroke();
+  ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
+
+  // NOTE: Title, description, version, and other UI text are now in HTML
+  // Update HTML elements with current data
+  updateUIElements();
+
+  // Draw outer clock face ================
+
+  // draw ellipse to fill entire face, will end up
+  // as background for the hour labels on outside.
+
+  strokeWeight(0)
+  fill(255); // background for the hour labels
+  ellipse(CenterX, CenterY, ClockDiameter, ClockDiameter);
+
+  fill(120);  // Color of bkgnd behind spiral
+  ellipse(CenterX, CenterY, InnerFaceRadius * 2, InnerFaceRadius * 2);
+
+  // Draw the hour ticks
+  stroke(255)
+  strokeWeight(SpiralStrokeWeightSecondary * 0.8);
+  beginShape(POINTS);
+  for (var b = 0; b < 360; b += 30) {
+    var angle = radians(b);
+    var x = CenterX + cos(angle) * (InnerFaceRadius * 0.977);
+    var y = CenterY + sin(angle) * (InnerFaceRadius * 0.977);
+    vertex(x, y);
+  }
+  endShape();
+
+  noStroke();
+
+
+  // Draw hour labels =====================
+
+  CurrentFontSize = RefFontSize * FontScaleFactor;
+
+  // Specify font to be used
+  textSize(CurrentFontSize * 0.4);
+  textFont("Arial");
+  textAlign(CENTER, CENTER);
+
+  fill(HourDigitColor);   // Specify font color
+
+  textSize(CurrentFontSize * 0.98);
+
+  textStyle(BOLD);
+
+  numString = "12";
+  text(numString, TheWidth / 2, TheHeight / 2 - HourNumbersRadius);
+
+  numString = "1";
+  var xOffset1 = HourNumbersRadius * cos(2 * PI / 6);
+  var yOffset1 = HourNumbersRadius * sin(2 * PI / 6);
+  text(numString, TheWidth / 2 + xOffset1, TheHeight / 2 - yOffset1);
+
+  numString = "2";
+  var xOffset2 = HourNumbersRadius * cos(PI / 6);
+  var yOffset2 = HourNumbersRadius * sin(PI / 6);
+  text(numString, TheWidth / 2 + xOffset2, TheHeight / 2 - yOffset2);
+
+  numString = "3";
+  numHeight = CurrentFontSize;//f.getSize();
+  text(numString, TheWidth / 2 + HourNumbersRadius, TheHeight / 2);
+
+  numString = "4";
+  text(numString, TheWidth / 2 + xOffset2, TheHeight / 2 + yOffset2);
+
+  numString = "5";
+  text(numString, TheWidth / 2 + xOffset1, TheHeight / 2 + yOffset1);
+
+  numString = "6";
+  text(numString, TheWidth / 2, TheHeight / 2 + HourNumbersRadius);
+
+  numString = "7";
+  text(numString, TheWidth / 2 - xOffset1, TheHeight / 2 + yOffset1);
+
+  numString = "8";
+  text(numString, TheWidth / 2 - xOffset2, TheHeight / 2 + yOffset2);
+
+  numString = "9";
+  text(numString, TheWidth / 2 - HourNumbersRadius, TheHeight / 2);
+
+  numString = "10";
+  text(numString, TheWidth / 2 - xOffset2, TheHeight / 2 - yOffset2);
+
+  numString = "11";
+  text(numString, TheWidth / 2 - xOffset1, TheHeight / 2 - yOffset1);
+
+  // restore text style
+  textStyle(NORMAL);
+
+
+  //==========================================
+  // time calcs: sets IHour, IMin, ISec, and IMsSinceDayStart
+  //   <<< beware, IMsSinceDayStart is ms since start of day, not start of last sec!
+  // This also calculates the "DayState" that indicates
+  // if it's (1) before sunrise, (2) during daylight, or (3) after sunset
+  updateTimeThisDay();  // set baseMs to ms since start of this day  
+
+  var thisMillis = IMsSinceDayStart;
+  var msSinceLastDraw = thisMillis - LastMillisec;
+  LastMillisec = thisMillis;
+
+  // calc the current second including the fraction of upcoming second
+  var theSec = float(ISec)// + float(remainderMs)/1000; 
+  var currentSecDegree = theSec * 6;
+
+  var theMin = float(IMin) + theSec / 60;
+  var currentMinDegree = theMin * 6;
+
+  var theHour = float(IHour) + theMin / 60;
+  var currentHourDegree = theHour * 30;
+
+  // Angles for sin() and cos() start at 3 o'clock;
+  // subtract HALF_PI to make them start at the top
+  // These are angles in radians, used for hands
+  var secRads = map(theSec, 0, 60, 0, TWO_PI) - HALF_PI;
+  var minRads = map(theMin, 0, 60, 0, TWO_PI) - HALF_PI;
+
+  var hourRads = map(theHour, 0, 24, 0, TWO_PI * 2) - HALF_PI;
+
+  if (hourRads > TWO_PI) {
+    hourRads -= TWO_PI
+  }
+
+  var iiSpiral = 0;
+
+  // Calc index into radius array for the current time.
+  //  taking into acct that there are two turns per day for each AM/PM.
+  // Always Day Spiral logic
+  iiSpiral = int((theHour / 24) * NumSpiralPointsPerTurn * 2);
+
+  if (iiSpiral < NumSpiralPointsPerTurn * NumSpiralTurns) // if index is valid
+  {
+    HoursRadius = RadiusSpiralArray[iiSpiral];  //wc5
+  }
+  else {
+    print("ERROR: Illegal index into the RadiusSpiralArray=" + str(iiSpiral) + " for IDow=" + str(IDow));
+    print("theHour=" + str(theHour) + " NumSpiralPointsPerTurn=" + str(NumSpiralPointsPerTurn));
+    print("IHour=" + str(IHour));
+    print("NumSpiralTurns=" + str(NumSpiralTurns));
+
+    HoursRadius = ClockDiameter / 4; // fallback in case iiSpiral was not valid
+  }
+
+
+  noStroke();
+
+  // NOTE: Location info (time, date, sunrise/sunset, VPN warning) are now in HTML
+  // The updateUIElements() call above handles updating those elements
+
+  textAlign(LEFT, TOP);
+  stroke(255);
+  strokeCap(SQUARE);
+  noFill();
+
+  // set font size of day-of-week labels
+  var dowLabelSizeDsktp = 0.;
+  var dowLabelSizeMobl = 0.3;
+  var dowLabelSizeDsktpBoost = 0.57;
+  var dowLabelSizeMoblBoost = 0.4;
+  if (IsDesktop) {
+    textSize(RefFontSize * dowLabelSizeDsktp);
+  }
+  else {
+    textSize(RefFontSize * dowLabelSizeMobl);
+  }
+
+  // Draw the spiral ================
+
+  var vv;
+  var vvBase;
+  var vvRise;
+  var secToRise;
+  var vvSet;
+  var secToSet;
+
+  var dw = IDow;
+  var dayColor = color(0x84, 0xd2, 0xf1);
+  var nightColor = color(20, 80, 100);
+  var dayString = getDayStringShort(dw);
+  var nextDayString = getDayStringShort(dw + 1);
+
+  // set weight differently when running on phone.  
+  //   Should be reduced by about half.
+  strokeWeight(SpiralStrokeWeightSecondary);
+
+  // Draw logic for the simple 2-turn case, DaySpiral.  
+
+  // Check if location is available. If not, draw neutral spiral.
+  if (IsLoadingLocation || Latitude == 99999 || Longitude == 99999) {
+    // location is not available, so draw neutral spiral
+    stroke(200); // Neutral light gray
+    noFill();
+
+    strokeWeight(SpiralStrokeWeight);
+    beginShape();
+    for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
+      vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
+    }
+    endShape();
+  }
+  else {
+    // Draw the day spiral for the current day.
+    // Use broader stroke for the day spiral, since it's only 2 turns long
+    strokeWeight(SpiralStrokeWeight);
+
+    // ==240125a
+
+
+    dowLabelSizeDsktpBoost = 0.5;
+    dowLabelSizeMoblBoost = 0.4;
+
+    stroke(dayColor);
+    vvBase = 0;
+
+    if (SunriseHour != -1) // if not dark-all-day
+    {
+      // use daytime color, but draw the entire 24hrs for this day.
+      // If it's light all day (midnight sun) then this is all we need.
+      // Otherwise, we'll draw the night-time part over this.
+      beginShape();
+      for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
+        //print("for day=" + dw +" color="+ dayColor);
+        vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
+      }
+      endShape();
+
+      if (SunriseHour != -2) // if not all-day-sun
+      {
+        // now draw in the night portion for this day-of-week.
+        stroke(nightColor); // set black color
+
+
+        // first the part from midnight to sunrise ----------------
+        secToRise = SunriseMin * 60 + SunriseHour * 3600;
+
+        // convert seconds to vv offset from start
+        vvRise = int((secToRise / (60 * 60 * 24)) * NumSpiralPointsPerTurn * 2);
+
+        beginShape();
+        for (vv = 0; vv < vvRise; vv++) {
+          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
+        }
+        endShape();
+
+        // Next draw the part from sunset to midnight ----
+        // vv at sunset is vvSet, 
+        // vv at midnight is NumSpiralPointsPerTurn
+
+        // seconds from midnight to sunset
+        secToSet = SunsetMin * 60 + SunsetHour * 3600;
+        // convert seconds to vv offset
+        vvSet = int((secToSet / (60 * 60 * 24)) * NumSpiralPointsPerTurn * 2);
+        beginShape();
+
+        // NOTE use of <= below, this ensures that the last vertex hooks up with first.
+        for (vv = vvSet; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
+          vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
+        }
+
+        endShape();
+      }
+
+    }
+    else // is 24hr night
+    {
+      // use night-time color, but draw the entire 24hrs for this day.
+      stroke(nightColor);
+      console.log("midnight sun")
+
+      beginShape();
+      for (vv = 0; vv <= 2 * NumSpiralPointsPerTurn; vv++) {
+        //print("for day=" + dw +" color="+ dayColor);
+        vertex(CenterX + XSpiralArray[vv], CenterY + YSpiralArray[vv]);
+      }
+      endShape();
+    }
+
+    textStyle(BOLD);
+
+    //------------------------
+    // Show day of week label next to start of spiral
+    // boost text size for emphasis, same for dsktop and mobile
+
+    strokeWeight(0);
+    //fill(color(251, 246, 71));  // yellow
+    fill(color(255, 245, 0));  // yellow
+    let vvEnd = 2 * NumSpiralPointsPerTurn - 1;
+    //textAlign(RIGHT, TOP);
+    textAlign(LEFT, TOP);
+
+    // Supress the day labels when gmt display is on
+    if (!IsGmtShown) {
+      textSize(SpiralFontSize);
+      text(dayString, CenterX + XSpiralArray[vvBase] + 3, CenterY + YSpiralArray[vvBase] - (SpiralFontSize * 0.5));
+
+      textAlign(LEFT, TOP);
+      text(nextDayString, CenterX + XSpiralArray[vvEnd] + 5, CenterY + YSpiralArray[vvEnd] - (SpiralFontSize * 0.5));
+    }
+
+    // If display of GMT is enabled, we show on the spiral
+    if (IsGmtShown) {
+      let gmtHour = 0;
+      let theLocalHour = 0;
+      let gmtHourIndex = 0;
+      let gmtLabelX = 0;
+      let gmtLabelY = 0;
+
+      textAlign(CENTER, CENTER);
+      textSize(SpiralFontSize);
+
+      // FINDME
+
+      for (theLocalHour = 0; theLocalHour < 24; theLocalHour++) // step thru the gmt hours
+      {
+        // calculate the gmt equivalent of theLocalHour
+        gmtHour = theLocalHour - TzOffset;
+        if (gmtHour > 23) {
+          gmtHour = gmtHour - 24;
+        }
+        else if (gmtHour < 0) {
+          gmtHour = gmtHour + 24;
+        }
+
+        // get the location to place the gmtHour from the spiral arrays
+        gmtHourIndex = int((theLocalHour / 24) * NumSpiralPointsPerTurn * 2);
+        gmtLabelX = CenterX + XSpiralArray[gmtHourIndex];
+        gmtLabelY = CenterY + YSpiralArray[gmtHourIndex];
+
+        text(str(gmtHour), gmtLabelX, gmtLabelY);
+
+        if (theLocalHour == 0) {
+          textAlign(RIGHT, CENTER);
+
+          text("GMT", gmtLabelX - 20, gmtLabelY);
+          textAlign(CENTER, CENTER);
+
+          // The gmt label for the start of the day is the same as the end
+          gmtHourIndex = NumSpiralPointsPerTurn * 2;
+          gmtLabelX = CenterX + XSpiralArray[gmtHourIndex];
+          gmtLabelY = CenterY + YSpiralArray[gmtHourIndex];
+
+          text(str(gmtHour), gmtLabelX, gmtLabelY);
+
+
+
+        }
+      }
+
+    }
+
+
+    textAlign(LEFT, TOP); // restore alignment
+
+    // END of spiral draw for day spiral
+  }
+
+  strokeCap(ROUND);
+  fill(0);
+
+
+  // Draw the hands of the clock ===============
+
+  stroke(255);  // set hand color
+
+  // Draw second hand
+  strokeWeight(SpiralStrokeWeightSecondary * 0.35);
+  line(CenterX, CenterY, CenterX + cos(secRads) * SecondsRadius, CenterY + sin(secRads) * SecondsRadius);
+
+  // draw minute hand
+  strokeWeight(SpiralStrokeWeightSecondary * 0.7);
+  line(CenterX, CenterY, CenterX + cos(minRads) * MinutesRadius, CenterY + sin(minRads) * MinutesRadius);
+
+  // draw local hour hand
+  strokeWeight(SpiralStrokeWeightSecondary);
+
+  // Draw hour hand with square cap so it clearly shows where it's tracking on the
+  // spiral.  
+  strokeCap(SQUARE);
+  let adjustedHourRadius = HoursRadius;
+  if (IsGmtShown) {
+    adjustedHourRadius = RadiusSpiralArray[iiSpiral] - ClockDiameter * 0.017;  //wc5
+  }
+
+  line(CenterX, CenterY, CenterX + cos(hourRads) * adjustedHourRadius,
+    CenterY + sin(hourRads) * adjustedHourRadius);
+
+  // Redraw the hour hand at half length to avoid having a square end cap in the center
+  //  of the clock
+  strokeCap(ROUND); // restore round ends    
+  line(CenterX, CenterY, CenterX + cos(hourRads) * HoursRadius / 2, CenterY + sin(hourRads) * HoursRadius / 2);
+
+  // Draw a little circle around the tip of the hour hand to emphasize that it's following
+  //   the spiral
+  noFill();
+  strokeWeight(SpiralStrokeWeightSecondary * 0.5);
+  stroke(255); // white
+
+  ellipse(CenterX + cos(hourRads) * HoursRadius,
+    CenterY + sin(hourRads) * HoursRadius,
+    32 * FontScaleFactor,
+    32 * FontScaleFactor);
+
+  // restore text style
+  textStyle(NORMAL);
 }
-
-function setClockMode(mode) {
-  if ((mode === 'dayspiral' && activeRenderer === daySpiralRenderer) ||
-    (mode === 'mobius' && activeRenderer === mobiusRenderer)) {
-    return; // Already in this mode
-  }
-
-  activeRenderer.deactivate();
-
-  if (mode === 'mobius') {
-    activeRenderer = mobiusRenderer;
-    // Switch Control Groups
-    select('#controls-dayspiral').addClass('hidden');
-    select('#controls-mobius').removeClass('hidden');
-  } else {
-    activeRenderer = daySpiralRenderer;
-    // Switch Control Groups
-    select('#controls-mobius').addClass('hidden');
-    select('#controls-dayspiral').removeClass('hidden');
-  }
-
-  activeRenderer.activate();
-  activeRenderer.resize(window.innerWidth, window.innerHeight);
-  updateUIElements(); // Ensure title/desc update immediately
-  updateAboutModalContent(); // Update About content based on clock
-
-  // Update URL hash to reflect clock mode change
-  updateUrlHash();
-}
-
-/**
- * Updates the About modal content based on the active clock renderer.
- */
-function updateAboutModalContent() {
-  const aboutTitleEl = select('#modal-about h2');
-  const aboutDescEl = document.getElementById('about-description');
-
-  if (!aboutDescEl) return;
-
-  let title = "About CoolweirdClocks";
-  let descText = 'CoolweirdClocks is a collection of unique world-time visualizations by Charlie Wallace. ' +
-    'The app currently features the Day Spiral and Mobius clocks, with more to come.';
-
-  if (activeRenderer === daySpiralRenderer) {
-    title = "About Day Spiral Clock";
-    descText = 'To show night and day you need a 24-hour clock; ' +
-      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
-      'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
-      'The darker part of the spiral indicates night. ' +
-      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
-  } else if (activeRenderer === mobiusRenderer) {
-    title = "About Mobius Clock";
-    descText = "The Mobius clock shows 24-hour time on a 12-hour clock face. " +
-      "Since the hour indicator moves along the single edge of the Mobius strip, it must make 2 full turns to return to its starting point. " +
-      "Noon is at the bottom of the upper arch, and midnight is at the top. " +
-      "The minute and second indicators move along the center of the strip, so they complete a cycle in only one turn.";
-  }
-
-  if (aboutTitleEl) aboutTitleEl.html(title);
-
-  // Common footer elements
-  const versionVal = APP_VERSION;
-  const linkHref = "http://coolweird.com";
-  const linkText = "Coolweird.com";
-
-  aboutDescEl.innerHTML = '<p>' + descText + '</p>' +
-    '<p style="margin-top: 15px; font-weight: bold;">CoolweirdClocks ' + versionVal + '</p>' +
-    '<p style="margin-top: 5px;">' +
-    '<a href="' + linkHref + '" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">' + linkText + '</a>' +
-    '<span style="margin: 0 10px; color: #666;">|</span>' +
-    '<a href="https://forms.gle/3zAVfRJFH6Kj5drR8" target="_blank" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Contact Me</a>' +
-    '<span style="margin: 0 10px; color: #666;">|</span>' +
-    '<a href="#" onclick="showReadme(); return false;" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Readme</a>' +
-    '</p>' +
-    '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
-}
-
-function toggleClockMode() {
-  if (activeRenderer === daySpiralRenderer) {
-    setClockMode('mobius');
-  } else {
-    setClockMode('dayspiral');
-  }
-}
-
 
 
 
