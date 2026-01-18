@@ -134,7 +134,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
   background: rgba(40, 40, 40, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
@@ -148,7 +148,8 @@ body {
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 2px;
+  margin-bottom: 0px;
+  text-align: left;
 }
 
 .selector-options {
@@ -311,8 +312,8 @@ body {
 .controls-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Reduced from 12px */
+  gap: 4px;
+  /* Reduced from 8px for tighter layout */
   align-items: flex-end;
 }
 
@@ -432,8 +433,8 @@ body {
   pointer-events: none;
   align-items: flex-end;
   text-align: right;
-  gap: 8px;
-  /* Spacing between Presets and Footer Row */
+  gap: 4px;
+  /* Reduced from 8px */
 }
 
 .preset-buttons {
