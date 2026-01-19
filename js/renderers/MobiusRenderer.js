@@ -124,6 +124,7 @@ class MobiusRenderer extends ClockRenderer {
         this.daliMode = false;
         this.timeStyle = 'ampm';
         this.hoursVisible = true;
+        this.dayNightMode = false;
 
         this.edgePath = [];
 
@@ -571,11 +572,60 @@ class MobiusRenderer extends ClockRenderer {
             geometry.addGroup(i * indicesPerSegment + indicesOuterThirds, indicesMiddleThird, matMiddle);
         }
 
+        // Apply Day/Night coloring to outer thirds if enabled
+        if (this.dayNightMode && window.timeKeeper) {
+            const tk = window.timeKeeper;
+            const sunrise = tk.sunriseTime.totalSeconds; // seconds since midnight
+            const sunset = tk.sunsetTime.totalSeconds;
+            const alwaysLight = (tk.sunriseTime.hour === -2);
+            const alwaysDark = (tk.sunriseTime.hour === -1);
+
+            const isTimeDay = (seconds) => {
+                if (alwaysLight) return true;
+                if (alwaysDark) return false;
+                if (sunrise < sunset) {
+                    return seconds >= sunrise && seconds <= sunset;
+                } else {
+                    // Polar cases where sunset < sunrise (sun stays up past midnight)
+                    return seconds >= sunrise || seconds <= sunset;
+                }
+            };
+
+            for (let i = 0; i < this.m_NumPoints; i++) {
+                // Determine time for front and back sides of this segment
+                // Reverse of updateHands: p = (180 - h*720) % 720 => h = (180 - p) / 720
+                let h1 = ((180 - i) % 720 + 720) % 720 / 720;
+                let h2 = ((180 - (i + 360)) % 720 + 720) % 720 / 720;
+
+                const sec1 = h1 * 24 * 3600;
+                const sec2 = h2 * 24 * 3600;
+
+                const day1 = isTimeDay(sec1);
+                const day2 = isTimeDay(sec2);
+
+                const groupIndexFront = i * 3; // 3 groups per segment: Front, Back, Middle
+                const groupIndexBack = i * 3 + 1;
+
+                // Update materials if they were the "standard" material (0)
+                // If they were ticks (1 or 2), we leave them as requested by user.
+                if (geometry.groups[groupIndexFront].materialIndex === 0) {
+                    geometry.groups[groupIndexFront].materialIndex = day1 ? 3 : 4;
+                }
+                if (geometry.groups[groupIndexBack].materialIndex === 0) {
+                    geometry.groups[groupIndexBack].materialIndex = day2 ? 3 : 4;
+                }
+            }
+        }
+
         geometry.computeVertexNormals();
         const materials = [
             new THREE.MeshStandardMaterial({ color: 0xD3D3D3, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 }),
             new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1 }),
-            new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
+            new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 }),
+            // Day Material (Soft Blue-Gray)
+            new THREE.MeshStandardMaterial({ color: 0x97b8da, side: THREE.DoubleSide, metalness: 0.3, roughness: 0.2, transparent: true, opacity: 0.95 }),
+            // Night Material (Deep Midnight Blue)
+            new THREE.MeshStandardMaterial({ color: 0x1a2b45, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
         ];
 
         if (this.mobiusMesh) {
@@ -767,5 +817,13 @@ class MobiusRenderer extends ClockRenderer {
         this.transitionStartTime = millis();
         this.targetTwistMultiplier = enabled ? 3 : 1;
         this.startTwistMultiplier = enabled ? 1 : 3; // Explicitly set start
+    }
+
+    setDayNight(enabled) {
+        if (this.dayNightMode === enabled) return;
+        this.dayNightMode = enabled;
+        if (this.initialized) {
+            this.createMobiusStripMesh();
+        }
     }
 }
