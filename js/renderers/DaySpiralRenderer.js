@@ -20,7 +20,7 @@ class DaySpiralRenderer extends ClockRenderer {
         this.fontSize = 12;
         this.fontScale = 1;
 
-        this.bkColor = 57; // #393939 (Middle ground between #222 and #505050)
+        this.bkColor = 57; // Reverted to original lighter background as requested
         this.hourDigitColor = [25, 25, 25];
 
         // Style: 'Classic' (default) or 'SpiralHours' (Legacy V3)
@@ -107,17 +107,42 @@ class DaySpiralRenderer extends ClockRenderer {
         // p5.js drawing calls
         background(this.bkColor);
 
-        // Draw Outer Face Background (White Ring) - Only for Classic
+        // Draw Face Components - Only for Classic
         if (this.style === 'Classic') {
             noStroke();
-            fill(255);
-            ellipse(this.centerX, this.centerY, this.clockDiameter, this.clockDiameter);
 
-            // Draw Inner Face (Dark Gray)
+            // 1. Draw Inner Face Background (Dark Gray) FIRST 
+            // This is so the "inner" shadow of the ring above it will bleed onto this surface.
             fill(100);
             ellipse(this.centerX, this.centerY, this.faceDiameter, this.faceDiameter);
 
-            // Draw Ticks
+            // 2. Draw Outer Face Background (White Ring) as a DONUT with shadow
+            fill(255);
+            // Light from top-left: shadow offsets to bottom-right
+            // This casts shadow OUTSIDE (bottom-right) and INSIDE (top-left of hole)
+            this._applyShadow(20, 6, 6, 'rgba(0,0,0,0.5)');
+
+            beginShape();
+            // Outer Ring Circle
+            let outerR = this.clockDiameter / 2;
+            let innerR = this.faceDiameter / 2;
+
+            // Outer boundary (Clockwise)
+            for (let a = 0; a < TWO_PI; a += 0.05) {
+                vertex(this.centerX + cos(a) * outerR, this.centerY + sin(a) * outerR);
+            }
+
+            // Inner boundary (Counter-clockwise for hole)
+            beginContour();
+            for (let a = TWO_PI; a > 0; a -= 0.05) {
+                vertex(this.centerX + cos(a) * innerR, this.centerY + sin(a) * innerR);
+            }
+            endContour();
+            endShape(CLOSE);
+
+            this._resetShadow();
+
+            // 3. Draw Ticks on the face
             fill(255);
             noStroke();
             for (let b = 0; b < 360; b += 30) {
@@ -129,15 +154,7 @@ class DaySpiralRenderer extends ClockRenderer {
                 ellipse(x, y, dotSize, dotSize);
             }
         } else {
-            // SpiralHours Mode Background
-            // Legacy had: fill(120) ellipse(CenterX, CenterY*0.95, InnerFaceRadius*2, ...)
-            // We'll keep it simple or use current colors.
-            // Maybe just a dark gray circle?
-            /*
-            noStroke();
-            fill(this.bkColor); // or slightly lighter?
-            ellipse(this.centerX, this.centerY, this.clockDiameter, this.clockDiameter);
-            */
+            // SpiralHours Mode Background...
         }
 
         if (this.style === 'Classic') {
@@ -168,6 +185,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let radius = this.numbersRadius;
 
+        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.6)'); // Shadow for Classic hour numbers
+
         // 12 is at -90 deg (top)
         this._drawLabel("12", -90, radius);
         this._drawLabel("1", -60, radius);
@@ -182,6 +201,7 @@ class DaySpiralRenderer extends ClockRenderer {
         this._drawLabel("10", 210, radius);
         this._drawLabel("11", 240, radius);
 
+        this._resetShadow();
         textStyle(NORMAL);
     }
 
@@ -205,6 +225,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // 1. Draw Base Track (Gray)
         stroke(baseColor);
+        this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)'); // Lighter shadow for the spiral as requested
         beginShape();
         for (let i = 0; i < this.xSpiral.length; i++) {
             vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
@@ -262,6 +283,7 @@ class DaySpiralRenderer extends ClockRenderer {
             }
             endShape();
         }
+        this._resetShadow();
     }
 
     // Draw tick marks along the spiral for 'SpiralHours' style
@@ -326,7 +348,7 @@ class DaySpiralRenderer extends ClockRenderer {
     drawSpiralHours() {
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
-        fill(255, 255, 0); // Yellow numbers for visibility
+        fill(255, 235, 120); // Softer yellow for better aesthetics
         noStroke();
 
         // Slightly larger text size for hour numbers
@@ -336,6 +358,8 @@ class DaySpiralRenderer extends ClockRenderer {
         textAlign(CENTER, CENTER);
 
         let totalPoints = this.radiusSpiral.length;
+
+        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)'); // Pronounced shadow for spiral numbers
 
         if (this.timeFormat === '24') {
             // 24-hour mode: Display 0-23
@@ -416,6 +440,7 @@ class DaySpiralRenderer extends ClockRenderer {
         }
 
         // Restore
+        this._resetShadow();
         textStyle(NORMAL);
         textSize(originalTextSize);
     }
@@ -435,24 +460,29 @@ class DaySpiralRenderer extends ClockRenderer {
         let todayIdx = tk.dayOfWeek;
         let nextDayIdx = (todayIdx + 1) % 7;
 
-        let labelColor = color(255, 255, 0); // Yellow
+        let labelColor = color(255, 235, 120); // Softer yellow
         fill(labelColor);
         noStroke();
         textSize(this.fontSize);
         textStyle(BOLD);
-        textAlign(CENTER, CENTER);
+        textAlign(LEFT, CENTER);
+
+        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)'); // More visible shadow for text
+
+        let xOffset = 5; // Pixels to move labels to the right
 
         // Start (Outer)
         let idxStart = 0;
-        text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart], this.centerY + this.ySpiral[idxStart]);
+        text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart] + xOffset, this.centerY + this.ySpiral[idxStart]);
 
         // End (Inner)
         let idxEnd = this.xSpiral.length - 1;
         // Only draw inner label if spiral is fully generating 24h
         if (idxEnd > 0) {
-            text(dayNames[nextDayIdx], this.centerX + this.xSpiral[idxEnd], this.centerY + this.ySpiral[idxEnd]);
+            text(dayNames[nextDayIdx], this.centerX + this.xSpiral[idxEnd] + xOffset, this.centerY + this.ySpiral[idxEnd]);
         }
 
+        this._resetShadow();
         textStyle(NORMAL);
     }
 
@@ -460,12 +490,14 @@ class DaySpiralRenderer extends ClockRenderer {
         if (!locManager || !locManager.hasValidLocation) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
-        fill(255, 255, 0); // Yellow
+        fill(255, 235, 120); // Softer yellow
         noStroke();
         textSize(this.fontSize * 0.9);
         textStyle(BOLD);
 
         let totalPoints = this.numPointsPerTurn * this.numTurns;
+
+        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.6)'); // Shadow for GMT numbers and labels
 
         for (let h = 0; h <= 24; h++) {
             // Find spiral index for this hour (0..24)
@@ -501,6 +533,7 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         }
 
+        this._resetShadow();
         textStyle(NORMAL);
     }
 
@@ -519,6 +552,7 @@ class DaySpiralRenderer extends ClockRenderer {
         let handColor = color(255);
         stroke(handColor);
         strokeCap(ROUND);
+        this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
 
         // Classic logic (Time on the outer ring mostly, but Hour hand follows spiral? 
         // Actually DaySpiral description says "Hour hand tip follows the day spiral")
@@ -562,6 +596,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // Classic mode has no circle at tip usually? 
         // The original DaySpiralRenderer I wrote didn't have it.
 
+        this._resetShadow();
         pop();
     }
 
@@ -570,6 +605,7 @@ class DaySpiralRenderer extends ClockRenderer {
         push();
         let handColor = color(255);
         stroke(handColor);
+        this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
 
         // Legacy hand weights (scaled)
         // Sec: 4 * FontScaleFactor
@@ -660,6 +696,7 @@ class DaySpiralRenderer extends ClockRenderer {
             this.centerY + sin(hourRads) * hoursRadius,
             tipSize, tipSize);
 
+        this._resetShadow();
         pop();
     }
 
@@ -681,5 +718,19 @@ class DaySpiralRenderer extends ClockRenderer {
             this.ySpiral.push(r * sin(theta));
             this.radiusSpiral.push(r);
         }
+    }
+
+    // --- Shadow Helpers ---
+    _applyShadow(blur, x, y, color) {
+        drawingContext.shadowBlur = blur;
+        drawingContext.shadowOffsetX = x;
+        drawingContext.shadowOffsetY = y;
+        drawingContext.shadowColor = color;
+    }
+
+    _resetShadow() {
+        drawingContext.shadowBlur = 0;
+        drawingContext.shadowOffsetX = 0;
+        drawingContext.shadowOffsetY = 0;
     }
 }
