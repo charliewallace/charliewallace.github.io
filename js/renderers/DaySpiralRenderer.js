@@ -79,7 +79,7 @@ class DaySpiralRenderer extends ClockRenderer {
             // Legacy V3 settings for 'Hours in Spiral'
             startRadius = radius * 0.39;
             endRadius = radius * 0.81;
-            this.spiralStrokeWeight = radius * 0.2;
+            this.spiralStrokeWeight = radius * 0.18; // Narrowed by 10% to widen gaps between turns
 
             // Adjust ClockDiameter/Face for this mode?
             // Legacy: InnerFaceRadius = ClockDiameter/2; 
