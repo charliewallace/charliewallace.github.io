@@ -624,8 +624,8 @@ class MobiusRenderer extends ClockRenderer {
             new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 }),
             // Day Material (Soft Blue-Gray)
             new THREE.MeshStandardMaterial({ color: 0x97b8da, side: THREE.DoubleSide, metalness: 0.3, roughness: 0.2, transparent: true, opacity: 0.95 }),
-            // Night Material (Deep Midnight Blue)
-            new THREE.MeshStandardMaterial({ color: 0x1a2b45, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
+            // Night Material (Medium-Dark Blue for contrast)
+            new THREE.MeshStandardMaterial({ color: 0x3a5a8c, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
         ];
 
         if (this.mobiusMesh) {
