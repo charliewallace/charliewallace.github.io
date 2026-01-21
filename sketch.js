@@ -1291,7 +1291,7 @@ function updateUIElements() {
     versionEl.textContent = 'CoolweirdClocks ' + verOnly;
   }
 
-  var locationWarning = (!IsPreciseLocation) ?
+  var locationWarning = (!IsPreciseLocation && IsDisplayingUserLocation) ?
     'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.' : '';
 
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
@@ -3487,7 +3487,7 @@ function updateAboutModalContent() {
   let descText = 'CoolweirdClocks is a collection of unique world-time visualizations by Charlie Wallace. ' +
     'The app currently features the Day Spiral and Mobius clocks, with more to come.';
 
-  var locationWarning = (!IsPreciseLocation) ?
+  var locationWarning = (!IsPreciseLocation && IsDisplayingUserLocation) ?
     'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.' : '';
 
   if (activeRenderer === daySpiralRenderer) {
