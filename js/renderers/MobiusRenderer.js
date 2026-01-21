@@ -687,27 +687,23 @@ class MobiusRenderer extends ClockRenderer {
                 hourGroup.add(numMesh);
 
                 if (this.timeStyle !== "24") {
-                    const topChar = suffixStr[0], botChar = suffixStr[1];
-                    const suffixSize = 0.10, suffixHeight = 0.04, marginX = 0.04;
+                    const suffixChar = suffixStr[0];
+                    const suffixSize = 0.18; // Increased from 0.10
+                    const suffixHeight = 0.04;
+                    const marginX = 0.04;
 
-                    const topGeo = new THREE.TextGeometry(topChar, { font: font, size: suffixSize, height: suffixHeight, curveSegments: 4, bevelEnabled: false });
-                    topGeo.computeBoundingBox();
-                    const topWidth = topGeo.boundingBox.max.x - topGeo.boundingBox.min.x;
-
-                    const botGeo = new THREE.TextGeometry(botChar, { font: font, size: suffixSize, height: suffixHeight, curveSegments: 4, bevelEnabled: false });
-                    botGeo.computeBoundingBox();
-                    const botWidth = botGeo.boundingBox.max.x - botGeo.boundingBox.min.x;
-
-                    const maxWidth = Math.max(topWidth, botWidth);
+                    const suffixGeo = new THREE.TextGeometry(suffixChar, { font: font, size: suffixSize, height: suffixHeight, curveSegments: 4, bevelEnabled: false });
+                    suffixGeo.computeBoundingBox();
+                    const suffixWidth = suffixGeo.boundingBox.max.x - suffixGeo.boundingBox.min.x;
                     const suffixX = numGeo.boundingBox.max.x + marginX;
 
-                    const topMesh = new THREE.Mesh(topGeo, textMaterial);
-                    topMesh.position.set(suffixX + (maxWidth - topWidth) / 2, 0.12, 0);
-                    hourGroup.add(topMesh);
-
-                    const botMesh = new THREE.Mesh(botGeo, textMaterial);
-                    botMesh.position.set(suffixX + (maxWidth - botWidth) / 2, 0.01, 0);
-                    hourGroup.add(botMesh);
+                    const suffixMesh = new THREE.Mesh(suffixGeo, textMaterial);
+                    // Center vertically relative to hour number (approximate visual centering)
+                    // Hour num size is 0.25. Suffix is 0.18. 
+                    // To top align: y = 0.25 - 0.18 = 0.07? 
+                    // To center: (0.25 - 0.18) / 2 = 0.035
+                    suffixMesh.position.set(suffixX, 0.035, 0);
+                    hourGroup.add(suffixMesh);
                 }
 
                 // Center the group
