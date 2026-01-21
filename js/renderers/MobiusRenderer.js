@@ -573,7 +573,8 @@ class MobiusRenderer extends ClockRenderer {
         }
 
         // Apply Day/Night coloring to outer thirds if enabled
-        if (this.dayNightMode && window.timeKeeper) {
+        // Suppress day/night colors if we are currently loading location data
+        if (this.dayNightMode && window.timeKeeper && !window.IsLoadingLocation) {
             const tk = window.timeKeeper;
             const sunrise = tk.sunriseTime.totalSeconds; // seconds since midnight
             const sunset = tk.sunsetTime.totalSeconds;

@@ -255,33 +255,36 @@ class DaySpiralRenderer extends ClockRenderer {
         idxSet = Math.max(0, Math.min(idxSet, len - 1));
 
         // 2. Draw Night (Midnight -> Sunrise)
-        stroke(nightColor);
-        if (idxRise > 0) {
-            beginShape();
-            for (let i = 0; i <= idxRise; i++) {
-                if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+        // Only draw day/night colors if we are NOT waiting for location data
+        if (!window.IsLoadingLocation) {
+            stroke(nightColor);
+            if (idxRise > 0) {
+                beginShape();
+                for (let i = 0; i <= idxRise; i++) {
+                    if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                }
+                endShape();
             }
-            endShape();
-        }
 
-        // 3. Draw Day (Sunrise -> Sunset)
-        stroke(dayColor);
-        if (idxSet > idxRise) {
-            beginShape();
-            for (let i = idxRise; i <= idxSet; i++) {
-                if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+            // 3. Draw Day (Sunrise -> Sunset)
+            stroke(dayColor);
+            if (idxSet > idxRise) {
+                beginShape();
+                for (let i = idxRise; i <= idxSet; i++) {
+                    if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                }
+                endShape();
             }
-            endShape();
-        }
 
-        // 4. Draw Night (Sunset -> Midnight)
-        stroke(nightColor);
-        if (idxSet < len - 1) {
-            beginShape();
-            for (let i = idxSet; i < len; i++) {
-                vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+            // 4. Draw Night (Sunset -> Midnight)
+            stroke(nightColor);
+            if (idxSet < len - 1) {
+                beginShape();
+                for (let i = idxSet; i < len; i++) {
+                    vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                }
+                endShape();
             }
-            endShape();
         }
         this._resetShadow();
     }

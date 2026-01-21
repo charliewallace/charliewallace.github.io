@@ -1485,6 +1485,8 @@ function updateUIElements() {
 function setLoadingState() {
   IsLoadingLocation = true;
   IsSunRiseSetObtained = false; // Force recalc when done
+  // Force immediate update to hide day/night colors while loading
+  if (typeof mobiusRenderer !== 'undefined') mobiusRenderer.refreshDayNight();
 }
 
 function clearLoadingState() {
