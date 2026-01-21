@@ -2198,6 +2198,11 @@ function updateTimeThisDay() {
 
     IsSunRiseSetObtained = true;
 
+    // Fix for Mobius Day/Night not updating when location changes
+    if (typeof mobiusRenderer !== 'undefined') {
+      mobiusRenderer.refreshDayNight();
+    }
+
 
   }
 

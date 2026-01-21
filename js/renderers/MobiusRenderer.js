@@ -826,4 +826,10 @@ class MobiusRenderer extends ClockRenderer {
             this.createMobiusStripMesh();
         }
     }
+
+    refreshDayNight() {
+        if (this.dayNightMode && this.initialized) {
+            this.createMobiusStripMesh();
+        }
+    }
 }
