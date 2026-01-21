@@ -849,7 +849,7 @@ function parseUrlHash() {
   // Mobius state - store for later application
   // Only parse if we have at least one Mobius parameter
   if (params.has('timeStyle') || params.has('shapeHours') || params.has('rotation') ||
-    params.has('demo') || params.has('showHours') || params.has('dali')) {
+    params.has('demo') || params.has('showHours') || params.has('dali') || params.has('dayNight')) {
     window._initialMobiusState = {
       timeStyle: params.get('timeStyle') || 'ampm',
       shapeHours: params.get('shapeHours') || 'outer-ring',
@@ -1178,8 +1178,8 @@ function updateUrlHash() {
     if (mobiusRenderer.daliMode === true) {
       params.set('dali', '1');
     }
-    if (mobiusRenderer.dayNightMode === true) {
-      params.set('dayNight', '1');
+    if (mobiusRenderer.dayNightMode === false) {
+      params.set('dayNight', '0');
     }
   }
 
