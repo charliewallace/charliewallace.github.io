@@ -2082,6 +2082,11 @@ function calcSunRiseSet() {
   //      + SunriseAmpmString);
   //print("Sunset = " + SunsetHourString + ":" + SunsetMinString
   //      + SunsetAmpmString);   
+
+  // Sync TimeKeeper with the new location/times
+  if (typeof timeKeeper !== 'undefined') {
+    timeKeeper.calculateSunTimes(Latitude, -Longitude, TzOffset, false);
+  }
 }
 
 
