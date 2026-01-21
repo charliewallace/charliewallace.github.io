@@ -1291,17 +1291,21 @@ function updateUIElements() {
     versionEl.textContent = 'CoolweirdClocks ' + verOnly;
   }
 
+  var locationWarning = (!IsPreciseLocation) ?
+    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.' : '';
+
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
     if (titleEl) titleEl.textContent = 'Mobius Clock';
     // Show condensed Mobius description for desktop
     var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
       'The hour indicator makes 2 full turns to return to its starting point.';
+    if (locationWarning) mobiusDescText += ' ' + locationWarning;
     if (descEl) descEl.textContent = mobiusDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show night and day you need a 24-hour clock; ' +
-      'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ' +
-      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
+      'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ';
+    if (locationWarning) descText += locationWarning;
     if (descEl) descEl.textContent = descText;
   }
 
@@ -3473,19 +3477,23 @@ function updateAboutModalContent() {
   let descText = 'CoolweirdClocks is a collection of unique world-time visualizations by Charlie Wallace. ' +
     'The app currently features the Day Spiral and Mobius clocks, with more to come.';
 
+  var locationWarning = (!IsPreciseLocation) ?
+    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.' : '';
+
   if (activeRenderer === daySpiralRenderer) {
     title = "About Day Spiral Clock";
     descText = 'To show night and day you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
       'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
-      'The darker part of the spiral indicates night. ' +
-      'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.';
+      'The darker part of the spiral indicates night. ';
+    if (locationWarning) descText += locationWarning;
   } else if (activeRenderer === mobiusRenderer) {
     title = "About Mobius Clock";
     descText = "The Mobius clock shows 24-hour time on a 12-hour clock face. " +
       "Since the hour indicator moves along the single edge of the Mobius strip, it must make 2 full turns to return to its starting point. " +
       "Noon is at the bottom of the upper arch, and midnight is at the top. " +
       "The minute and second indicators move along the center of the strip, so they complete a cycle in only one turn.";
+    if (locationWarning) descText += " " + locationWarning;
   }
 
   if (aboutTitleEl) aboutTitleEl.html(title);
