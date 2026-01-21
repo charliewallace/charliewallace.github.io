@@ -446,7 +446,7 @@ class MobiusRenderer extends ClockRenderer {
         const s = Math.sqrt(this.m_Len * this.m_Len + this.m_Ht * this.m_Ht) / 2;
         const beta = Math.asin(this.m_Ht / (2 * s));
 
-        for (let ii = 0; ii < this.m_NumPoints; ii++) {
+        for (let ii = 0; ii <= this.m_NumPoints; ii++) {
             const phi = (-Math.PI / 2) + ii * m_Theta;
             const alpha = m_RotationPerRect * ii;
 
@@ -493,7 +493,10 @@ class MobiusRenderer extends ClockRenderer {
         const vertices = [];
         const indices = [];
 
-        for (let i = 0; i < this.m_NumPoints; i++) {
+
+
+        // Include the phantom slice (<= m_NumPoints)
+        for (let i = 0; i <= this.m_NumPoints; i++) {
             vertices.push(this.m_FrontInnerCorner3DPtArray[i].x, this.m_FrontInnerCorner3DPtArray[i].y, this.m_FrontInnerCorner3DPtArray[i].z);
             vertices.push(this.m_BackInnerCorner3DPtArray[i].x, this.m_BackInnerCorner3DPtArray[i].y, this.m_BackInnerCorner3DPtArray[i].z);
             vertices.push(this.m_FrontOuterCorner3DPtArray[i].x, this.m_FrontOuterCorner3DPtArray[i].y, this.m_FrontOuterCorner3DPtArray[i].z);
@@ -508,7 +511,7 @@ class MobiusRenderer extends ClockRenderer {
 
         for (let i = 0; i < this.m_NumPoints; i++) {
             let r1 = i;
-            let r2 = (i + 1) % this.m_NumPoints;
+            let r2 = i + 1; // Direct connection to next slice (including phantom slice 720)
 
             let fi1 = r1 * 8;
             let bi1 = fi1 + 1; let fo1 = fi1 + 2; let bo1 = fi1 + 3;
@@ -518,11 +521,8 @@ class MobiusRenderer extends ClockRenderer {
             let bi2 = fi2 + 1; let fo2 = fi2 + 2; let bo2 = fi2 + 3;
             let fi4 = fi2 + 4; let bi4 = fi2 + 5; let fo4 = fi2 + 6; let bo4 = fi2 + 7;
 
-            if (i === this.m_NumPoints - 1) {
-                // Connect back to the first slice (index 0) but with 180-degree twist
-                fi2 = 1; bi2 = 0; fo2 = 3; bo2 = 2;
-                fi4 = 5; bi4 = 4; fo4 = 7; bo4 = 6;
-            }
+            // Phantom slice approach eliminates special case for last segment logic!
+
 
             indices.push(fi2, fi3, fi1); indices.push(fi2, fi4, fi3);
             indices.push(fo1, fo3, fo2); indices.push(fo4, fo2, fo3);
@@ -641,7 +641,9 @@ class MobiusRenderer extends ClockRenderer {
     updateMobiusStripVertices() {
         if (!this.mobiusMesh) return;
         const positions = [];
-        for (let i = 0; i < this.m_NumPoints; i++) {
+
+        // Include phantom slice
+        for (let i = 0; i <= this.m_NumPoints; i++) {
             positions.push(this.m_FrontInnerCorner3DPtArray[i].x, this.m_FrontInnerCorner3DPtArray[i].y, this.m_FrontInnerCorner3DPtArray[i].z);
             positions.push(this.m_BackInnerCorner3DPtArray[i].x, this.m_BackInnerCorner3DPtArray[i].y, this.m_BackInnerCorner3DPtArray[i].z);
             positions.push(this.m_FrontOuterCorner3DPtArray[i].x, this.m_FrontOuterCorner3DPtArray[i].y, this.m_FrontOuterCorner3DPtArray[i].z);
