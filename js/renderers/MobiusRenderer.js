@@ -124,7 +124,9 @@ class MobiusRenderer extends ClockRenderer {
         this.daliMode = false;
         this.timeStyle = 'ampm';
         this.hoursVisible = true;
-        this.dayNightMode = false;
+        this.timeStyle = 'ampm';
+        this.hoursVisible = true;
+        this.dayNightMode = true; // Default to ON
 
         this.edgePath = [];
 
@@ -156,7 +158,8 @@ class MobiusRenderer extends ClockRenderer {
 
         // Scene Setup
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x393939); // Unified middle-ground gray
+        this.scene = new THREE.Scene();
+        this.scene.background = null; // Use global CSS background
 
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.z = 7;
@@ -625,8 +628,8 @@ class MobiusRenderer extends ClockRenderer {
             new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 }),
             // Day Material (Soft Blue-Gray)
             new THREE.MeshStandardMaterial({ color: 0x97b8da, side: THREE.DoubleSide, metalness: 0.3, roughness: 0.2, transparent: true, opacity: 0.95 }),
-            // Night Material (Medium-Dark Blue for contrast)
-            new THREE.MeshStandardMaterial({ color: 0x3a5a8c, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
+            // Night Material (Lighter Steel Blue for contrast against dark bg)
+            new THREE.MeshStandardMaterial({ color: 0x4e74a6, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.95 })
         ];
 
         if (this.mobiusMesh) {

@@ -105,7 +105,7 @@ class DaySpiralRenderer extends ClockRenderer {
         if (!this.active) return;
 
         // p5.js drawing calls
-        background(this.bkColor);
+        clear(); // Transparent background to let CSS show through
 
         // Draw Face Components - Only for Classic
         if (this.style === 'Classic') {

@@ -860,7 +860,7 @@ function parseUrlHash() {
       demo: params.get('demo') === '1',
       showHours: params.get('showHours') !== '0', // Default true
       dali: params.get('dali') === '1',
-      dayNight: params.get('dayNight') === '1'
+      dayNight: params.get('dayNight') !== '0' // Default true (enabled unless explicitly 0)
     };
   }
 

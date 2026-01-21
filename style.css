@@ -130,13 +130,16 @@ body {
 }
 
 /* --- Selector Boxes (Bottom Left/Right) --- */
+/* --- Selector Boxes (Bottom Left/Right) --- */
 .selector-box {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-bottom: 2px;
-  background: rgba(40, 40, 40, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.6);
+  /* Darker background for contrast */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Slightly clearer border */
   border-radius: 6px;
   padding: 6px 8px;
   width: fit-content;
@@ -218,23 +221,23 @@ body {
 #app-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-color);
-  margin: 0 0 2px 0;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-  /* Enforce min-height to match Right Side (Info + Time) for button alignment */
-  min-height: 1.2rem;
-  display: flex;
-  align-items: flex-start;
-  /* Top align the text */
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+  color: #ffffff;
+  /* Pure white */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  /* Pop against gray */
 }
 
 #app-description {
-  font-size: 0.7rem;
-  color: var(--text-muted);
+  font-size: 0.9rem;
+  color: #eeeeee;
+  /* Bright white-gray */
+  margin: 0;
   line-height: 1.4;
-  margin-bottom: 2px;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  /* Line wrapping handled automatically */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 #app-description p {
@@ -603,6 +606,15 @@ body {
 .modal-content.large {
   max-width: 800px;
   width: 95%;
+}
+
+#digital-time {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.2rem;
+  color: #ADFF2F;
+  /* Green-Yellow for high contrast */
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  margin-top: 5px;
 }
 
 .modal-close {
