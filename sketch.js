@@ -399,6 +399,10 @@ function oneTimeInit() {
     btn.mousePressed(closeAllModals);
   });
 
+  selectAll('.modal-close').forEach(btn => {
+    btn.mousePressed(closeAllModals);
+  });
+
   // --- MODAL SUBMIT BUTTONS ---
   // City search button in the Select Location modal
   var citySrchBtn = select('#btn-city-submit-unified');
