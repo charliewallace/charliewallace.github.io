@@ -1889,8 +1889,8 @@ function genSpiral() //III
   let endFrac = 0.72;
 
   // Always Day Spiral settings
-  startFrac = 0.24;
-  endFrac = 0.6;
+  startFrac = 0.32;
+  endFrac = 0.80;
 
   var smallerDim = CenterX;
   if (CenterX > CenterY) {

@@ -76,6 +76,9 @@ class DaySpiralRenderer extends ClockRenderer {
         let endRadius = radius * 0.60;
 
         if (this.style === 'SpiralHours') {
+            // Shift center left to balance margins due to spiral asymmetry
+            this.centerX -= radius * 0.1;
+
             // Legacy V3 settings for 'Hours in Spiral'
             startRadius = radius * 0.39;
             endRadius = radius * 0.81;
