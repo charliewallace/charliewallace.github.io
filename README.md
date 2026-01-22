@@ -18,17 +18,18 @@ CoolweirdClocks provides a robust set of features common to all its clock design
 
 ## URL "Hash" & Privacy
 
-CoolweirdClocks uses a URL hash (e.g., `#clock=mobius&zen=1`) added to the end of the URL to persist your settings; no cookies are used. This allows you to preserve any setup by saving a bookmark or sharing a URL with others.
+CoolweirdClocks uses a URL hash (e.g., `#clock=mobius&zen=1`) added to the end of the URL to persist your settings; no cookies are used. This allows you to preserve any setup by saving a bookmark or sharing a URL with others. You're in control; no user info goes to the server. No cookies are used.
 
 ### The Privacy Rule
-- **Automatic locations are NOT saved**: Your approximate (IP-based) or precise (GPS-based) location is **never** added to the URL automatically. This ensures that when you copy a URL to share with others, you aren't inadvertently sharing your home coordinates.
-- **Manual location selections ARE saved**: Only locations you intentionally choose—via preset buttons, city search, or manual coordinate entry—are saved to the URL.
-- **Settings are saved**: Choices like Zen mode, Clock selection, and clock-specific customizations are persisted in the URL.
+- **Automatic locations are NOT saved to url**: Your approximate (IP-based) or precise (GPS-based) location is **never** added to the URL automatically. This ensures that when you copy a URL to share with others, you aren't inadvertently sharing your home coordinates.
+- **Manual location selections ARE saved to url**: Only locations you intentionally choose—via preset buttons, city search, or manual coordinate entry—are saved to the URL. They are not saved anywhere else.
+- **Settings are saved**: Choices like Zen mode, Clock selection, and clock-specific customizations are persisted in the URL only.
 
 ---
 
 ## Supported Clocks
 - Clock-specific controls are found in the lower right corner.
+- More weird clocks coming soon!
 
 ### DaySpiral Clock
 A unique visualization that shows you your whole day, including day and night, sunrise and sunset, all in a 12-hour clock face. To show night and day you need a 24-hour clock; using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face.
@@ -44,17 +45,18 @@ A unique visualization that shows you your whole day, including day and night, s
 
 
 ### Mobius Clock
-A 12-hour clock face where time moves along a fully three-dimensional Mobius strip (a strip with a single edge and a single surface).  You can even make it rotate in 3D space!
+A 12-hour clock face where time moves along a fully three-dimensional Mobius strip (a strip with a single edge and a single surface).  You can even make it rotate in 3D space! 
 - **Hour shown on the edge**: The hour indicator moves along the edge of the strip, requiring two full loops to return to the start. Thus you have 24 hours shown on a 12-hour clock face.
 - **Minutes and seconds indicated along the strip's centerline**: Seconds and minutes move along the center line of the strip, thus only requiring one loop to complete.
 - **Lots of customization**: The setup dialog lets you change the shape of the hour, minute, and second indicators, select the ticks style and choose am/pm vs 24-hour time.
+- **Has it's own domain**: You can use 'mobiusclock.com' to get here; it redirects to dayspiral.com/#clock=mobius.
 
 **Control Buttons for Mobius Clock (with url hash):**
 - Rotate: Enables the 3D rotation animation. (`rotation=1`)
 - Demo: Speeds up the hour and minute indicators to clarify how they move, so you don't have to wait around to see what they do. (`demo=1`)
-- Hours: Shows 3D hour number labels. (`showHours=1`)
-- Day/Night: Colors the outer thirds of the strip to indicate day or night. ('dayNight=1')
-- Dali: Adds an extra twist, with an animation that's mind-bending! ('dali=1')
+- Hours: Shows 3D hour number labels floating next to the strip. (`showHours=1`)
+- Day/Night: Colors the outer thirds of the strip to indicate day or night based on your location. ('dayNight=1')
+- Dali: Adds an extra twist, with an animation that's mind-bending! ('dali=1') ...why dali? Because it's strange...
 
 ---
 
