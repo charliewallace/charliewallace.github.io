@@ -36,6 +36,12 @@ class DaySpiralRenderer extends ClockRenderer {
         this.numPointsPerTurn = 300;
         this.numTurns = 2;
 
+        // Inner Spiral Data (for dual-location mode)
+        this.xSpiralInner = [];
+        this.ySpiralInner = [];
+        this.radiusSpiralInner = [];
+        this.isDualLocationMode = false;
+
         this.initialized = false;
     }
 
@@ -92,7 +98,17 @@ class DaySpiralRenderer extends ClockRenderer {
             // Classic
             let nTurns = 2;
             let deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
-            this.spiralStrokeWeight = deltaRadiusPerTurn * 0.66;
+
+            // Check if we're in dual-location mode - need thinner strokes
+            const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
+
+            if (isDualMode) {
+                // In dual mode, use 35% of space per turn for each spiral
+                this.spiralStrokeWeight = deltaRadiusPerTurn * 0.35;
+            } else {
+                // Single mode uses 66% of space per turn
+                this.spiralStrokeWeight = deltaRadiusPerTurn * 0.66;
+            }
         }
 
         this.secondaryStrokeWeight = this.spiralStrokeWeight * 0.33;
@@ -166,6 +182,11 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this.drawSpiral(timeKeeper, locManager);
 
+        // Draw inner spiral hours in dual-location mode
+        if (this.isDualLocationMode && this.style === 'Classic') {
+            this.drawInnerSpiralHours(locManager);
+        }
+
         if (this.style === 'SpiralHours') {
             this.drawSpiralTicks();
             this.drawSpiralHours();
@@ -226,28 +247,134 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeCap(SQUARE);
         noFill();
 
+        if (!this.isDualLocationMode) {
+            // SINGLE-LOCATION MODE: Draw one spiral as before
+            // 1. Draw Base Track (Gray)
+            stroke(baseColor);
+            this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
+            beginShape();
+            for (let i = 0; i < this.xSpiral.length; i++) {
+                vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+            }
+            endShape();
+
+            // Calculate sunset/sunrise indices
+            let riseSeconds = 6 * 3600; // 6 AM
+            let setSeconds = 18 * 3600; // 6 PM
+
+            if (loc.hasValidLocation && typeof tk.sunriseTime.totalSeconds === 'number') {
+                riseSeconds = tk.sunriseTime.totalSeconds;
+                setSeconds = tk.sunsetTime.totalSeconds;
+            }
+
+            stroke(nightColor);
+
+            // Midnight to Sunrise
+            let len = this.xSpiral.length;
+            let totalDailyPts = this.numPointsPerTurn * 2;
+
+            let idxRise = Math.floor((riseSeconds / 86400) * totalDailyPts);
+            let idxSet = Math.floor((setSeconds / 86400) * totalDailyPts);
+
+            // Clamp
+            idxRise = Math.max(0, Math.min(idxRise, len - 1));
+            idxSet = Math.max(0, Math.min(idxSet, len - 1));
+
+            // 2. Draw Night (Midnight -> Sunrise)
+            // Only draw day/night colors if we are NOT waiting for location data
+            if (!window.IsLoadingLocation) {
+                stroke(nightColor);
+                if (idxRise > 0) {
+                    beginShape();
+                    for (let i = 0; i <= idxRise; i++) {
+                        if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                    }
+                    endShape();
+                }
+
+                // 3. Draw Day (Sunrise -> Sunset)
+                stroke(dayColor);
+                if (idxSet > idxRise) {
+                    beginShape();
+                    for (let i = idxRise; i <= idxSet; i++) {
+                        if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                    }
+                    endShape();
+                }
+
+                // 4. Draw Night (Sunset -> Midnight)
+                stroke(nightColor);
+                if (idxSet < len - 1) {
+                    beginShape();
+                    for (let i = idxSet; i < len; i++) {
+                        vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                    }
+                    endShape();
+                }
+            }
+        } else {
+            // DUAL-LOCATION MODE: Draw outer and inner spirals
+            console.log('🎨 Drawing dual spirals');
+
+            // Draw outer spiral (user location)
+            this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
+                dayColor, nightColor, baseColor, loc.hasValidLocation, 0);
+
+            // Draw inner spiral (other location) with rotation offset
+            const tzDiffHours = locManager.getTimezoneOffsetDifference();
+            this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
+                dayColor, nightColor, baseColor, true, tzDiffHours);
+        }
+        this._resetShadow();
+    }
+
+    /**
+     * Helper method to draw a single spiral track with day/night colors
+     * @param {Array} xArray - X coordinates of spiral
+     * @param {Array} yArray - Y coordinates of spiral
+     * @param {Object} sunriseTime - Sunrise time object {hour, minute, totalSeconds}
+     * @param {Object} sunsetTime - Sunset time object {hour, minute, totalSeconds}
+     * @param {Object} dayColor - p5.Color for daytime
+     * @param {Object} nightColor - p5.Color for nighttime
+     * @param {Object} baseColor - p5.Color for base track
+     * @param {boolean} hasValidLocation - Whether location data is valid
+     * @param {number} tzOffsetHours - Timezone offset in hours (for rotation adjustment)
+     */
+    _drawSpiralTrack(xArray, yArray, sunriseTime, sunsetTime, dayColor, nightColor, baseColor, hasValidLocation, tzOffsetHours) {
         // 1. Draw Base Track (Gray)
         stroke(baseColor);
-        this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)'); // Lighter shadow for the spiral as requested
+        this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
         beginShape();
-        for (let i = 0; i < this.xSpiral.length; i++) {
-            vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+        for (let i = 0; i < xArray.length; i++) {
+            vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
         }
         endShape();
 
-        // Calculate sunset/sunrise indices
-        let riseSeconds = 6 * 3600; // 6 AM
-        let setSeconds = 18 * 3600; // 6 PM
+        // Calculate sunset/sunrise indices with timezone offset adjustment
+        let riseSeconds = 6 * 3600; // 6 AM default
+        let setSeconds = 18 * 3600; // 6 PM default
 
-        if (loc.hasValidLocation && typeof tk.sunriseTime.totalSeconds === 'number') {
-            riseSeconds = tk.sunriseTime.totalSeconds;
-            setSeconds = tk.sunsetTime.totalSeconds;
+        if (hasValidLocation && typeof sunriseTime.totalSeconds === 'number') {
+            riseSeconds = sunriseTime.totalSeconds;
+            setSeconds = sunsetTime.totalSeconds;
+
+            // Apply timezone rotation offset (shift the times by the timezone difference)
+            if (tzOffsetHours !== 0) {
+                const offsetSeconds = tzOffsetHours * 3600;
+                riseSeconds -= offsetSeconds;
+                setSeconds -= offsetSeconds;
+
+                // Wrap to 0-86400 range (24 hours)
+                if (riseSeconds < 0) riseSeconds += 86400;
+                if (riseSeconds >= 86400) riseSeconds -= 86400;
+                if (setSeconds < 0) setSeconds += 86400;
+                if (setSeconds >= 86400) setSeconds -= 86400;
+
+                console.log(`  Adjusted rise/set for TZ offset ${tzOffsetHours}h: rise=${(riseSeconds / 3600).toFixed(1)}h, set=${(setSeconds / 3600).toFixed(1)}h`);
+            }
         }
 
-        stroke(nightColor);
-
-        // Midnight to Sunrise
-        let len = this.xSpiral.length;
+        let len = xArray.length;
         let totalDailyPts = this.numPointsPerTurn * 2;
 
         let idxRise = Math.floor((riseSeconds / 86400) * totalDailyPts);
@@ -257,14 +384,14 @@ class DaySpiralRenderer extends ClockRenderer {
         idxRise = Math.max(0, Math.min(idxRise, len - 1));
         idxSet = Math.max(0, Math.min(idxSet, len - 1));
 
-        // 2. Draw Night (Midnight -> Sunrise)
         // Only draw day/night colors if we are NOT waiting for location data
         if (!window.IsLoadingLocation) {
+            // 2. Draw Night (Midnight -> Sunrise)
             stroke(nightColor);
             if (idxRise > 0) {
                 beginShape();
                 for (let i = 0; i <= idxRise; i++) {
-                    if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                    if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
             }
@@ -274,7 +401,7 @@ class DaySpiralRenderer extends ClockRenderer {
             if (idxSet > idxRise) {
                 beginShape();
                 for (let i = idxRise; i <= idxSet; i++) {
-                    if (i < len) vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                    if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
             }
@@ -284,12 +411,11 @@ class DaySpiralRenderer extends ClockRenderer {
             if (idxSet < len - 1) {
                 beginShape();
                 for (let i = idxSet; i < len; i++) {
-                    vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
+                    vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
             }
         }
-        this._resetShadow();
     }
 
     // Draw tick marks along the spiral for 'SpiralHours' style
@@ -448,6 +574,80 @@ class DaySpiralRenderer extends ClockRenderer {
         textStyle(NORMAL);
         textSize(originalTextSize);
     }
+
+    /**
+     * Draw hour labels on the inner spiral for dual-location mode
+     * Shows the "other" location's local time
+     */
+    drawInnerSpiralHours(locManager) {
+        if (!this.xSpiralInner || this.xSpiralInner.length === 0) return;
+        if (!locManager.hasOtherLocation()) return;
+
+        fill(255, 235, 120); // Same yellow as outer
+        noStroke();
+
+        // Smaller text size for inner spiral
+        let originalTextSize = this.fontSize;
+        textSize(this.fontSize * 0.7);
+        textStyle(BOLD);
+        textAlign(CENTER, CENTER);
+
+        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.7)'); // Shadow for inner spiral numbers
+
+        // Calculate timezone difference
+        const tzDiffHours = locManager.getTimezoneOffsetDifference();
+
+        // For 12-hour mode, display with AM/PM
+        for (let h = 0; h <= 23; h++) {
+            // Calculate what hour this position represents at the "other" location
+            // The spiral is rotated, so we need to account for that
+            // If other location is 2 hours ahead, we ADD 2 to show their time
+            let otherHour = (h + tzDiffHours + 24) % 24;
+
+            let hour12 = otherHour % 12;
+            if (hour12 === 0) hour12 = 12;
+            let ampm = (otherHour < 12) ? 'A' : 'P';
+
+            // Calculate position on inner spiral
+            let idx = Math.floor((h / 24.0) * (this.numPointsPerTurn * 2));
+            if (idx >= this.radiusSpiralInner.length) idx = this.radiusSpiralInner.length - 1;
+
+            let r = this.radiusSpiralInner[idx];
+            let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
+
+            // Apply same tweak as outer spiral
+            let ri2 = r * 1.008;
+
+            let x = this.centerX + cos(theta) * ri2;
+            let y = this.centerY + sin(theta) * ri2;
+
+            // Draw hour number
+            let hourStr = str(hour12);
+            let hourWidth = textWidth(hourStr);
+            text(hourStr, x, y);
+
+            // Draw AM/PM indicator
+            push();
+            let ampmSize = this.fontSize * 0.45; // Smaller for inner spiral
+            textSize(ampmSize);
+            textStyle(BOLD);
+
+            // Position AM/PM to the right of the number's right edge
+            let margin = this.fontSize * 0.08;
+            let offsetX = (hourWidth / 2) + margin;
+
+            textAlign(LEFT, CENTER);
+            text(ampm, x + offsetX, y);
+
+            pop();
+        }
+
+        // Restore
+        this._resetShadow();
+        textStyle(NORMAL);
+        textSize(originalTextSize);
+    }
+
 
     drawDayLabels(tk) {
         // Only show day labels in Classic mode
@@ -707,20 +907,99 @@ class DaySpiralRenderer extends ClockRenderer {
 
 
     generateSpiralPoints(startRadius, endRadius) {
-        this.xSpiral = [];
-        this.ySpiral = [];
-        this.radiusSpiral = [];
+        // Check if we're in dual-location mode
+        this.isDualLocationMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
 
-        let totalPoints = this.numPointsPerTurn * this.numTurns;
-        let deltaRadiusPerTurn = (endRadius - startRadius) / this.numTurns;
+        if (!this.isDualLocationMode) {
+            // Single-location mode: generate one spiral as before
+            this.xSpiral = [];
+            this.ySpiral = [];
+            this.radiusSpiral = [];
 
-        for (let i = 0; i <= totalPoints; i++) {
-            let theta = TWO_PI * (i / this.numPointsPerTurn) - HALF_PI;
-            let r = endRadius - deltaRadiusPerTurn * (i / this.numPointsPerTurn);
+            let totalPoints = this.numPointsPerTurn * this.numTurns;
+            let deltaRadiusPerTurn = (endRadius - startRadius) / this.numTurns;
 
-            this.xSpiral.push(r * cos(theta));
-            this.ySpiral.push(r * sin(theta));
-            this.radiusSpiral.push(r);
+            for (let i = 0; i <= totalPoints; i++) {
+                let theta = TWO_PI * (i / this.numPointsPerTurn) - HALF_PI;
+                let r = endRadius - deltaRadiusPerTurn * (i / this.numPointsPerTurn);
+
+                this.xSpiral.push(r * cos(theta));
+                this.ySpiral.push(r * sin(theta));
+                this.radiusSpiral.push(r);
+            }
+        } else {
+            // Dual-location mode: generate outer and inner spirals that run PARALLEL (interleaved)
+            console.log('🔄 Generating dual spirals for dual-location mode (interleaved)');
+
+            // Calculate radial space distribution
+            const totalSpace = endRadius - startRadius;
+
+            // For interleaved spirals, we need thinner strokes to leave room for nesting
+            // The inner spiral needs to fit in the gap between the outer spiral's turns
+
+            // Calculate stroke widths as a percentage of radial space PER TURN
+            // With 2 turns, we need: outer stroke + gap + inner stroke + gap for next turn = space per turn
+            const spacePerTurn = totalSpace / this.numTurns;
+
+            const outerStrokeWidth = spacePerTurn * 0.35; // ~35% of turn space for outer spiral
+            const gapBetweenSpirals = spacePerTurn * 0.10; // ~10% gap between spirals
+            const innerStrokeWidth = spacePerTurn * 0.35; // ~35% of turn space for inner spiral
+            const gapToNextTurn = spacePerTurn * 0.20; // ~20% gap to next turn
+
+            // Calculate start/end radii for outer spiral
+            // Outer spiral starts at endRadius and progresses inward by totalSpace
+            const outerStart = endRadius;
+            const outerEnd = startRadius;
+
+            // Calculate start/end radii for inner spiral
+            // Inner spiral starts just inside the outer spiral (offset by outer stroke width + gap)
+            const innerStart = outerStart - outerStrokeWidth - gapBetweenSpirals;
+            // Inner spiral progresses inward by the SAME total distance as outer
+            const innerEnd = innerStart - totalSpace;
+
+            console.log(`  Total radial space: ${totalSpace.toFixed(2)}, space per turn: ${spacePerTurn.toFixed(2)}`);
+            console.log(`  Outer spiral: ${outerStart.toFixed(2)} → ${outerEnd.toFixed(2)} (stroke: ${outerStrokeWidth.toFixed(2)})`);
+            console.log(`  Gap between spirals: ${gapBetweenSpirals.toFixed(2)}`);
+            console.log(`  Inner spiral: ${innerStart.toFixed(2)} → ${innerEnd.toFixed(2)} (stroke: ${innerStrokeWidth.toFixed(2)})`);
+
+            // Generate outer spiral (user location)
+            this.xSpiral = [];
+            this.ySpiral = [];
+            this.radiusSpiral = [];
+
+            let totalPoints = this.numPointsPerTurn * this.numTurns;
+
+            // Outer spiral: starts at outerStart, decreases to outerEnd
+            for (let i = 0; i <= totalPoints; i++) {
+                let theta = TWO_PI * (i / this.numPointsPerTurn) - HALF_PI;
+                let progress = i / totalPoints; // 0 to 1
+                let r = outerStart - (totalSpace * progress);
+
+                this.xSpiral.push(r * cos(theta));
+                this.ySpiral.push(r * sin(theta));
+                this.radiusSpiral.push(r);
+            }
+
+            // Generate inner spiral (other location) - NO rotation offset in generation
+            // The rotation is handled by the hour labels and day/night rendering
+            this.xSpiralInner = [];
+            this.ySpiralInner = [];
+            this.radiusSpiralInner = [];
+
+            // Inner spiral: starts at innerStart, decreases to innerEnd
+            for (let i = 0; i <= totalPoints; i++) {
+                let theta = TWO_PI * (i / this.numPointsPerTurn) - HALF_PI;
+                let progress = i / totalPoints; // 0 to 1
+                let r = innerStart - (totalSpace * progress); // CRITICAL: subtract to spiral INWARD
+
+                this.xSpiralInner.push(r * cos(theta));
+                this.ySpiralInner.push(r * sin(theta));
+                this.radiusSpiralInner.push(r);
+            }
+
+            console.log(`  Inner spiral generated with ${this.xSpiralInner.length} points`);
+            console.log(`  Inner spiral radius range: ${innerStart.toFixed(2)} → ${innerEnd.toFixed(2)}`);
+            console.log(`  Spirals are now INTERLEAVED (running parallel with small gap)`);
         }
     }
 

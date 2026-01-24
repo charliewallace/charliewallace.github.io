@@ -418,7 +418,19 @@ function oneTimeInit() {
 
   // Your Location button in modal
   var useGpsBtn = select('#btn-use-gps');
-  if (useGpsBtn) useGpsBtn.mousePressed(() => { usePreciseLocation(false); closeAllModals(); });
+  if (useGpsBtn) useGpsBtn.mousePressed(() => {
+    // Clear other location to return to single-location mode
+    locManager.clearOtherLocation();
+    IsDisplayingUserLocation = true;
+
+    // Trigger spiral regeneration
+    if (daySpiralRenderer && daySpiralRenderer.active) {
+      daySpiralRenderer.resize(width, height);
+    }
+
+    usePreciseLocation(false);
+    closeAllModals();
+  });
 
   // --- PRESET MODAL BUTTONS (Unified) ---
   select('#btn-loc-silverado-u').mousePressed(() => { setSilverado(); closeAllModals(); });
@@ -3569,6 +3581,60 @@ function setDaySpiralStyle(styleName) {
   }
 }
 
+
+//============================================
+// PRESET LOCATION FUNCTIONS
+// These set the "other" location for dual-location mode
+//============================================
+
+function setSilverado() {
+  setOtherLocation(33.743, -117.643, -8, "Silverado, CA");
+}
+
+function setBerkeley() {
+  setOtherLocation(37.871, -122.273, -8, "Berkeley, CA");
+}
+
+function setSanDiego() {
+  setOtherLocation(32.715, -117.161, -8, "San Diego, CA");
+}
+
+function setLondon() {
+  setOtherLocation(51.507, -0.128, 0, "London, UK");
+}
+
+function setKansasCity() {
+  setOtherLocation(39.099, -94.578, -6, "Kansas City, MO");
+}
+
+function setMelbourne() {
+  setOtherLocation(-37.814, 144.963, 10, "Melbourne, Australia");
+}
+
+/**
+ * Helper function to set the "other" location for dual-location mode
+ */
+function setOtherLocation(lat, lon, tz, cityName) {
+  console.log(`🌍 Setting other location: ${cityName}`);
+
+  // Set in LocationManager
+  locManager.setOtherLocation(lat, lon, tz, cityName);
+
+  // Calculate sunrise/sunset for other location
+  timeKeeper.calculateOtherLocationSunTimes(lat, lon, tz, IsDst);
+
+  // Trigger spiral regeneration
+  if (daySpiralRenderer && daySpiralRenderer.active) {
+    daySpiralRenderer.resize(width, height);
+  }
+
+  // Mark as user-initiated and not displaying user location
+  IsUserInitiatedLocation = true;
+  IsDisplayingUserLocation = false;
+
+  // Update URL hash to include the other location
+  updateUrlHash();
+}
 
 
 
