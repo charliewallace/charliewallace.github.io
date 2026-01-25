@@ -202,7 +202,7 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         }
 
-        if (this.isDualLocationMode && this.style === 'Classic') {
+        if (this.isDualLocationMode) {
             this.drawSpiralLabels(locManager);
         }
 
@@ -542,7 +542,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Slightly larger text size for hour numbers (smaller if inner)
         let originalTextSize = this.fontSize;
-        let scale = isInner ? 0.35 : 1.4;
+        let scale = isInner ? 0.35 : 1.26; // Reduced outer scale by 10% (1.4 -> 1.26)
         textSize(this.fontSize * scale);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
@@ -568,6 +568,14 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
+                // Logic to shift first hour label rightward in dual mode
+                let shift = 0;
+                let currentTextAlign = CENTER;
+                if (h === 0 && this.isDualLocationMode) {
+                    shift = (this.fontSize * scale) * 0.5;
+                    currentTextAlign = LEFT;
+                }
+
                 // Legacy tweak: ri2 = ri * 1.008;
                 let ri2 = r * 1.008;
 
@@ -575,7 +583,8 @@ class DaySpiralRenderer extends ClockRenderer {
                 let x = this.centerX + cos(theta) * ri2;
                 let y = this.centerY + sin(theta) * ri2;
 
-                text(displayStr, x, y);
+                textAlign(currentTextAlign, CENTER);
+                text(displayStr, x + shift, y);
             }
         } else {
             // 12-hour mode: Display with AM/PM stacked
@@ -598,6 +607,14 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
+                // Logic to shift first hour label rightward in dual mode
+                let shift = 0;
+                let currentTextAlign = CENTER;
+                if (h === 0 && this.isDualLocationMode) {
+                    shift = (this.fontSize * scale) * 0.1; // Small shift for AM/PM layout
+                    currentTextAlign = LEFT;
+                }
+
                 // Legacy tweak
                 let ri2 = r * 1.008;
 
@@ -608,7 +625,8 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Draw hour number
                 let hourStr = str(hour12);
                 let hourWidth = textWidth(hourStr);
-                text(hourStr, x, y);
+                textAlign(currentTextAlign, CENTER);
+                text(hourStr, x + shift, y);
 
                 // Draw single 'A'/'P' indicator - aligned to right edge of number
                 push();
@@ -619,10 +637,13 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Position AM/PM to the right of the number's right edge
                 let margin = (this.fontSize * scale) * 0.1;
                 let offsetX = (hourWidth / 2) + margin;
+                if (currentTextAlign === LEFT) {
+                    offsetX = hourWidth + margin;
+                }
 
                 // Draw 'A' or 'P' centered vertically relative to the number
                 textAlign(LEFT, CENTER);
-                text(ampm, x + offsetX, y);
+                text(ampm, x + shift + offsetX, y);
 
                 pop();
             }
@@ -681,6 +702,14 @@ class DaySpiralRenderer extends ClockRenderer {
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
+            // Shift first hour label right in dual mode
+            let shift = 0;
+            let currentTextAlign = CENTER;
+            if (h === 1 && this.isDualLocationMode) {
+                shift = (this.fontSize * 0.5) * 0.1; // proportional shift
+                currentTextAlign = LEFT;
+            }
+
             // Calculate total width of "Hour + AM/PM" to center the combination
             let hourStr = str(hour12);
             let digitSize = this.fontSize * 0.50; // Dropped 10% from 0.56
@@ -694,10 +723,13 @@ class DaySpiralRenderer extends ClockRenderer {
             let totalW = hourWidth + margin + ampmWidth;
 
             // Start position for the combined label to be centered at (x,y)
-            let startX = x - totalW / 2;
+            let startX = x - totalW / 2 + shift;
+            if (currentTextAlign === LEFT) {
+                startX = x + shift;
+            }
 
             // Draw hour number
-            textAlign(LEFT, CENTER);
+            textAlign(currentTextAlign, CENTER);
             textSize(digitSize);
             text(hourStr, startX, y);
 
@@ -723,7 +755,6 @@ class DaySpiralRenderer extends ClockRenderer {
         let labelColor = color(255, 235, 120);
         fill(labelColor);
         noStroke();
-        textSize(this.fontSize * 0.63);
         textStyle(BOLD);
         textAlign(RIGHT, CENTER);
 
@@ -731,12 +762,23 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let margin = this.fontSize * 0.2;
 
+        // Determine font sizes based on style (match hour numbers)
+        let outerFontSize = this.fontSize * 0.63; // Classic default
+        let innerFontSize = this.fontSize * 0.50; // Classic inner default
+
+        if (this.style === 'SpiralHours') {
+            outerFontSize = this.fontSize * 1.26;
+            innerFontSize = this.fontSize * 0.50; // matching HIS inner digitSize
+        }
+
         // 1. Label for Outer Spiral ("Local")
+        textSize(outerFontSize);
         let x1 = this.centerX + this.xSpiral[0] - margin;
         let y1 = this.centerY + this.ySpiral[0];
         text("Local", x1, y1);
 
         // 2. Label for Inner Spiral (City Name or "Other")
+        textSize(innerFontSize);
         let cityName = locManager.otherLocation.cityName || "Other";
         // Extract just the city name if comma-separated
         if (cityName.includes(',')) cityName = cityName.split(',')[0].trim();
