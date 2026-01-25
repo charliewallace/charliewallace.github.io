@@ -1584,7 +1584,8 @@ function setLoadingState() {
 
 function clearLoadingState() {
   IsLoadingLocation = false;
-  // Note: IsSunRiseSetObtained will be handled by updateTimeThisDay() eventually
+  // Ensure Mobius updates its colors now that loading is finished
+  if (typeof mobiusRenderer !== 'undefined') mobiusRenderer.refreshDayNight();
 }
 
 // --- MODAL FUNCTIONS ---
