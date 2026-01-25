@@ -103,8 +103,10 @@ class DaySpiralRenderer extends ClockRenderer {
             const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
 
             if (isDualMode) {
-                // In dual mode, use 35% of space per turn for each spiral
-                this.spiralStrokeWeight = deltaRadiusPerTurn * 0.35;
+                // In dual mode, outer spiral is wider (20% wider than inner)
+                this.outerStrokeWeight = deltaRadiusPerTurn * 0.42;
+                this.innerStrokeWeight = deltaRadiusPerTurn * 0.35;
+                this.spiralStrokeWeight = this.outerStrokeWeight; // Default or for non-dual parts
             } else {
                 // Single mode uses 66% of space per turn
                 this.spiralStrokeWeight = deltaRadiusPerTurn * 0.66;
@@ -317,12 +319,12 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Draw outer spiral (user location)
             this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
-                dayColor, nightColor, baseColor, loc.hasValidLocation, 0);
+                dayColor, nightColor, baseColor, loc.hasValidLocation, 0, this.outerStrokeWeight);
 
             // Draw inner spiral (other location) with rotation offset
             const tzDiffHours = locManager.getTimezoneOffsetDifference();
             this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
-                dayColor, nightColor, baseColor, true, tzDiffHours);
+                dayColor, nightColor, baseColor, true, tzDiffHours, this.innerStrokeWeight);
         }
         this._resetShadow();
     }
@@ -339,8 +341,11 @@ class DaySpiralRenderer extends ClockRenderer {
      * @param {boolean} hasValidLocation - Whether location data is valid
      * @param {number} tzOffsetHours - Timezone offset in hours (for rotation adjustment)
      */
-    _drawSpiralTrack(xArray, yArray, sunriseTime, sunsetTime, dayColor, nightColor, baseColor, hasValidLocation, tzOffsetHours) {
+    _drawSpiralTrack(xArray, yArray, sunriseTime, sunsetTime, dayColor, nightColor, baseColor, hasValidLocation, tzOffsetHours, weight = null) {
         // 1. Draw Base Track (Gray)
+        if (weight !== null) strokeWeight(weight);
+        else strokeWeight(this.spiralStrokeWeight);
+
         stroke(baseColor);
         this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
         beginShape();
@@ -628,7 +633,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Smaller text size for inner spiral (reduced by 20% from 0.7)
         let originalTextSize = this.fontSize;
-        textSize(this.fontSize * 0.56);
+        // textSize(this.fontSize * 0.56); // Removed, now calculated per part
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
 
@@ -661,25 +666,29 @@ class DaySpiralRenderer extends ClockRenderer {
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
-            // Draw hour number
+            // Calculate total width of "Hour + AM/PM" to center the combination
             let hourStr = str(hour12);
+            let digitSize = this.fontSize * 0.50; // Dropped 10% from 0.56
+            let ampmSize = this.fontSize * 0.36; // Dropped 20% from 0.45
+            let margin = this.fontSize * 0.08;
+
+            textSize(digitSize);
             let hourWidth = textWidth(hourStr);
-            text(hourStr, x, y);
+            textSize(ampmSize);
+            let ampmWidth = textWidth(ampm);
+            let totalW = hourWidth + margin + ampmWidth;
+
+            // Start position for the combined label to be centered at (x,y)
+            let startX = x - totalW / 2;
+
+            // Draw hour number
+            textAlign(LEFT, CENTER);
+            textSize(digitSize);
+            text(hourStr, startX, y);
 
             // Draw AM/PM indicator
-            push();
-            let ampmSize = this.fontSize * 0.45; // Smaller for inner spiral
             textSize(ampmSize);
-            textStyle(BOLD);
-
-            // Position AM/PM to the right of the number's right edge
-            let margin = this.fontSize * 0.08;
-            let offsetX = (hourWidth / 2) + margin;
-
-            textAlign(LEFT, CENTER);
-            text(ampm, x + offsetX, y);
-
-            pop();
+            text(ampm, startX + hourWidth + margin, y);
         }
 
         // Restore
@@ -985,10 +994,10 @@ class DaySpiralRenderer extends ClockRenderer {
             // With 2 turns, we need: outer stroke + gap + inner stroke + gap for next turn = space per turn
             const spacePerTurn = totalSpace / this.numTurns;
 
-            const outerStrokeWidth = spacePerTurn * 0.35; // ~35% of turn space for outer spiral
-            const gapBetweenSpirals = spacePerTurn * 0.10; // ~10% gap between spirals
-            const innerStrokeWidth = spacePerTurn * 0.35; // ~35% of turn space for inner spiral
-            const gapToNextTurn = spacePerTurn * 0.20; // ~20% gap to next turn
+            const outerStrokeWidth = spacePerTurn * 0.42; // Widened by 20% relative to inner
+            const gapBetweenSpirals = spacePerTurn * 0.03; // Reduced gap to accommodate wider outer
+            const innerStrokeWidth = spacePerTurn * 0.35; // Kept at 0.35
+            const gapToNextTurn = spacePerTurn * 0.20; // Kept at 0.20
 
             // Store for use in other methods (like drawHands)
             this.outerStrokeWidth = outerStrokeWidth;
