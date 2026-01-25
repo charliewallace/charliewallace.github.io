@@ -3608,7 +3608,7 @@ function setKansasCity() {
 }
 
 function setMelbourne() {
-  setOtherLocation(-37.814, 144.963, 10, "Melbourne, Australia");
+  setOtherLocation(-37.814, 144.963, 11, "Melbourne, Australia");
 }
 
 /**
@@ -3621,7 +3621,8 @@ function setOtherLocation(lat, lon, tz, cityName) {
   locManager.setOtherLocation(lat, lon, tz, cityName);
 
   // Calculate sunrise/sunset for other location
-  timeKeeper.calculateOtherLocationSunTimes(lat, lon, tz, IsDst);
+  // NOTE: Negate longitude to match the behavior in calculateSunTimes (East positive vs West positive logic)
+  timeKeeper.calculateOtherLocationSunTimes(lat, -lon, tz, IsDst);
 
   // Trigger spiral regeneration
   if (daySpiralRenderer && daySpiralRenderer.active) {

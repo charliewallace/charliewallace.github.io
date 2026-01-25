@@ -79,7 +79,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Spiral settings default (Classic)
         let startRadius = radius * 0.24;
-        let endRadius = radius * 0.60;
+        let endRadius = radius * 0.66; // Increased by 10% (from 0.60) to reduce outer gap
 
         if (this.style === 'SpiralHours') {
             // Shift center left to balance margins due to spiral asymmetry
@@ -586,9 +586,9 @@ class DaySpiralRenderer extends ClockRenderer {
         fill(255, 235, 120); // Same yellow as outer
         noStroke();
 
-        // Smaller text size for inner spiral
+        // Smaller text size for inner spiral (reduced by 20% from 0.7)
         let originalTextSize = this.fontSize;
-        textSize(this.fontSize * 0.7);
+        textSize(this.fontSize * 0.56);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
 
@@ -794,6 +794,11 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let rHour = this.radiusSpiral[hIdx];
 
+        // If in dual mode, move tip to the gap between spirals
+        if (this.isDualLocationMode && this.outerStrokeWidth && this.gapBetweenSpirals) {
+            rHour -= (this.outerStrokeWidth / 2) + (this.gapBetweenSpirals / 2);
+        }
+
         strokeWeight(Math.max(3, this.secondaryStrokeWeight * 1.2));
         line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour);
 
@@ -945,6 +950,10 @@ class DaySpiralRenderer extends ClockRenderer {
             const gapBetweenSpirals = spacePerTurn * 0.10; // ~10% gap between spirals
             const innerStrokeWidth = spacePerTurn * 0.35; // ~35% of turn space for inner spiral
             const gapToNextTurn = spacePerTurn * 0.20; // ~20% gap to next turn
+
+            // Store for use in other methods (like drawHands)
+            this.outerStrokeWidth = outerStrokeWidth;
+            this.gapBetweenSpirals = gapBetweenSpirals;
 
             // Calculate start/end radii for outer spiral
             // Outer spiral starts at endRadius and progresses inward by totalSpace
