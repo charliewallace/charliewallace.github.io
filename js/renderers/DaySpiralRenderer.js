@@ -81,6 +81,10 @@ class DaySpiralRenderer extends ClockRenderer {
         let startRadius = radius * 0.24;
         let endRadius = radius * 0.66; // Increased by 10% (from 0.60) to reduce outer gap
 
+        // Check if we're in dual-location mode to set visual weights
+        const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
+        this.isDualLocationMode = isDualMode;
+
         if (this.style === 'SpiralHours') {
             // Shift center left to balance margins due to spiral asymmetry
             this.centerX -= radius * 0.1;
@@ -88,26 +92,23 @@ class DaySpiralRenderer extends ClockRenderer {
             // Legacy V3 settings for 'Hours in Spiral'
             startRadius = radius * 0.39;
             endRadius = radius * 0.81;
-            this.spiralStrokeWeight = radius * 0.18; // Narrowed by 10% to widen gaps between turns
 
-            // Adjust ClockDiameter/Face for this mode?
-            // Legacy: InnerFaceRadius = ClockDiameter/2; 
-            // In SpiralHours mode, the gray face background might need to behave differently,
-            // but for now we'll stick to the spiral dimensions.
+            if (this.isDualLocationMode) {
+                this.outerStrokeWeight = radius * 0.14;
+                this.innerStrokeWeight = this.outerStrokeWeight * 0.3;
+                this.spiralStrokeWeight = this.outerStrokeWeight;
+            } else {
+                this.spiralStrokeWeight = radius * 0.18; // Original
+            }
         } else {
             // Classic
             let nTurns = 2;
             let deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
 
-            // Check if we're in dual-location mode - need thinner strokes
-            const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
-            this.isDualLocationMode = isDualMode;
-
-            if (isDualMode) {
-                // In dual mode, outer spiral is wider (20% wider than inner)
+            if (this.isDualLocationMode) {
                 this.outerStrokeWeight = deltaRadiusPerTurn * 0.42;
                 this.innerStrokeWeight = deltaRadiusPerTurn * 0.35;
-                this.spiralStrokeWeight = this.outerStrokeWeight; // Default or for non-dual parts
+                this.spiralStrokeWeight = this.outerStrokeWeight;
             } else {
                 // Single mode uses 66% of space per turn
                 this.spiralStrokeWeight = deltaRadiusPerTurn * 0.66;
@@ -192,7 +193,13 @@ class DaySpiralRenderer extends ClockRenderer {
 
         if (this.style === 'SpiralHours') {
             this.drawSpiralTicks();
-            this.drawSpiralHours();
+            // Draw outer spiral hours
+            this.drawSpiralHours(this.xSpiral, this.ySpiral, this.radiusSpiral, false, locManager);
+
+            // Draw inner spiral hours if in dual mode
+            if (this.isDualLocationMode) {
+                this.drawSpiralHours(this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, locManager);
+            }
         }
 
         if (this.isDualLocationMode && this.style === 'Classic') {
@@ -527,34 +534,36 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     // Draw 0-23 hour labels on the spiral for 'SpiralHours' style
-    drawSpiralHours() {
-        if (!this.xSpiral || this.xSpiral.length === 0) return;
+    drawSpiralHours(xArray, yArray, rArray, isInner, locManager) {
+        if (!xArray || xArray.length === 0) return;
 
         fill(255, 235, 120); // Softer yellow for better aesthetics
         noStroke();
 
-        // Slightly larger text size for hour numbers
+        // Slightly larger text size for hour numbers (smaller if inner)
         let originalTextSize = this.fontSize;
-        textSize(this.fontSize * 1.4); // Increased from 1.2
+        let scale = isInner ? 0.35 : 1.4;
+        textSize(this.fontSize * scale);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
 
-        let totalPoints = this.radiusSpiral.length;
+        let tzDiffHours = (isInner && locManager) ? locManager.getTimezoneOffsetDifference() : 0;
 
         this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)'); // Pronounced shadow for spiral numbers
 
         if (this.timeFormat === '24') {
             // 24-hour mode: Display 0-23
             for (let h = 0; h <= 23; h++) {
-                let displayStr = str(h);
+                let hourVal = (h + (isInner ? tzDiffHours : 0) + 24) % 24;
+                let displayStr = str(Math.floor(hourVal));
 
                 // Calculate index in the spiral array
                 let idx = Math.floor((h / 24.0) * (this.numPointsPerTurn * 2));
 
                 // Clamp
-                if (idx >= this.radiusSpiral.length) idx = this.radiusSpiral.length - 1;
+                if (idx >= rArray.length) idx = rArray.length - 1;
 
-                let r = this.radiusSpiral[idx];
+                let r = rArray[idx];
 
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
@@ -572,18 +581,19 @@ class DaySpiralRenderer extends ClockRenderer {
             // 12-hour mode: Display with AM/PM stacked
 
             for (let h = 0; h <= 23; h++) {
-                let hour12 = h % 12;
+                let hourVal = (h + (isInner ? tzDiffHours : 0) + 24) % 24;
+                let hour12 = Math.floor(hourVal) % 12;
                 if (hour12 === 0) hour12 = 12; // 0 -> 12, 12 -> 12
 
-                let ampm = (h < 12) ? 'A' : 'P';
+                let ampm = (hourVal < 12) ? 'A' : 'P';
 
                 // Calculate index in the spiral array
                 let idx = Math.floor((h / 24.0) * (this.numPointsPerTurn * 2));
 
                 // Clamp
-                if (idx >= this.radiusSpiral.length) idx = this.radiusSpiral.length - 1;
+                if (idx >= rArray.length) idx = rArray.length - 1;
 
-                let r = this.radiusSpiral[idx];
+                let r = rArray[idx];
 
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
@@ -602,17 +612,16 @@ class DaySpiralRenderer extends ClockRenderer {
 
                 // Draw single 'A'/'P' indicator - aligned to right edge of number
                 push();
-                let ampmSize = this.fontSize * 0.65; // Increased from 0.35
+                let ampmSize = (this.fontSize * scale) * 0.45;
                 textSize(ampmSize);
                 textStyle(BOLD);
 
                 // Position AM/PM to the right of the number's right edge
-                let margin = this.fontSize * 0.12;
+                let margin = (this.fontSize * scale) * 0.1;
                 let offsetX = (hourWidth / 2) + margin;
 
                 // Draw 'A' or 'P' centered vertically relative to the number
                 textAlign(LEFT, CENTER);
-                // No vertical spacing needed, just center it (y is already center of hour number)
                 text(ampm, x + offsetX, y);
 
                 pop();
@@ -1032,22 +1041,29 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Calculate radial space distribution
             const totalSpace = endRadius - startRadius;
-
-            // For interleaved spirals, we need thinner strokes to leave room for nesting
-            // The inner spiral needs to fit in the gap between the outer spiral's turns
-
-            // Calculate stroke widths as a percentage of radial space PER TURN
-            // With 2 turns, we need: outer stroke + gap + inner stroke + gap for next turn = space per turn
             const spacePerTurn = totalSpace / this.numTurns;
 
-            const outerStrokeWidth = spacePerTurn * 0.42; // Widened by 20% relative to inner
-            const gapBetweenSpirals = spacePerTurn * 0.03; // Reduced gap to accommodate wider outer
-            const innerStrokeWidth = spacePerTurn * 0.35; // Kept at 0.35
-            const gapToNextTurn = spacePerTurn * 0.20; // Kept at 0.20
+            let outerStrokeWeight, innerStrokeWeight, gapBetweenSpirals;
 
-            // Store for use in other methods (like drawHands)
-            this.outerStrokeWidth = outerStrokeWidth;
+            if (this.style === 'SpiralHours') {
+                // Custom interleaving for SpiralHours
+                outerStrokeWeight = spacePerTurn * 0.65;
+                gapBetweenSpirals = spacePerTurn * 0.01; // reduced from 0.05
+                innerStrokeWeight = outerStrokeWeight * 0.3;
+            } else {
+                // Existing percentages for Classic
+                outerStrokeWeight = spacePerTurn * 0.42;
+                gapBetweenSpirals = spacePerTurn * 0.01; // reduced from 0.03
+                innerStrokeWeight = spacePerTurn * 0.35;
+            }
+
+            // Sync with member variables (Weight is preferred naming)
+            this.outerStrokeWeight = outerStrokeWeight;
+            this.innerStrokeWeight = innerStrokeWeight;
             this.gapBetweenSpirals = gapBetweenSpirals;
+
+            // Sync current spiralStrokeWeight for track drawing
+            this.spiralStrokeWeight = this.outerStrokeWeight;
 
             // Calculate start/end radii for outer spiral
             // Outer spiral starts at endRadius and progresses inward by totalSpace
@@ -1055,8 +1071,11 @@ class DaySpiralRenderer extends ClockRenderer {
             const outerEnd = startRadius;
 
             // Calculate start/end radii for inner spiral
-            // Inner spiral starts just inside the outer spiral (offset by outer stroke width + gap)
-            const innerStart = outerStart - outerStrokeWidth - gapBetweenSpirals;
+            // Inner spiral starts just inside the outer spiral
+            // For zero gap, the center distance is (outerW + innerW) / 2
+            const centerDist = (outerStrokeWeight + innerStrokeWeight) / 2;
+            const innerStart = outerStart - centerDist - gapBetweenSpirals;
+
             // Inner spiral progresses inward by the SAME total distance as outer
             const innerEnd = innerStart - totalSpace;
 
