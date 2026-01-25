@@ -199,104 +199,122 @@ var activeRenderer;
 
 
 
-// Fetch approximate location from IP geolocation API
+// Multi-provider IP location fetch with failover support
 function fetchIpLocation() {
   const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] Fetching approximate location from IP...`);
-  IsRequestingPrecise = false; // Cancel any pending GPS request results
+  console.log(`[${requestId}] Starting multi-provider IP location fetch...`);
+  IsRequestingPrecise = false;
   setLoadingState();
-  IsDisplayingUserLocation = true; // We are tracking user location
+  IsDisplayingUserLocation = true;
   IsPreciseLocation = false;
-  IsUserInitiatedLocation = false; // IP location is automatic, not user-initiated
+  IsUserInitiatedLocation = false;
 
-  // Using ipwho.is (CORS-friendly, no API key required for low-volume)
-  fetch('https://ipwho.is/')
-    .then(response => response.json())
-    .then(data => {
-      if (requestId !== LocationFetchSerial) {
-        console.log(`[${requestId}] IP location fetch results ignored (stale/cancelled).`);
-        return;
-      }
+  const providers = [
+    {
+      name: 'freeipapi.com',
+      url: 'https://freeipapi.com/api/json',
+      parse: (d) => ({
+        lat: d.latitude,
+        lon: d.longitude,
+        city: d.cityName,
+        timezone: d.timeZone
+      })
+    },
+    {
+      name: 'ipwho.is',
+      url: 'https://ipwho.is/',
+      parse: (d) => ({
+        lat: d.latitude,
+        lon: d.longitude,
+        city: d.city,
+        timezone: d.timezone ? d.timezone.id : null
+      })
+    },
+    {
+      name: 'ipapi.co',
+      url: 'https://ipapi.co/json/',
+      parse: (d) => ({
+        lat: d.latitude,
+        lon: d.longitude,
+        city: d.city,
+        timezone: d.timezone
+      })
+    }
+  ];
 
-      if (!data.success) {
-        console.log(`[${requestId}] IP location API returned failure:`, data.message);
-        handleIpFallback(requestId, data.message);
-        return;
-      }
+  let currentProviderIndex = 0;
 
-      console.log(`[${requestId}] IP Geolocation data:`, data);
+  const tryNextProvider = () => {
+    if (requestId !== LocationFetchSerial) return;
 
-      // Extract and validate coordinates
-      Latitude = parseFloat(data.latitude);
-      Longitude = parseFloat(data.longitude);
+    if (currentProviderIndex >= providers.length) {
+      console.warn(`[${requestId}] All IP location providers failed.`);
+      handleIpFallback(requestId, "All providers failed");
+      return;
+    }
 
-      // Round to 3 places after decimal (city-level accuracy)
-      Latitude = round(Latitude, 3);
-      Longitude = round(Longitude, 3);
+    const provider = providers[currentProviderIndex];
+    console.log(`[${requestId}] Attempting fetch from ${provider.name}...`);
 
-      console.log("latitude: " + Latitude);
-      console.log("longitude: " + Longitude);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout per provider
 
-      // Extract city and region if available
-      var city = data.city;
-      var region = data.region;
-      var locationString = "Approximate Location";
+    fetch(provider.url, { signal: controller.signal })
+      .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        if (requestId !== LocationFetchSerial) return;
 
-      if (city) {
-        locationString = "Near " + city; // Add "Near" prefix for IP-based location
-      }
+        const results = provider.parse(data);
+        if (results.lat === undefined || results.lon === undefined) {
+          throw new Error("Invalid data format from provider");
+        }
 
-      LocaleTitle = locationString;
-      LocaleTitleLocal = locationString; // Save for fallback
+        console.log(`[${requestId}] Location found via ${provider.name}:`, results);
 
-      // Check for timezone mismatch (VPN detection)
-      var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      var ipTimezone = data.timezone ? data.timezone.id : null;
+        // Success!
+        Latitude = round(parseFloat(results.lat), 3);
+        Longitude = round(parseFloat(results.lon), 3);
 
-      console.log("Browser timezone:", browserTimezone);
-      console.log("IP location timezone:", ipTimezone);
+        var locationString = results.city ? "Near " + results.city : "Approximate Location";
+        LocaleTitle = locationString;
+        LocaleTitleLocal = locationString;
 
-      // Compare timezones - if different, might be using VPN
-      if (ipTimezone) {
-        IsTimezoneMismatch = (browserTimezone !== ipTimezone);
-      }
+        // VPN Detection
+        var browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (results.timezone) {
+          IsTimezoneMismatch = (browserTimezone !== results.timezone);
+        }
 
-      // Allow testing VPN warning via URL hash parameter.
-      var urlHash = window.location.hash.toLowerCase();
-      if (urlHash.includes('testvpn') || urlHash.includes('simulatevpn')) {
-        IsTimezoneMismatch = true;
-        console.log("🧪 TEST MODE: VPN simulation enabled via URL hash");
-      }
-
-      if (IsTimezoneMismatch) {
-        if (!TimezoneWarningShown) {
-          console.log("⚠️ Timezone mismatch detected - possible VPN/proxy usage");
-          alert("⚠️ Timezone mismatch detected - possible VPN/proxy usage." +
-            " This may affect the accuracy of the clock and sunrise/sunset times." +
-            " To avoid this issue, select the GPS OK button."
-          );
-          IsTimezoneMismatch = false; // Reset flag after showing warning
+        if (IsTimezoneMismatch && !TimezoneWarningShown) {
+          console.log("⚠️ Timezone mismatch detected");
+          alert("⚠️ Timezone mismatch detected - possible VPN usage. Select 'GPS OK?' for better accuracy.");
+          IsTimezoneMismatch = false;
           TimezoneWarningShown = true;
         }
-      }
 
-      // Update UI fields
-      var latString = str(Latitude);
-      LatInput.value(latString);
-      LatLocal = Latitude;
-      LastLat = Latitude;
+        // Update UI
+        LatInput.value(str(Latitude));
+        LngInput.value(str(Longitude));
+        LatLocal = Latitude;
+        LngLocal = Longitude;
+        LastLat = Latitude;
+        LastLong = Longitude;
 
-      var longString = str(Longitude);
-      LngInput.value(longString);
-      LngLocal = Longitude;
-      LastLong = Longitude;
+        getTzUsingLatLong(Latitude, Longitude, requestId);
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        console.warn(`[${requestId}] ${provider.name} failed:`, error.message);
+        currentProviderIndex++;
+        tryNextProvider();
+      });
+  };
 
-      // Get timezone using existing GeoNames function
-      getTzUsingLatLong(Latitude, Longitude, requestId);
-    })
-    .catch(error => {
-      handleIpFallback(requestId, error);
-    });
+  tryNextProvider();
 }
 
 // Helper for consistent IP fallback
@@ -318,7 +336,11 @@ function handleIpFallback(requestId, error) {
   LocaleTitleLocal = "Melbourne";
   LocaleTitle = "Melbourne";
 
-  alert("IP-based location detection failed. Defaulting to Melbourne, Australia.");
+  let alertMsg = "IP-based location detection failed or timed out. Defaulting to Melbourne, Australia.\n\nYou can manually set your location using the 'Other Location' button.";
+  if (error && error.name === 'AbortError') {
+    alertMsg = "IP location request timed out. This can happen if the geolocation service is slow or unreachable. Defaulting to Melbourne, Australia.";
+  }
+  alert(alertMsg);
 
   var tzString = str(TzOffset);
   if (TzOffset > 0) tzString = "+" + str(TzOffset);
@@ -2457,10 +2479,10 @@ function exitZenMode() {
 function handleNetworkError(err) {
   console.log("Network/CORS error:", err);
   exitZenMode();
-  var errorMsg = "Network error: Could not reach the location service. This may be due to a CORS issue, ad blocker, or network loss.";
+  var errorMsg = "Could not reach the location service. This may be due to a service outage, CORS issue, ad blocker, or network loss.";
 
-  if (err && err.message) {
-    console.log("Error details:", err.message);
+  if (err && err.name === 'AbortError') {
+    errorMsg = "The location request timed out. The service might be slow or experiencing downtime.";
   }
 
   alert(errorMsg);
@@ -3061,7 +3083,23 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
         `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`;
       console.log('timezoneUrl=' + timezoneUrl);
 
-      loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId, extractedCity, isOther), handleNetworkError);
+      // Add a timeout for the timezone fetch during city lookup
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+      fetch(timezoneUrl, { signal: controller.signal })
+        .then(response => {
+          clearTimeout(timeoutId);
+          return response.json();
+        })
+        .then(data => {
+          gotCityTzData(data, requestId, extractedCity, isOther);
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          console.error(`[${requestId}] City lookup timezone fetch error:`, error);
+          handleNetworkError(error);
+        });
     }
   }
   else {
@@ -3248,7 +3286,23 @@ function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingF
       `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`;
     console.log('timezoneUrl=' + timezoneUrl);
 
-    loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId, cityName, isOther), handleNetworkError);
+    // loadJSON doesn't have a built-in timeout, so we'll use fetch for more control
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    fetch(timezoneUrl, { signal: controller.signal })
+      .then(response => {
+        clearTimeout(timeoutId);
+        return response.json();
+      })
+      .then(data => {
+        gotCityTzData(data, requestId, cityName, isOther);
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        console.error(`[${requestId}] Timezone fetch error:`, error);
+        handleNetworkError(error);
+      });
   }
 }
 
