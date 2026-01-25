@@ -1642,67 +1642,71 @@ function openDetailsModal() {
     // Check if we are in dual-location mode
     const isDual = locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer;
 
-    // Generate Time Zone String for primary
-    var tzStr = (TzOffset >= 0 ? "+" : "") + TzOffset;
-    var dstStr = (typeof IsDst !== 'undefined') ? (IsDst ? "Active" : "Standard Time") : "Unknown";
-
-    let htmlContent = "";
+    let targetLat, targetLon, targetTz, targetCity, targetSunriseHour, targetSunriseMin, targetSunsetHour, targetSunsetMin, targetTzStr, targetDstStr;
 
     if (isDual) {
-      // DUAL LOCATION VIEW
       const other = locManager.otherLocation;
-      const otherTzStr = (other.tzOffset >= 0 ? "+" : "") + other.tzOffset;
-
-      htmlContent = `
-        <div class="details-grid dual-grid">
-          <!-- SECTION 1: PRIMARY LOCATION -->
-          <div class="details-column location-group primary-loc">
-            <h3>Your Location</h3>
-            <p><span class="label">City</span> <span class="value">${LocaleTitle}</span></p>
-            <p><span class="label">Time</span> <span class="value">${TimeString} ${IsAM ? 'AM' : 'PM'}</span></p>
-            <p><span class="label">Lat / Lng</span> <span class="value">${nfc(Latitude, 2)}, ${nfc(Longitude, 2)}</span></p>
-            <p><span class="label">Time Zone</span> <span class="value">GMT ${tzStr} (${dstStr})</span></p>
-            <p><span class="label">Sunrise</span> <span class="value">${getFormattedTime(SunriseHour, SunriseMin)}</span></p>
-            <p><span class="label">Sunset</span> <span class="value">${getFormattedTime(SunsetHour, SunsetMin)}</span></p>
-          </div>
-
-          <!-- SECTION 2: OTHER LOCATION -->
-          <div class="details-column location-group other-loc">
-            <h3>Other Location</h3>
-            <p><span class="label">City</span> <span class="value">${other.cityName || "Other"}</span></p>
-            <p><span class="label">Time</span> <span class="value">${timeKeeper.otherSunriseHourString.includes('AM') || timeKeeper.otherSunriseHourString.includes('PM') ? 'Local Time' : ''}</span></p>
-            <!-- Note: Current time at other location is shown relative to the inner labels -->
-            <p><span class="label">Lat / Lng</span> <span class="value">${nfc(other.latitude, 2)}, ${nfc(other.longitude, 2)}</span></p>
-            <p><span class="label">Time Zone</span> <span class="value">GMT ${otherTzStr}</span></p>
-            <p><span class="label">Sunrise</span> <span class="value">${timeKeeper.otherSunriseHourString}</span></p>
-            <p><span class="label">Sunset</span> <span class="value">${timeKeeper.otherSunsetHourString}</span></p>
-          </div>
-        </div>
-      `;
+      targetLat = other.latitude;
+      targetLon = other.longitude;
+      targetTz = other.tzOffset;
+      targetCity = other.cityName || "Other Location";
+      // We use sunrise/sunset for 'other' location from TimeKeeper
+      targetSunriseHour = timeKeeper.otherSunriseTime.hour;
+      targetSunriseMin = timeKeeper.otherSunriseTime.minute;
+      targetSunsetHour = timeKeeper.otherSunsetTime.hour;
+      targetSunsetMin = timeKeeper.otherSunsetTime.minute;
+      targetTzStr = (targetTz >= 0 ? "+" : "") + targetTz;
+      targetDstStr = ""; // We don't track DST for 'other' location specifically in the same way
     } else {
-      // SINGLE LOCATION VIEW (Original)
-      htmlContent = `
-        <div class="details-grid">
-          <div class="details-column">
-            <p><span class="label">Time</span> <span class="value" id="modal-time-display">${TimeString} ${IsAM ? 'AM' : 'PM'}</span></p>
-            <p><span class="label">Date</span> <span class="value" id="modal-date-display">${DateString}</span></p>
-            <p><span class="label">Sunrise</span> <span class="value">${getFormattedTime(SunriseHour, SunriseMin)}</span></p>
-            <p><span class="label">Sunset</span> <span class="value">${getFormattedTime(SunsetHour, SunsetMin)}</span></p>
-          </div>
-          <div class="details-column">
-            <p><span class="label">City</span> <span class="value">${LocaleTitle}</span></p>
-            <p><span class="label">Lat / Lng</span> <span class="value">${nfc(Latitude, 2)}, ${nfc(Longitude, 2)}</span></p>
-            <p><span class="label">Time Zone</span> <span class="value">GMT ${tzStr}</span></p>
-            <p><span class="label">DST</span> <span class="value">${dstStr}</span></p>
-          </div>
-        </div>
-      `;
+      targetLat = Latitude;
+      targetLon = Longitude;
+      targetTz = TzOffset;
+      targetCity = LocaleTitle;
+      targetSunriseHour = SunriseHour;
+      targetSunriseMin = SunriseMin;
+      targetSunsetHour = SunsetHour;
+      targetSunsetMin = SunsetMin;
+      targetTzStr = (targetTz >= 0 ? "+" : "") + targetTz;
+      targetDstStr = (typeof IsDst !== 'undefined') ? (IsDst ? "Active" : "Standard Time") : "Unknown";
     }
+
+    // Calculate time for the target location
+    let now = new Date();
+    // BrowserTzOffset is negative minutes from UTC (e.g. PST is +480)
+    // localTz here is GMT offset in hours (e.g. PST is -8)
+    let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
+    let offsetDiffHours = targetTz - localTz;
+    let targetTime = new Date(now.getTime() + (offsetDiffHours * 3600000));
+
+    let th = targetTime.getHours();
+    let tm = targetTime.getMinutes();
+    let tampm = th >= 12 ? 'PM' : 'AM';
+    let th12 = th % 12 || 12;
+    let targetTimeString = `${th12}:${nf(tm, 2, 0)} ${tampm}`;
+    let targetDateString = targetTime.toLocaleDateString('en-us', { year: "numeric", month: "short", day: "numeric" });
+
+    let htmlContent = `
+      <div class="details-grid">
+        <div class="details-column">
+          <p><span class="label">City</span> <span class="value">${targetCity}</span></p>
+          <p><span class="label">Time</span> <span class="value">${targetTimeString}</span></p>
+          <p><span class="label">Date</span> <span class="value">${targetDateString}</span></p>
+        </div>
+        <div class="details-column">
+          <p><span class="label">Lat / Lng</span> <span class="value">${nfc(targetLat, 2)}, ${nfc(targetLon, 2)}</span></p>
+          <p><span class="label">Time Zone</span> <span class="value">GMT ${targetTzStr}</span></p>
+          <p><span class="label">Sunrise</span> <span class="value">${getFormattedTime(targetSunriseHour, targetSunriseMin)}</span></p>
+          <p><span class="label">Sunset</span> <span class="value">${getFormattedTime(targetSunsetHour, targetSunsetMin)}</span></p>
+          ${targetDstStr ? `<p><span class="label">DST</span> <span class="value">${targetDstStr}</span></p>` : ''}
+        </div>
+      </div>
+    `;
 
     content.innerHTML = htmlContent;
   }
   openModal('modal-details');
 }
+
 
 // Helper to format HH:MM for sunrise/sunset display
 function getFormattedTime(h, m) {
