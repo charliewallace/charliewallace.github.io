@@ -540,9 +540,9 @@ class DaySpiralRenderer extends ClockRenderer {
         fill(255, 235, 120); // Softer yellow for better aesthetics
         noStroke();
 
-        // Slightly larger text size for hour numbers (smaller if inner)
+        // Adjusted scales: Outer reduced by another 10% (1.134 -> 1.02), Inner increased by 10% (0.385 -> 0.42)
         let originalTextSize = this.fontSize;
-        let scale = isInner ? 0.35 : 1.26; // Reduced outer scale by 10% (1.4 -> 1.26)
+        let scale = isInner ? 0.42 : 1.02;
         textSize(this.fontSize * scale);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
@@ -576,8 +576,8 @@ class DaySpiralRenderer extends ClockRenderer {
                     currentTextAlign = LEFT;
                 }
 
-                // Legacy tweak: ri2 = ri * 1.008;
-                let ri2 = r * 1.008;
+                // Removed 1.008 tweak for true centering on spiral track
+                let ri2 = r;
 
                 // Calculate x,y with tweak
                 let x = this.centerX + cos(theta) * ri2;
@@ -615,17 +615,17 @@ class DaySpiralRenderer extends ClockRenderer {
                     currentTextAlign = LEFT;
                 }
 
-                // Legacy tweak
-                let ri2 = r * 1.008;
+                // Removed 1.008 tweak for true centering
+                let ri2 = r;
 
                 // Calculate x,y with tweak
                 let x = this.centerX + cos(theta) * ri2;
                 let y = this.centerY + sin(theta) * ri2;
 
-                // Calculate size and width for stable spacing
+                // Halved margin for tighter AM/PM grouping
                 let hourStr = str(hour12);
                 let ampmSize = (this.fontSize * scale) * 0.45;
-                let margin = (this.fontSize * scale) * 0.1;
+                let margin = (this.fontSize * scale) * 0.05; // reduced from 0.1
 
                 textSize(this.fontSize * scale);
                 let hourWidth = textWidth(hourStr);
@@ -700,8 +700,8 @@ class DaySpiralRenderer extends ClockRenderer {
             let r = this.radiusSpiralInner[idx];
             let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
-            // Apply same tweak as outer spiral
-            let ri2 = r * 1.008;
+            // Removed 1.008 tweak for true centering
+            let ri2 = r;
 
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
@@ -714,11 +714,11 @@ class DaySpiralRenderer extends ClockRenderer {
                 currentTextAlign = LEFT;
             }
 
-            // Calculate total width of "Hour + AM/PM" to center the combination
+            // Increased digit/ampm sizes by 10% (0.55 -> 0.60, 0.40 -> 0.44)
             let hourStr = str(hour12);
-            let digitSize = this.fontSize * 0.50; // Dropped 10% from 0.56
-            let ampmSize = this.fontSize * 0.36; // Dropped 20% from 0.45
-            let margin = this.fontSize * 0.08;
+            let digitSize = this.fontSize * 0.60;
+            let ampmSize = this.fontSize * 0.44;
+            let margin = this.fontSize * 0.04;   // Halved from 0.08
 
             textSize(digitSize);
             let hourWidth = textWidth(hourStr);
@@ -771,7 +771,7 @@ class DaySpiralRenderer extends ClockRenderer {
         let innerFontSize = this.fontSize * 0.50; // Classic inner default
 
         if (this.style === 'SpiralHours') {
-            outerFontSize = this.fontSize * 1.26;
+            outerFontSize = this.fontSize * 1.02; // Reduced further to match new HIS hours
             innerFontSize = this.fontSize * 0.50; // matching HIS inner digitSize
         }
 

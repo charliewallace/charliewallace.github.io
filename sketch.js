@@ -257,7 +257,7 @@ function fetchIpLocation() {
     console.log(`[${requestId}] Attempting fetch from ${provider.name}...`);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout per provider
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout per provider
 
     fetch(provider.url, { signal: controller.signal })
       .then(response => {
@@ -2576,19 +2576,14 @@ function usePreciseLocation(isAuto = false) {
       LastLong = Longitude;
 
       CityNameInput.value("");
-      // LocaleTitle = "Precise Location"; // Temporarily set until reverse geocode returns
 
-      // Get reverse geocoding info from Nominatim
-      let revGeoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${Latitude}&lon=${Longitude}`;
-      console.log(`[${requestId}] Reverse geocoding URL:`, revGeoUrl);
-      loadJSON(revGeoUrl, (data) => gotReverseGeocodeData(data, requestId, isAuto), handleNetworkError);
+      // Start failover-enabled lookups
+      fetchReverseGeocodeWithFailover(Latitude, Longitude, requestId, isAuto);
+      fetchTimezoneWithFailover(Latitude, Longitude, requestId, null, false, isAuto);
 
       if (IsUserInitiatedLocation) {
         updateUrlHash();
       }
-
-      // Get timezone using existing GeoNames function
-      getTzUsingLatLong(Latitude, Longitude, requestId);
 
       // Location changed, recalculate sunrise/sunset
       IsSunRiseSetObtained = false;
@@ -3092,7 +3087,7 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
 
       // Add a timeout for the timezone fetch during city lookup
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
 
       fetch(timezoneUrl, { signal: controller.signal })
         .then(response => {
@@ -3269,57 +3264,156 @@ function gotReverseGeocodeData(data, requestId, isAuto = false) {
   }
 }
 
-
-// Instead of using city name, use GeoNames to get the tz and IsDst based on
-// a known lat/long
-// using Nominatim OpenStreetMap API
-// The response to the API call for the city name has arrived.
+/**
+ * Wrapper for the new failover-enabled timezone lookup
+ */
 function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingForOtherLocation, isAuto = false) {
-  console.log(`[${requestId}] Entering getTzUsingLatLong(isOther=${isOther}, isAuto=${isAuto}).`);
+  fetchTimezoneWithFailover(lat, lon, requestId, cityName, isOther, isAuto);
+}
 
-  let timeZoneOffset = getTimeZoneOffset(lat, lon);
+/**
+ * Multi-service reverse geocoding with failover
+ */
+function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
+  console.log(`[${requestId}] Starting reverse geocode lookup for ${lat}, ${lon}...`);
 
-  if (!isOther) TzOffset = timeZoneOffset;
+  const providers = [
+    {
+      name: 'Nominatim (OSM)',
+      url: `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+      parse: (d) => {
+        if (!d || !d.address) return null;
+        return { address: d.address, display_name: d.display_name };
+      }
+    },
+    {
+      name: 'BigDataCloud',
+      url: `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
+      parse: (d) => {
+        if (!d) return null;
+        // Construct address-like object for compatibility with gotReverseGeocodeData
+        let city = d.city || d.locality || d.principalSubdivision;
+        return {
+          address: {
+            city: city,
+            state: d.principalSubdivision,
+            country: d.countryName
+          },
+          display_name: city
+        };
+      }
+    }
+  ];
 
-  if (lat > 90 || lat < -90 || lon < -180 || lon > 180) {
-    console.log("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
-    clearLoadingState();
-    IsSearchingForOtherLocation = false;
-  }
-  else if (timeZoneOffset > 13 || timeZoneOffset < -13) {
-    console.log("Error, invalid time zone offest=" + str(timeZoneOffset));
-    clearLoadingState();
-    IsSearchingForOtherLocation = false;
-  }
-  else {
-    lat = round(lat, 3);
-    lon = round(lon, 3);
+  let currentIdx = 0;
 
-    NewLatitude = lat;
-    NewLongitude = lon;
+  const tryNext = () => {
+    if (requestId !== LocationFetchSerial) return;
+    if (currentIdx >= providers.length) {
+      console.warn(`[${requestId}] All reverse geocode providers failed.`);
+      return;
+    }
 
-    let timezoneUrl =
-      `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`;
-    console.log('timezoneUrl=' + timezoneUrl);
+    const provider = providers[currentIdx];
+    console.log(`[${requestId}] Attempting reverse geocode via ${provider.name}...`);
 
-    // loadJSON doesn't have a built-in timeout, so we'll use fetch for more control
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    fetch(timezoneUrl, { signal: controller.signal })
-      .then(response => {
+    fetch(provider.url, { signal: controller.signal })
+      .then(resp => {
         clearTimeout(timeoutId);
-        return response.json();
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
       })
       .then(data => {
-        gotCityTzData(data, requestId, cityName, isOther, isAuto);
+        const result = provider.parse(data);
+        if (!result) throw new Error("No data found");
+        console.log(`[${requestId}] Reverse geocode success via ${provider.name}`);
+        gotReverseGeocodeData(result, requestId, isAuto);
       })
-      .catch(error => {
+      .catch(err => {
         clearTimeout(timeoutId);
-        console.error(`[${requestId}] Timezone fetch error:`, error);
-        handleNetworkError(error);
+        console.warn(`[${requestId}] ${provider.name} failed:`, err.message);
+        currentIdx++;
+        tryNext();
       });
-  }
+  };
+
+  tryNext();
+}
+
+/**
+ * Multi-service timezone lookup with failover
+ */
+function fetchTimezoneWithFailover(lat, lon, requestId, cityName, isOther, isAuto) {
+  console.log(`[${requestId}] Starting timezone lookup for ${lat}, ${lon}...`);
+
+  const providers = [
+    {
+      name: 'GeoNames',
+      url: `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`,
+      parse: (d) => {
+        if (!d || d.gmtOffset === undefined) return null;
+        return d;
+      }
+    },
+    {
+      name: 'TimeAPI.io',
+      url: `https://www.timeapi.io/api/Time/current/coordinate?latitude=${lat}&longitude=${lon}`,
+      parse: (d) => {
+        if (!d || !d.timeZone || !d.currentOffset) return null;
+        // Map to GeoNames-like format
+        return {
+          gmtOffset: d.currentOffset.seconds / 3600,
+          rawOffset: d.currentOffset.seconds / 3600, // imprecise for DST but better than zero
+          timezoneId: d.timeZone
+        };
+      }
+    }
+  ];
+
+  let currentIdx = 0;
+
+  const tryNext = () => {
+    if (requestId !== LocationFetchSerial) return;
+
+    if (currentIdx >= providers.length) {
+      console.warn(`[${requestId}] All timezone APIs failed. Using mathematical estimate.`);
+      const estimate = getTimeZoneOffset(lat, lon);
+      // Map to GeoNames-like format for fallback
+      const data = { gmtOffset: estimate, rawOffset: estimate };
+      gotCityTzData(data, requestId, cityName, isOther, isAuto);
+      return;
+    }
+
+    const provider = providers[currentIdx];
+    console.log(`[${requestId}] Attempting timezone lookup via ${provider.name}...`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    fetch(provider.url, { signal: controller.signal })
+      .then(resp => {
+        clearTimeout(timeoutId);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
+      })
+      .then(data => {
+        const result = provider.parse(data);
+        if (!result) throw new Error("Invalid/Empty data");
+        console.log(`[${requestId}] Timezone success via ${provider.name}`);
+        gotCityTzData(result, requestId, cityName, isOther, isAuto);
+      })
+      .catch(err => {
+        clearTimeout(timeoutId);
+        console.warn(`[${requestId}] ${provider.name} failed:`, err.message);
+        currentIdx++;
+        tryNext();
+      });
+  };
+
+  tryNext();
 }
 
 // Global error handler for JSON requests
