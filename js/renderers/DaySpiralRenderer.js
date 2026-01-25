@@ -314,7 +314,6 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         } else {
             // DUAL-LOCATION MODE: Draw outer and inner spirals
-            console.log('🎨 Drawing dual spirals');
 
             // Draw outer spiral (user location)
             this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
@@ -370,7 +369,7 @@ class DaySpiralRenderer extends ClockRenderer {
                 if (setSeconds < 0) setSeconds += 86400;
                 if (setSeconds >= 86400) setSeconds -= 86400;
 
-                console.log(`  Adjusted rise/set for TZ offset ${tzOffsetHours}h: rise=${(riseSeconds / 3600).toFixed(1)}h, set=${(setSeconds / 3600).toFixed(1)}h`);
+                // Log removed to avoid console spam in draw loop
             }
         }
 
@@ -975,7 +974,6 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         } else {
             // Dual-location mode: generate outer and inner spirals that run PARALLEL (interleaved)
-            console.log('🔄 Generating dual spirals for dual-location mode (interleaved)');
 
             // Calculate radial space distribution
             const totalSpace = endRadius - startRadius;
@@ -1007,11 +1005,6 @@ class DaySpiralRenderer extends ClockRenderer {
             // Inner spiral progresses inward by the SAME total distance as outer
             const innerEnd = innerStart - totalSpace;
 
-            console.log(`  Total radial space: ${totalSpace.toFixed(2)}, space per turn: ${spacePerTurn.toFixed(2)}`);
-            console.log(`  Outer spiral: ${outerStart.toFixed(2)} → ${outerEnd.toFixed(2)} (stroke: ${outerStrokeWidth.toFixed(2)})`);
-            console.log(`  Gap between spirals: ${gapBetweenSpirals.toFixed(2)}`);
-            console.log(`  Inner spiral: ${innerStart.toFixed(2)} → ${innerEnd.toFixed(2)} (stroke: ${innerStrokeWidth.toFixed(2)})`);
-
             // Generate outer spiral (user location)
             this.xSpiral = [];
             this.ySpiral = [];
@@ -1031,7 +1024,6 @@ class DaySpiralRenderer extends ClockRenderer {
             }
 
             // Generate inner spiral (other location) - NO rotation offset in generation
-            // The rotation is handled by the hour labels and day/night rendering
             this.xSpiralInner = [];
             this.ySpiralInner = [];
             this.radiusSpiralInner = [];
@@ -1046,10 +1038,6 @@ class DaySpiralRenderer extends ClockRenderer {
                 this.ySpiralInner.push(r * sin(theta));
                 this.radiusSpiralInner.push(r);
             }
-
-            console.log(`  Inner spiral generated with ${this.xSpiralInner.length} points`);
-            console.log(`  Inner spiral radius range: ${innerStart.toFixed(2)} → ${innerEnd.toFixed(2)}`);
-            console.log(`  Spirals are now INTERLEAVED (running parallel with small gap)`);
         }
     }
 
