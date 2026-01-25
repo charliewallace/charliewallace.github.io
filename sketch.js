@@ -1152,12 +1152,12 @@ function updateUrlHash() {
   // Do NOT include user's current location (GPS or IP-based)
   if (!IsDisplayingUserLocation && Latitude !== 99999 && Longitude !== 99999 &&
     !isNaN(Latitude) && !isNaN(Longitude)) {
+
     var city = LocaleTitle || "";
+
     // FORCE-SAFEGUARD: Never include titles that look like IP-based approximations
+    // OR if we suspect this is actually the user's location
     if (city.includes("Near ") || city === "Approximate Location" || city === "URL Location") {
-      city = "";
-      // If title implies approximate/IP, we double check if we really should be sharing it
-      // For now, if it looks like an IP location, we skip coordinates in the URL
       console.log("  ⚠️ Privacy Override: Title implies IP location, blocking URL leak");
     } else {
       params.set('lat', Latitude);
@@ -1168,8 +1168,13 @@ function updateUrlHash() {
       }
       console.log("  📍 Including manually-selected location in URL");
     }
-  } else if (IsDisplayingUserLocation) {
+  } else {
+    // Ensure no location data is in the URL
     console.log("  🔒 Privacy: Not including user's current location in URL");
+    // ULTIMATE SAFEGUARD: Explicitly ensure they are deleted if they was somehow added
+    params.delete('lat');
+    params.delete('lon');
+    params.delete('city');
   }
 
   // Include Alternate Location if active
@@ -2576,7 +2581,7 @@ function usePreciseLocation(isAuto = false) {
       // Get reverse geocoding info from Nominatim
       let revGeoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${Latitude}&lon=${Longitude}`;
       console.log(`[${requestId}] Reverse geocoding URL:`, revGeoUrl);
-      loadJSON(revGeoUrl, (data) => gotReverseGeocodeData(data, requestId), handleNetworkError);
+      loadJSON(revGeoUrl, (data) => gotReverseGeocodeData(data, requestId, isAuto), handleNetworkError);
 
       if (IsUserInitiatedLocation) {
         updateUrlHash();
@@ -3173,7 +3178,7 @@ function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherL
 
     IsSunRiseSetObtained = false;
 
-    if (!isAuto) {
+    if (!isAuto && !IsPreciseLocation && !IsRequestingPrecise) {
       IsUserInitiatedLocation = true;
       IsDisplayingUserLocation = false;
     }
@@ -3199,7 +3204,7 @@ function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherL
 }
 
 // Helper for reverse geocoding results from Nominatim
-function gotReverseGeocodeData(data, requestId) {
+function gotReverseGeocodeData(data, requestId, isAuto = false) {
   if (requestId && requestId !== LocationFetchSerial) {
     console.log(`[${requestId}] gotReverseGeocodeData: Ignoring stale callback.`);
     return;
@@ -3249,6 +3254,11 @@ function gotReverseGeocodeData(data, requestId) {
     // Fallback if still too long or no parts found
     if (LocaleTitle.length === 0 && data.display_name) {
       LocaleTitle = data.display_name.split(',')[0];
+    }
+
+    // Prefix with "Near " if this was an automatic GPS/IP check and we don't have precise coords yet
+    if (isAuto && IsDisplayingUserLocation && !IsPreciseLocation && !LocaleTitle.startsWith("Near ")) {
+      LocaleTitle = "Near " + LocaleTitle;
     }
 
     console.log("Updated LocaleTitle from reverse geocode:", LocaleTitle);

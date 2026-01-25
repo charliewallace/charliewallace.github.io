@@ -714,13 +714,13 @@ class DaySpiralRenderer extends ClockRenderer {
         let labelColor = color(255, 235, 120);
         fill(labelColor);
         noStroke();
-        textSize(this.fontSize * 0.7);
+        textSize(this.fontSize * 0.63);
         textStyle(BOLD);
         textAlign(RIGHT, CENTER);
 
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
 
-        let margin = this.fontSize * 0.4;
+        let margin = this.fontSize * 0.2;
 
         // 1. Label for Outer Spiral ("Local")
         let x1 = this.centerX + this.xSpiral[0] - margin;
