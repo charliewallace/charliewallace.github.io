@@ -622,29 +622,33 @@ class DaySpiralRenderer extends ClockRenderer {
                 let x = this.centerX + cos(theta) * ri2;
                 let y = this.centerY + sin(theta) * ri2;
 
-                // Draw hour number
+                // Calculate size and width for stable spacing
                 let hourStr = str(hour12);
-                let hourWidth = textWidth(hourStr);
-                textAlign(currentTextAlign, CENTER);
-                text(hourStr, x + shift, y);
-
-                // Draw single 'A'/'P' indicator - aligned to right edge of number
-                push();
                 let ampmSize = (this.fontSize * scale) * 0.45;
-                textSize(ampmSize);
-                textStyle(BOLD);
-
-                // Position AM/PM to the right of the number's right edge
                 let margin = (this.fontSize * scale) * 0.1;
-                let offsetX = (hourWidth / 2) + margin;
+
+                textSize(this.fontSize * scale);
+                let hourWidth = textWidth(hourStr);
+                textSize(ampmSize);
+                let ampmWidth = textWidth(ampm);
+                let totalW = hourWidth + margin + ampmWidth;
+
+                // Determine start position for unified LEFT alignment drawing
+                let startX = x - totalW / 2 + shift;
                 if (currentTextAlign === LEFT) {
-                    offsetX = hourWidth + margin;
+                    startX = x + shift;
                 }
 
-                // Draw 'A' or 'P' centered vertically relative to the number
+                // Draw hour number
                 textAlign(LEFT, CENTER);
-                text(ampm, x + shift + offsetX, y);
+                textSize(this.fontSize * scale);
+                text(hourStr, startX, y);
 
+                // Draw single 'A'/'P' indicator
+                push();
+                textSize(ampmSize);
+                textStyle(BOLD);
+                text(ampm, startX + hourWidth + margin, y);
                 pop();
             }
         }
@@ -729,7 +733,7 @@ class DaySpiralRenderer extends ClockRenderer {
             }
 
             // Draw hour number
-            textAlign(currentTextAlign, CENTER);
+            textAlign(LEFT, CENTER);
             textSize(digitSize);
             text(hourStr, startX, y);
 
@@ -1095,7 +1099,7 @@ class DaySpiralRenderer extends ClockRenderer {
             } else {
                 // Existing percentages for Classic
                 outerStrokeWeight = spacePerTurn * 0.42;
-                gapBetweenSpirals = spacePerTurn * 0.01; // reduced from 0.03
+                gapBetweenSpirals = spacePerTurn * 0.02; // increased from 0.01 to prevent touching
                 innerStrokeWeight = spacePerTurn * 0.35;
             }
 
