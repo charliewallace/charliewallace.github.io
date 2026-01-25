@@ -304,7 +304,8 @@ function fetchIpLocation() {
         LastLat = Latitude;
         LastLong = Longitude;
 
-        getTzUsingLatLong(Latitude, Longitude, requestId);
+        // Pass isAuto=true to prevent marking this as a user-initiated location
+        getTzUsingLatLong(Latitude, Longitude, requestId, null, false, true);
       })
       .catch(error => {
         clearTimeout(timeoutId);
@@ -407,8 +408,6 @@ function oneTimeInit() {
   locManager = new LocationManager();
   locManager.init(); // Minimal init
 
-  // Fetch IP-based location - this is our fallback if no location is found in the URL
-  fetchIpLocation();
   // (Location fetch logic moved to end of function to ensure UI is ready)
 
   // ==== Bind to existing HTML elements ======
@@ -743,28 +742,21 @@ function oneTimeInit() {
   // ==== Initialize About Modal Content ====
   updateAboutModalContent();
 
-  // ==== Initial Location Fetch (Moved here) ====
+  // ==== INITIAL LOCATION LOGIC ====
 
-  // Parse URL hash. This grabs app settings, clock settings, current clock selection, 
-  //    and Location if provided. 
-  // Returns true if location is in the URL hash
+  // 1. Parse URL hash
   var locationFoundInUrlHash = false;
   if (parseUrlHash()) {
     console.log("Location found in URL hash, using it.");
-    // parseUrlHash already sets the globals and calls updateTimeThisDay
     locationFoundInUrlHash = true;
   }
 
-  // Apply initial state from URL parameters (clock mode, settings, not location)
-  // Must be called after the url hash is parsed.
+  // 2. Apply initial state (mode, settings, etc.)
   applyInitialState();
 
-  // Window.IsDaliMode check removed - handled via applyInitialState
-
-  // The url didn't contain a location. Check if we have location permission? 
+  // 3. Coordinate initial location fetch (GPS or IP)
   if (!locationFoundInUrlHash && navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
-      // Logic for initial check
       function checkPerm(state) {
         if (state === 'granted') {
           console.log("Location permission already granted, using precise.");
@@ -780,58 +772,54 @@ function oneTimeInit() {
 
       checkPerm(result.state);
 
-      // Listen for permission changes (e.g. user resets permission via URL bar)
       result.onchange = function () {
         console.log("Location permission changed to:", result.state);
-        // If it was reset to prompt or denied, we should revert to IP
         if (result.state !== 'granted') {
-          // If we were using precise or waiting for it, fall back
           if (IsPreciseLocation || IsRequestingPrecise) {
             console.log("Permission retracted, reverting to IP location.");
-            IsRequestingPrecise = false; // Stop any GPS success callback from proceeding
+            IsRequestingPrecise = false;
             IsPreciseLocation = false;
-            IsUserInitiatedLocation = false; // Back to automatic mode
-            NewLatitude = 99999; // Clear any pending fetch flags
+            IsUserInitiatedLocation = false;
+            NewLatitude = 99999;
             NewLongitude = 99999;
 
-            // Revert to cached local values immediately if we have them
             if (LatLocal !== 99999 && LngLocal !== 99999) {
               console.log("Instantly restoring cached approximate location.");
               Latitude = LatLocal;
               Longitude = LngLocal;
               if (LocaleTitleLocal) LocaleTitle = LocaleTitleLocal;
-              IsDisplayingUserLocation = true; // Ensure we are back in local mode
-
-              // Update UI input fields to match restored location
+              IsDisplayingUserLocation = true;
               LatInput.value(str(Latitude));
               LngInput.value(str(Longitude));
-              // Note: TzOffset is left as is, getTzUsingLatLong will refresh it if needed
-              clearLoadingState(); // Instant revert complete
+              clearLoadingState();
             } else {
-              // If no cache, we have to fetch IP-based location.
               fetchIpLocation();
             }
-
-            // Now update URL and UI (Latitude/Longitude are now local or we are "Finding you...")
-            //updateUrlHash(); We no longer update the URL based on user location.
             updateUIElements();
-
-            // Recalculate times to match the restored location
             IsSunRiseSetObtained = false;
             updateTimeThisDay();
           }
         } else {
-          // If it was granted (unlikely to happen mid-session without prompt, but possible)
           if (!IsPreciseLocation) {
             usePreciseLocation(true);
           }
         }
       };
+    }).catch(err => {
+      console.warn("Permissions query failed:", err);
+      fetchIpLocation();
     });
-    //} else {  // ATTN: we already called this earlier
-    //  fetchIpLocation();
+  } else if (!locationFoundInUrlHash) {
+    // Fallback if browser doesn't support permissions API or URL has no location
+    console.log("Permissions API not available or no location in URL, defaulting to IP.");
+    fetchIpLocation();
   }
-}  // end of oneTimeInit()  ====================
+
+  // Final check: if we found a location in URL, ensure we aren't "Finding you..."
+  if (locationFoundInUrlHash) {
+    clearLoadingState();
+  }
+} // end of oneTimeInit()  ====================
 
 
 // Parse location and state from URL hash
@@ -922,6 +910,7 @@ function parseUrlHash() {
   if (isValidCoord(lat) && isValidCoord(lon)) {
     console.log("Parsed URL location:", { lat, lon, tz, city });
     IsUserInitiatedLocation = true; // URL location is intentional (someone shared it)
+    IsDisplayingUserLocation = false; // We are showing a specific location from URL, not identifying user
     Latitude = parseFloat(lat);
     Longitude = parseFloat(lon);
 
@@ -1164,18 +1153,21 @@ function updateUrlHash() {
   if (!IsDisplayingUserLocation && Latitude !== 99999 && Longitude !== 99999 &&
     !isNaN(Latitude) && !isNaN(Longitude)) {
     var city = LocaleTitle || "";
-    // Don't include generic location names
-    if (city === "Precise Location" || city === "Approximate Location" || city === "URL Location") {
+    // FORCE-SAFEGUARD: Never include titles that look like IP-based approximations
+    if (city.includes("Near ") || city === "Approximate Location" || city === "URL Location") {
       city = "";
+      // If title implies approximate/IP, we double check if we really should be sharing it
+      // For now, if it looks like an IP location, we skip coordinates in the URL
+      console.log("  ⚠️ Privacy Override: Title implies IP location, blocking URL leak");
+    } else {
+      params.set('lat', Latitude);
+      params.set('lon', Longitude);
+      params.set('tz', TzOffset);
+      if (city) {
+        params.set('city', city);
+      }
+      console.log("  📍 Including manually-selected location in URL");
     }
-
-    params.set('lat', Latitude);
-    params.set('lon', Longitude);
-    params.set('tz', TzOffset);
-    if (city) {
-      params.set('city', city);
-    }
-    console.log("  📍 Including manually-selected location in URL");
   } else if (IsDisplayingUserLocation) {
     console.log("  🔒 Privacy: Not including user's current location in URL");
   }
@@ -1475,22 +1467,30 @@ function updateUIElements() {
   // We only show the button when we are in user location mode but NOT YET precise.
   var gpsBtnDesktop = document.getElementById('btn-gps-ok');
   var gpsBtnMobile = document.getElementById('btn-gps-ok-mobile');
+
+  // Also enforce container visibility if buttons are shown
+  var btnsVisible = false;
+
   [gpsBtnDesktop, gpsBtnMobile].forEach(btn => {
     if (btn) {
       if (IsDisplayingUserLocation && !IsPreciseLocation) {
         // Show button (yellow) if we are in user mode but don't have GPS yet
         btn.classList.add('gps-show');
         btn.classList.add('warning-bg');
+        btnsVisible = true;
       } else {
-        // Hide if looking at a manual/preset location OR if already precise
-        if (btn.classList.contains('gps-show')) {
-          console.log(`Hiding GPS button. IsDisplayingUserLocation=${IsDisplayingUserLocation}, IsPreciseLocation=${IsPreciseLocation}`);
-        }
         btn.classList.remove('warning-bg');
         btn.classList.remove('gps-show');
       }
     }
   });
+
+  // Ensure button group is visible if we want buttons to show
+  var btnGroup = document.querySelector('.button-group');
+  if (btnGroup) {
+    if (btnsVisible) btnGroup.style.display = 'flex';
+    // else? Leave to CSS
+  }
 
   // Update date display
   var dateEl = document.getElementById('date-display');
@@ -1816,6 +1816,7 @@ function handleCoordsSubmitModal() {
 
   // If we get here, all are valid
   IsUserInitiatedLocation = true; // User manually entered coordinates
+  IsDisplayingUserLocation = false; // Manually entering coords means NOT using identification
   Latitude = lat;
   Longitude = lng;
   TzOffset = tz;
@@ -2398,6 +2399,7 @@ function setGmtDisplay()  // Toggling mode button
 // Handler for location errors
 function handleLocationError(error) {
   console.log("GPS location error:", error.message);
+  clearLoadingState(); // Ensure we don't stay gray on error
   exitZenMode(); // Ensure UI is visible to show error details
 
   // Show user-friendly message based on error type
@@ -3093,7 +3095,8 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
           return response.json();
         })
         .then(data => {
-          gotCityTzData(data, requestId, extractedCity, isOther);
+          // City search is NOT auto, it's user-initiated
+          gotCityTzData(data, requestId, extractedCity, isOther, false);
         })
         .catch(error => {
           clearTimeout(timeoutId);
@@ -3116,7 +3119,7 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
 // The response to the API call to get the city's time zone offset has arrived.
 // There is a time delay between this and the code above where
 // loadJSON is called.
-function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherLocation) {
+function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherLocation, isAuto = false) {
   if (requestId && requestId !== LocationFetchSerial) {
     console.log(`[${requestId}] gotCityTzData: Ignoring stale callback.`);
     return;
@@ -3169,8 +3172,11 @@ function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherL
     if (LngInput) LngInput.value(str(Longitude));
 
     IsSunRiseSetObtained = false;
-    IsUserInitiatedLocation = true;
-    IsDisplayingUserLocation = false;
+
+    if (!isAuto) {
+      IsUserInitiatedLocation = true;
+      IsDisplayingUserLocation = false;
+    }
 
     console.log(`City: ${cityName || CityName}`);
     console.log(`Latitude: ${Latitude}`);
@@ -3258,8 +3264,8 @@ function gotReverseGeocodeData(data, requestId) {
 // a known lat/long
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
-function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingForOtherLocation) {
-  console.log(`[${requestId}] Entering getTzUsingLatLong(isOther=${isOther}).`);
+function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingForOtherLocation, isAuto = false) {
+  console.log(`[${requestId}] Entering getTzUsingLatLong(isOther=${isOther}, isAuto=${isAuto}).`);
 
   let timeZoneOffset = getTimeZoneOffset(lat, lon);
 
@@ -3296,7 +3302,7 @@ function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingF
         return response.json();
       })
       .then(data => {
-        gotCityTzData(data, requestId, cityName, isOther);
+        gotCityTzData(data, requestId, cityName, isOther, isAuto);
       })
       .catch(error => {
         clearTimeout(timeoutId);
@@ -3549,10 +3555,6 @@ function setOtherLocation(lat, lon, tz, cityName) {
   if (daySpiralRenderer && daySpiralRenderer.active) {
     daySpiralRenderer.resize(width, height);
   }
-
-  // Mark as user-initiated and not displaying user location
-  IsUserInitiatedLocation = true;
-  IsDisplayingUserLocation = false;
 
   // Update URL hash to include the other location
   updateUrlHash();
