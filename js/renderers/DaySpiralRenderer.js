@@ -101,6 +101,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Check if we're in dual-location mode - need thinner strokes
             const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
+            this.isDualLocationMode = isDualMode;
 
             if (isDualMode) {
                 // In dual mode, outer spiral is wider (20% wider than inner)
@@ -194,7 +195,11 @@ class DaySpiralRenderer extends ClockRenderer {
             this.drawSpiralHours();
         }
 
-        this.drawDayLabels(timeKeeper);
+        if (this.isDualLocationMode && this.style === 'Classic') {
+            this.drawSpiralLabels(locManager);
+        }
+
+        this.drawDayLabels(timeKeeper, locManager);
 
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) {
             this.drawGMT(locManager);
@@ -643,7 +648,8 @@ class DaySpiralRenderer extends ClockRenderer {
         const tzDiffHours = locManager.getTimezoneOffsetDifference();
 
         // For 12-hour mode, display with AM/PM
-        for (let h = 0; h <= 23; h++) {
+        // Skip hour 0 (start) and include hour 24 (end) as requested
+        for (let h = 1; h <= 24; h++) {
             // Calculate what hour this position represents at the "other" location
             // The spiral is rotated, so we need to account for that
             // If other location is 2 hours ahead, we ADD 2 to show their time
@@ -697,10 +703,50 @@ class DaySpiralRenderer extends ClockRenderer {
         textSize(originalTextSize);
     }
 
+    /**
+     * Draw labels to identify the spirals in dual mode
+     * "Local" for outer spiral, City Name for inner spiral
+     */
+    drawSpiralLabels(locManager) {
+        if (!this.xSpiral || this.xSpiral.length === 0) return;
+        if (!this.xSpiralInner || this.xSpiralInner.length === 0) return;
 
-    drawDayLabels(tk) {
+        let labelColor = color(255, 235, 120);
+        fill(labelColor);
+        noStroke();
+        textSize(this.fontSize * 0.7);
+        textStyle(BOLD);
+        textAlign(RIGHT, CENTER);
+
+        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
+
+        let margin = this.fontSize * 0.4;
+
+        // 1. Label for Outer Spiral ("Local")
+        let x1 = this.centerX + this.xSpiral[0] - margin;
+        let y1 = this.centerY + this.ySpiral[0];
+        text("Local", x1, y1);
+
+        // 2. Label for Inner Spiral (City Name or "Other")
+        let cityName = locManager.otherLocation.cityName || "Other";
+        // Extract just the city name if comma-separated
+        if (cityName.includes(',')) cityName = cityName.split(',')[0].trim();
+
+        let x2 = this.centerX + this.xSpiralInner[0] - margin;
+        let y2 = this.centerY + this.ySpiralInner[0];
+        text(cityName, x2, y2);
+
+        this._resetShadow();
+        textStyle(NORMAL);
+    }
+
+
+    drawDayLabels(tk, locManager) {
         // Only show day labels in Classic mode
         if (this.style !== 'Classic') return;
+
+        // Hide DOW abbreviations in dual mode as requested
+        if (locManager && locManager.hasOtherLocation()) return;
 
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
