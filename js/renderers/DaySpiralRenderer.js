@@ -386,31 +386,72 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Only draw day/night colors if we are NOT waiting for location data
         if (!window.IsLoadingLocation) {
-            // 2. Draw Night (Midnight -> Sunrise)
-            stroke(nightColor);
-            if (idxRise > 0) {
-                beginShape();
-                for (let i = 0; i <= idxRise; i++) {
-                    if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+            if (idxRise < idxSet) {
+                // NORMAL CASE: Sunrise occurs before Sunset in the 24-hour spiral
+                // 2. Draw Night (Midnight -> Sunrise)
+                stroke(nightColor);
+                if (idxRise > 0) {
+                    beginShape();
+                    for (let i = 0; i <= idxRise; i++) {
+                        if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    }
+                    endShape();
                 }
-                endShape();
-            }
 
-            // 3. Draw Day (Sunrise -> Sunset)
-            stroke(dayColor);
-            if (idxSet > idxRise) {
+                // 3. Draw Day (Sunrise -> Sunset)
+                stroke(dayColor);
                 beginShape();
                 for (let i = idxRise; i <= idxSet; i++) {
                     if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
-            }
 
-            // 4. Draw Night (Sunset -> Midnight)
-            stroke(nightColor);
-            if (idxSet < len - 1) {
+                // 4. Draw Night (Sunset -> Midnight)
+                stroke(nightColor);
+                if (idxSet < len - 1) {
+                    beginShape();
+                    for (let i = idxSet; i < len; i++) {
+                        vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    }
+                    endShape();
+                }
+            } else if (idxRise > idxSet) {
+                // WRAPPED CASE: Sunset occurs before Sunrise in terms of circular index
+                // (This happens when the other location's daylight period crosses our local midnight)
+
+                // 2. Draw Day (Midnight -> Sunset)
+                stroke(dayColor);
+                if (idxSet > 0) {
+                    beginShape();
+                    for (let i = 0; i <= idxSet; i++) {
+                        if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    }
+                    endShape();
+                }
+
+                // 3. Draw Night (Sunset -> Sunrise)
+                stroke(nightColor);
                 beginShape();
-                for (let i = idxSet; i < len; i++) {
+                for (let i = idxSet; i <= idxRise; i++) {
+                    if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                }
+                endShape();
+
+                // 4. Draw Day (Sunrise -> Midnight)
+                stroke(dayColor);
+                if (idxRise < len - 1) {
+                    beginShape();
+                    for (let i = idxRise; i < len; i++) {
+                        vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    }
+                    endShape();
+                }
+            } else {
+                // SPECIAL CASE: Sun never rises/sets or indices are identical
+                // Default to night for now (matches 0 rise/set indices for "always dark")
+                stroke(nightColor);
+                beginShape();
+                for (let i = 0; i < len; i++) {
                     vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
