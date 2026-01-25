@@ -109,6 +109,7 @@ var IsRequestingPrecise = false; // true if a GPS request is currently in flight
 var LocationFetchSerial = 0; // Incrementing ID to track async location requests
 var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
+var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset, BaseMsSunset;
@@ -816,6 +817,8 @@ function parseUrlHash() {
   var hash = window.location.hash.substring(1); // remove #
   if (!hash) return false;
 
+  var locationFound = false;
+
   // Expected format: lat=33.743&lon=-117.643&tz=-8&city=Silverado&clock=mobius&...
   // or legacy comma separated: 33.743,-117.643,-8,Silverado
 
@@ -933,10 +936,27 @@ function parseUrlHash() {
     // Recalculate everything
     IsSunRiseSetObtained = false;
     updateTimeThisDay();
-    return true;
+    locationFound = true;
   }
 
-  return false;
+  // Parse Alternate Location if present
+  var otherLat = params.get('otherLat');
+  var otherLon = params.get('otherLon');
+  var otherTz = params.get('otherTz');
+  var otherCity = params.get('otherCity');
+
+  if (isValidCoord(otherLat) && isValidCoord(otherLon)) {
+    console.log("Parsed alternate URL location:", { otherLat, otherLon, otherTz, otherCity });
+    window._initialOtherLocation = {
+      lat: parseFloat(otherLat),
+      lon: parseFloat(otherLon),
+      tz: parseFloat(otherTz || 0),
+      city: otherCity ? decodeURIComponent(otherCity) : "URL Location"
+    };
+    locationFound = true;
+  }
+
+  return locationFound;
 }
 
 // Apply initial state from URL parameters (called after renderers are initialized)
@@ -1086,6 +1106,14 @@ function applyInitialState() {
     delete window._initialMobiusState; // Clean up
   }
 
+  // Apply alternate location if specified
+  if (window._initialOtherLocation) {
+    const other = window._initialOtherLocation;
+    console.log("  🌎 Applying initial alternate location:", other.city);
+    setOtherLocation(other.lat, other.lon, other.tz, other.city);
+    delete window._initialOtherLocation;
+  }
+
   console.log("  ✅ Initial state applied");
   updateUrlHash(); // Ensure URL reflects all applied state
 }
@@ -1103,7 +1131,8 @@ function updateUrlHash() {
     'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
     'daySpiralStyle', 'daySpiralTimeFormat',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
-    'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight'
+    'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
+    'otherLat', 'otherLon', 'otherTz', 'otherCity'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1127,6 +1156,18 @@ function updateUrlHash() {
     console.log("  📍 Including manually-selected location in URL");
   } else if (IsDisplayingUserLocation) {
     console.log("  🔒 Privacy: Not including user's current location in URL");
+  }
+
+  // Include Alternate Location if active
+  if (locManager && locManager.hasOtherLocation()) {
+    const other = locManager.otherLocation;
+    params.set('otherLat', other.latitude);
+    params.set('otherLon', other.longitude);
+    params.set('otherTz', other.tzOffset);
+    if (other.cityName) {
+      params.set('otherCity', other.cityName);
+    }
+    console.log("  🌎 Including alternate location in URL");
   }
 
   // Zen mode
@@ -2389,20 +2430,23 @@ function exitZenMode() {
 // Unified handler for network and CORS errors during API calls
 function handleNetworkError(err) {
   console.log("Network/CORS error:", err);
-  exitZenMode(); // Ensure UI is visible to show error details
+  exitZenMode();
   var errorMsg = "Network error: Could not reach the location service. This may be due to a CORS issue, ad blocker, or network loss.";
 
-  // Try to be more specific if possible
   if (err && err.message) {
     console.log("Error details:", err.message);
   }
 
   alert(errorMsg);
 
-  // Revert UI state
   clearLoadingState();
   if (typeof CityNameInput !== 'undefined') CityNameInput.value('');
-  if (typeof PrevLocaleTitle !== 'undefined') LocaleTitle = PrevLocaleTitle;
+
+  if (!IsSearchingForOtherLocation && typeof PrevLocaleTitle !== 'undefined') {
+    LocaleTitle = PrevLocaleTitle;
+  }
+
+  IsSearchingForOtherLocation = false;
 }
 
 
@@ -2648,138 +2692,7 @@ function setBerkeley() {
 
 
 //=======================
-// Set location and timezone to Kansas City, MO
-//  
-function setKansasCity() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setKansasCity()`);
-  IsTimezoneMismatch = false; // User manually selected location
-  IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
-  PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("Kansas City, MO, USA");
-  LocaleTitle = "Kansas City";
-
-  // Skip Nominatim and go direct to Tz lookup
-  Latitude = 39.099;
-  Longitude = -94.578;
-  setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
-
-  var tzString = str(TzOffset);
-  // Add in a plus sign if not negative
-  if (TzOffset > 0) {
-    tzString = "+" + str(TzOffset);
-  }
-
-  // init the UI field
-  if (TzInput) TzInput.value(tzString);
-  LastTz = TzOffset;
-
-  var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
-  LastLat = Latitude;
-
-  var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
-  LastLong = Longitude;
-
-  // Location may have changed, so need to regen spiral point array.
-  // Clear flag that's checked in updateTimeThisDay()
-  IsSunRiseSetObtained = false;
-
-  updateUrlHash();
-  updateTimeThisDay();
-}
-
-
-//=======================
-// Set location and timezone to Melbourne
-//  
-function setMelbourne() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setMelbourne()`);
-  IsTimezoneMismatch = false; // User manually selected location
-  IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
-  PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("Melbourne, AU");
-  LocaleTitle = "Melbourne";
-
-  // Skip Nominatim and go direct to Tz lookup
-  Latitude = -37.813;
-  Longitude = 144.963;
-  setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
-
-  var tzString = str(TzOffset);
-  // Add in a plus sign if not negative
-  if (TzOffset > 0) {
-    tzString = "+" + str(TzOffset);
-  }
-
-  // init the UI field
-  if (TzInput) TzInput.value(tzString);
-  LastTz = TzOffset;
-
-  var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
-  LastLat = Latitude;
-
-  var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
-  LastLong = Longitude;
-
-  // Location may have changed, so need to regen spiral point array.
-  // Clear flag that's checked in updateTimeThisDay()
-  IsSunRiseSetObtained = false;
-  //tempTest = true; 
-  updateUrlHash();
-  updateTimeThisDay();
-}
-
-// ========================================
-// Set location and timezone to San Diego
-function setSanDiego() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] setSanDiego()`);
-  IsTimezoneMismatch = false; // User manually selected location
-  IsUserInitiatedLocation = true; // User clicked preset button
-  IsDisplayingUserLocation = false; // Manually selected location
-  PrevLocaleTitle = LocaleTitle;
-  if (CityNameInput) CityNameInput.value("San Diego, CA, USA");
-  LocaleTitle = "San Diego";
-
-  // Skip Nominatim and go direct to Tz lookup
-  Latitude = 32.715;
-  Longitude = -117.161;
-  setLoadingState();
-  getTzUsingLatLong(Latitude, Longitude, requestId);
-
-  var tzString = str(TzOffset);
-  // Add in a plus sign if not negative
-  if (TzOffset > 0) {
-    tzString = "+" + str(TzOffset);
-  }
-  // init the UI field
-  if (TzInput) TzInput.value(tzString);
-  LastTz = TzOffset;
-
-  var latString = str(Latitude);
-  if (LatInput) LatInput.value(latString);
-  LastLat = Latitude;
-
-  var longString = str(Longitude);
-  if (LngInput) LngInput.value(longString);
-  LastLong = Longitude;
-
-  // Location may have changed, so need to regen spiral point array.
-  // Clear flag that's checked in updateTimeThisDay()
-  IsSunRiseSetObtained = false;
-
-  updateUrlHash();
-  updateTimeThisDay();
-}
+// DELETED OLD DUPLICATE PRESETS (Merged into setOtherLocation logic at end of file)
 
 
 // ========================================================
@@ -2912,6 +2825,13 @@ function handleCitySubmitUnified() {
   var input = select('#city-search-input');
   var city = input.value();
   if (city && city.length > 1) {
+    // In DaySpiral mode, searches now target the alternate location
+    if (daySpiralRenderer && daySpiralRenderer.active) {
+      IsSearchingForOtherLocation = true;
+      console.log("  🔍 Searching for alternate location");
+    } else {
+      IsSearchingForOtherLocation = false;
+    }
     getLocationUsingCityName(city, requestId);
     closeAllModals();
   } else {
@@ -2928,15 +2848,20 @@ function handleCoordsSubmitUnified() {
   var lng = parseFloat(select('#input-lon').value());
   var tz = parseFloat(select('#input-tz').value());
 
-  // Debug Alert - REMOVED
-
   if (isNaN(lat) || isNaN(lng)) {
-    // error handling?
     alert("Invalid Coordinates");
     return;
   }
 
   console.log("Submit Manual Coords: Lat=" + lat + " Lng=" + lng + " Tz=" + tz);
+
+  // In DaySpiral mode, manual coordinates now target the alternate location
+  if (daySpiralRenderer && daySpiralRenderer.active) {
+    console.log("  📍 Setting manual alternate location");
+    setOtherLocation(lat, lng, isNaN(tz) ? 0 : tz, "Manual Location");
+    closeAllModals();
+    return;
+  }
 
   Latitude = lat;
   LastLat = lat;
@@ -3005,27 +2930,17 @@ function handleCitySubmit() {
 
 // ==============
 // Alternate way to set location, timezone, and IsDst using passed city name.
-function getLocationUsingCityName(passedCityName, requestId = 0) {
+function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSearchingForOtherLocation) {
   if (requestId === 0) requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] getLocationUsingCityName(${passedCityName})`);
-  PrevLocaleTitle = LocaleTitle; // Capture for error reversion
-  IsUserInitiatedLocation = true; // User entered city name
-  IsDisplayingUserLocation = false; // Looking up a specific city
+  console.log(`[${requestId}] getLocationUsingCityName(${passedCityName}, isOther=${isOther})`);
+
+  if (!isOther) PrevLocaleTitle = LocaleTitle; // Only capture for primary location reversion
+
   CityName = passedCityName;
 
-  // url used for OpenStreetmap (Nominatim)
   let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(CityName)}`;
-
-  // Make a GET request to the Nominatim API (OpenStreetMap)
-  // ATTN: the gotCityLocationDataOpenStMap() fcn will be called a bit later, when the  
-  // response to the url call comes in.  We won't know the lat/lon until then.
-  //  THis means the subsequent API call to get the time zone can't happen until then.
   setLoadingState();
-  loadJSON(apiUrl, gotCityLocationDataOpenStMap, handleNetworkError);
-
-  // ALT way to get lat/long - this works! SAVE ======
-  //let geoApiUrl = `https://secure.geonames.org/searchJSON?q=${CityName}&maxRows=1&username=charliewallace`; 
-  //loadJSON(geoApiUrl, gotCityLocationDataGeoNames);
+  loadJSON(apiUrl, (data) => gotCityLocationDataOpenStMap(data, requestId, isOther), handleNetworkError);
 }
 
 
@@ -3070,87 +2985,66 @@ function gotCityLocationDataGeoNames(data)
 
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
-function gotCityLocationDataOpenStMap(data, requestId) {
+function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForOtherLocation) {
   if (requestId && requestId !== LocationFetchSerial) {
     console.log(`[${requestId}] gotCityLocationDataOpenStMap: Ignoring stale callback.`);
     return;
   }
-  //console.log("Entering gotCityLocationDataOpenStMap().");
 
-  // Check if the response contains any results
-  var isError = false;
   if (data.length != 0) {
     console.log("City location data from OpenStreetMap:")
     console.log(data[0]);
 
-    let result = data[0]; // Take the first result
+    let result = data[0];
+    let extractedCity = "";
 
-    // Extract formatted name for display (e.g. "Boston, Massachusetts, United States")
-    // Use just the first part for LocaleTitle
     if (result.display_name) {
       let parts = splitTokens(result.display_name, ',');
-      if (parts.length > 0) LocaleTitle = trim(parts[0]);
+      if (parts.length > 0) extractedCity = trim(parts[0]);
     }
 
-    // Extract latitude, longitude, and time zone offset
+    if (!isOther) {
+      LocaleTitle = extractedCity;
+    }
+
     let lat = result.lat;
     let lon = result.lon;
 
-    // ==240111a
-    // initialize time zone to estimate based on longitude.
     let timeZoneOffset = getTimeZoneOffset(lat, lon);
 
-    TzOffset = timeZoneOffset;  // store into global
+    if (!isOther) {
+      TzOffset = timeZoneOffset;
+    }
 
-    // validate the new location
     if (lat > 90 || lat < -90 || lon < -180 || lon > 180) {
-      isError = true;
-      print("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
+      console.log("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
       clearLoadingState();
     }
-    //else if (timeZoneOffset/3600 > 13 || timeZoneOffset/3600 < -13) 
     else if (timeZoneOffset > 13 || timeZoneOffset < -13) {
-      isError = true;
-      print("Error, invalid time zone offest=" + str(timeZoneOffset));
+      console.log("Error, invalid time zone offest=" + str(timeZoneOffset));
       clearLoadingState();
     }
-    else // looks like a valid offset
-    {
-      lat = round(lat, 3); // round to 3 places
-      lon = round(lon, 3); // round to 3 places
+    else {
+      lat = round(lat, 3);
+      lon = round(lon, 3);
 
-      // save into intermediate globals.
-      // We are not yet ready to change the real latitude/longitude
-      // because we don't have the new time zone yet.
-      // We'll get it via the loadJSON() call below, but the new tz
-      // won't show up until a bit later.
-      // In the meantime, the main draw() method will bail out (not draw)
-      // as long as either of these is not equal to 99999. That starts here.
       NewLatitude = lat;
       NewLongitude = lon;
 
-      //console.log("OpenStMap: lat=" + str(lat) + " lon=" + str(lon));
-
-      // Now that we have the lat/lon, we need one more API call to geonames
-      // in order to fetch the time zone offset.    
-      // GeoNames API URL for timezone lookup
       let timezoneUrl =
         `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`;
       console.log('timezoneUrl=' + timezoneUrl);
 
-      // Make a GET request using Geonames to get timezone details.
-      // The gotCityTzData() fcn will run a bit later when the response arrives.
-      loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId), handleNetworkError);
+      loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId, extractedCity, isOther), handleNetworkError);
     }
   }
   else {
     console.log(`No results found for ${CityName}`);
     alert(`Could not find location for: ${CityName}`);
     if (CityNameInput) CityNameInput.value('');
-    LocaleTitle = PrevLocaleTitle;
+    if (!isOther) LocaleTitle = PrevLocaleTitle;
     clearLoadingState();
   }
-
 }
 
 
@@ -3158,29 +3052,30 @@ function gotCityLocationDataOpenStMap(data, requestId) {
 // The response to the API call to get the city's time zone offset has arrived.
 // There is a time delay between this and the code above where
 // loadJSON is called.
-function gotCityTzData(data, requestId) {
+function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherLocation) {
   if (requestId && requestId !== LocationFetchSerial) {
     console.log(`[${requestId}] gotCityTzData: Ignoring stale callback.`);
-    // Note: We don't clear loading state here because a newer request is already in progress
     return;
   }
-  console.log("Entering gotCityTzData().");
+  console.log(`Entering gotCityTzData(isOther=${isOther}).`);
 
-  // Check if the response contains any results
-  var isError = false;
   if (data.length != 0) {
-    console.log('in gotCityTzData():')
-    console.log(data);  // dump the returned data
-
-    // Extract time zone offset.  This takes daylight savings into acct.
     let timeZoneOffset = data.gmtOffset;
-    // ATTN: if the data.rawOffset differs from the data.gmtOffset,
-    // that means daylight savings time ("Summer time") is active.  
 
-    //console.log('Geonames tz offset = ' + str(timeZoneOffset));
-    TzOffset = timeZoneOffset;    // store into global
+    if (isOther && daySpiralRenderer && daySpiralRenderer.active) {
+      console.log(`  🌎 Dual mode: Setting other location to ${cityName}`);
+      setOtherLocation(NewLatitude, NewLongitude, timeZoneOffset, cityName);
 
-    // figure out if the city is using daylight savings time.
+      // Reset flags
+      NewLatitude = 99999;
+      NewLongitude = 99999;
+      IsSearchingForOtherLocation = false;
+      clearLoadingState();
+      return;
+    }
+
+    TzOffset = timeZoneOffset;
+
     let rawOffset = data.rawOffset;
     if (rawOffset == timeZoneOffset) {
       IsDst = false;
@@ -3189,72 +3084,45 @@ function gotCityTzData(data, requestId) {
       IsDst = true;
     }
 
-    // Now that we have the time zone, we can update the global
-    //  latitude and longitude; if done earlier, and there was a call to 
-    //  draw() before the fetch of time zone was complete, we would
-    //  update the clock with the old timezone momentarily, then 
-    //  shortly after, the new tz would come in, and fix things.
-    //  Caused a glitch.  This avoids that.
-    // ASSUMPTION: we assume that if we got here, we have valid values
-    //  of NewLatitude and NewLongitude.  No need to check here to
-    //  ensure we have the new values.
     Latitude = NewLatitude;
     Longitude = NewLongitude;
 
-    // reset the NewLatitude and NewLongitude to illegal values 99999
-    // to allow the redraw
     NewLatitude = 99999;
     NewLongitude = 99999;
 
-    // this is kept local
     var tzString;
-
-    // Create string version of tz. Add a leading plus sign if not negative
     if (timeZoneOffset > 0) {
-      timeZoneOffset = int(timeZoneOffset); // round downward
+      timeZoneOffset = int(timeZoneOffset);
       tzString = "+" + str(timeZoneOffset);
     }
     else {
-      timeZoneOffset = -int(-timeZoneOffset); // round upward      
+      timeZoneOffset = -int(-timeZoneOffset);
       tzString = str(timeZoneOffset);
     }
-    //console.log("tz after possibly adding leading plus sign:" + tzString);
 
-    // Update fields on-screen.
     if (TzInput) TzInput.value(tzString);
     if (LatInput) LatInput.value(str(Latitude));
     if (LngInput) LngInput.value(str(Longitude));
 
-    // Location may have changed, so need to regen spiral point array.
-    // Clear flag that's checked in updateTimeThisDay()
     IsSunRiseSetObtained = false;
+    IsUserInitiatedLocation = true;
+    IsDisplayingUserLocation = false;
 
-    // Display the information
-    console.log(`City: ${CityName}`);
-    console.log('Location based on OpenStreetMap data:')
+    console.log(`City: ${cityName || CityName}`);
     console.log(`Latitude: ${Latitude}`);
     console.log(`Longitude: ${Longitude}`);
-    console.log('==tz based on GeoNames data==')
     console.log(`Time Zone Offset: ${timeZoneOffset} hours`);
 
-    // Only update URL for user-initiated location changes, or ALWAYS for precise locations
-    if (IsUserInitiatedLocation || (IsPreciseLocation && Latitude !== 99999)) {
-      updateUrlHash();
-      // We don't reset flag here anymore to avoid race condition with reverse geocode callback
-    }
+    updateUrlHash();
     clearLoadingState();
   }
   else {
-    isError = true;
-    console.log(`No timezone results returned from GeoNames, will use estimate based on longitude.`);
-
-    // Our main way of updating time zone has failed.
-    // This call is a backup method that set tz purely based on longitude.
-    TzOffset = getTimeZoneOffset(Latitude, Longitude);
+    console.log(`No timezone results returned from GeoNames.`);
+    TzOffset = getTimeZoneOffset(NewLatitude, NewLongitude);
     Latitude = NewLatitude;
     Longitude = NewLongitude;
 
-    NewLatitude = 99999; // allow draw() to resume
+    NewLatitude = 99999;
     NewLongitude = 99999;
     clearLoadingState();
   }
@@ -3326,67 +3194,40 @@ function gotReverseGeocodeData(data, requestId) {
 // a known lat/long
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
-function getTzUsingLatLong(lat, lon, requestId) {
-  console.log(`[${requestId}] Entering getTzUsingLatLong().`);
-  // Check if the response contains any results
-  var isError = false;
+function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingForOtherLocation) {
+  console.log(`[${requestId}] Entering getTzUsingLatLong(isOther=${isOther}).`);
 
-  // initialize time zone to estimate based on longitude.
   let timeZoneOffset = getTimeZoneOffset(lat, lon);
 
-  TzOffset = timeZoneOffset;  // store into global
+  if (!isOther) TzOffset = timeZoneOffset;
 
-  // validate the new location
   if (lat > 90 || lat < -90 || lon < -180 || lon > 180) {
-    isError = true;
-    print("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
+    console.log("Error, invalid lat or long.  Lat=" + str(lat) + " Long=" + str(lon))
     clearLoadingState();
+    IsSearchingForOtherLocation = false;
   }
   else if (timeZoneOffset > 13 || timeZoneOffset < -13) {
-    isError = true;
-    print("Error, invalid time zone offest=" + str(timeZoneOffset));
+    console.log("Error, invalid time zone offest=" + str(timeZoneOffset));
     clearLoadingState();
+    IsSearchingForOtherLocation = false;
   }
-  else // looks like a valid offset
-  {
-    lat = round(lat, 3); // round to 3 places
-    lon = round(lon, 3); // round to 3 places
+  else {
+    lat = round(lat, 3);
+    lon = round(lon, 3);
 
-    // save into intermediate globals.
-    // We are not yet ready to change the real latitude/longitude
-    // because we don't have the new time zone yet.
-    // We'll get it via the loadJSON() call below, but the new tz
-    // won't show up until a bit later.
-    // In the meantime, the main draw() method will bail out (not draw)
-    // as long as either of these is not equal to 99999. That starts here.
     NewLatitude = lat;
     NewLongitude = lon;
 
-    // Now that we have the lat/lon, we need one more API call to geonames
-    // in order to fetch the time zone offset.    
-    // GeoNames API URL for timezone lookup
     let timezoneUrl =
       `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`;
     console.log('timezoneUrl=' + timezoneUrl);
 
-    // Make a GET request using Geonames to get timezone details.
-    // The gotCityTzData() fcn will run a bit later when the response arrives.
-    // It sets the global time zone offset and also sets IsDst.
-    loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId), handleNetworkError);
+    loadJSON(timezoneUrl, (data) => gotCityTzData(data, requestId, cityName, isOther), handleNetworkError);
   }
-
-
 }
 
 // Global error handler for JSON requests
-function handleNetworkError(response) {
-  console.log("Network Error details:", response);
-  alert("Network Error: Could not fetch location data. Please check your connection.");
-  clearLoadingState();
-  if (typeof PrevLocaleTitle !== 'undefined' && PrevLocaleTitle) {
-    LocaleTitle = PrevLocaleTitle;
-  }
-}
+// Redundant handleNetworkError removed (unified version at line 2431)
 
 
 
