@@ -331,7 +331,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Draw outer spiral (user location)
             this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
-                dayColor, nightColor, baseColor, loc.hasValidLocation, 0, this.outerStrokeWeight);
+                dayColor, nightColor, baseColor, true, 0, this.outerStrokeWeight);
 
             // Draw inner spiral (other location) with rotation offset
             const tzDiffHours = locManager.getTimezoneOffsetDifference();
@@ -936,24 +936,20 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
         line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
 
-        // Draw Hour Hand (Tracks Spiral)
-        // Find radius at current hour
+        // Draw Hour Hand (Tracks Spiral with Oval Tip)
         let totalPoints = this.numPointsPerTurn * 2;
         let hIdx = Math.floor((tk.hours + tk.minutes / 60) / 24.0 * totalPoints);
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
 
-        let rHour = this.radiusSpiral[hIdx];
+        let radii = this._getOvalTipRadii(hIdx);
+        let rInner = radii.min;
+        let rOuter = radii.max;
 
-        // If in dual mode, move tip to the gap between spirals
-        if (this.isDualLocationMode && this.outerStrokeWidth && this.gapBetweenSpirals) {
-            rHour -= (this.outerStrokeWidth / 2) + (this.gapBetweenSpirals / 2);
-        }
+        // Draw Tip and get connection point
+        let tipConnectR = this._drawHourHandOvalTip(hourAngle, rInner, rOuter);
 
         strokeWeight(Math.max(3, this.secondaryStrokeWeight * 1.2));
-        line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * rHour, this.centerY + sin(hourAngle) * rHour);
-
-        // Classic mode has no circle at tip usually? 
-        // The original DaySpiralRenderer I wrote didn't have it.
+        line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * tipConnectR, this.centerY + sin(hourAngle) * tipConnectR);
 
         this._resetShadow();
         pop();
@@ -1041,19 +1037,21 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeWeight(minWeight);
         line(this.centerX, this.centerY, this.centerX + cos(minRads) * minutesRadius, this.centerY + sin(minRads) * minutesRadius);
 
-        // Hour Hand
+        // Hour Hand with Oval Tip
+        let totalPointsH = this.numPointsPerTurn * 2;
+        let hIdx = Math.floor((theHour / 24.0) * totalPointsH);
+        if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
+
+        let radii = this._getOvalTipRadii(hIdx);
+        let rInner = radii.min;
+        let rOuter = radii.max;
+
+        let tipConnectR = this._drawHourHandOvalTip(hourRads, rInner, rOuter);
+
         strokeWeight(hourWeight);
         strokeCap(ROUND);
-        line(this.centerX, this.centerY, this.centerX + cos(hourRads) * hoursRadius, this.centerY + sin(hourRads) * hoursRadius);
+        line(this.centerX, this.centerY, this.centerX + cos(hourRads) * tipConnectR, this.centerY + sin(hourRads) * tipConnectR);
 
-        // Circle at tip (Legacy Feature)
-        noFill();
-        strokeWeight(3);
-        stroke(255);
-        let tipSize = 32 * localScale;
-        ellipse(this.centerX + cos(hourRads) * hoursRadius,
-            this.centerY + sin(hourRads) * hoursRadius,
-            tipSize, tipSize);
 
         this._resetShadow();
         pop();
@@ -1159,6 +1157,65 @@ class DaySpiralRenderer extends ClockRenderer {
                 this.radiusSpiralInner.push(r);
             }
         }
+    }
+
+    // Helper to calculate the min/max radii for the oval tip at a given time index
+    _getOvalTipRadii(hIdx) {
+        // Clamp index
+        if (hIdx < 0) hIdx = 0;
+        if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
+
+        // Default to Outer/Single Spiral center
+        let rCenter = this.radiusSpiral[hIdx];
+        let rMin, rMax;
+
+        if (this.isDualLocationMode && this.radiusSpiralInner && this.radiusSpiralInner[hIdx]) {
+            let rInnerCenter = this.radiusSpiralInner[hIdx];
+
+            // Bounds: Inner Edge of Inner Spiral -> Outer Edge of Outer Spiral
+            // Sync with generateSpiralPoints weights
+            let innerW = this.innerStrokeWeight || this.spiralStrokeWeight;
+            let outerW = this.outerStrokeWeight || this.spiralStrokeWeight;
+
+            rMin = rInnerCenter - (innerW / 2);
+            rMax = rCenter + (outerW / 2);
+
+        } else {
+            // Single Mode
+            let w = this.spiralStrokeWeight;
+            rMin = rCenter - (w / 2);
+            rMax = rCenter + (w / 2);
+        }
+
+        return { min: rMin, max: rMax };
+    }
+
+    // Helper to draw the rounded rectangle tip
+    _drawHourHandOvalTip(hourAngle, rMin, rMax) {
+        push();
+        noFill();
+        stroke(255);
+        strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
+        strokeCap(ROUND);
+
+        let w = this.fontSize * 1.1; // Width of capsule (tangential)
+
+        translate(this.centerX, this.centerY);
+        rotate(hourAngle);
+
+        rectMode(CORNERS);
+        let padding = 4;
+        let extra = (this.fontSize * 0.6) + padding;
+
+        let startX = rMin - extra;
+        let endX = rMax + extra;
+        let halfW = w / 2;
+
+        rect(startX, -halfW, endX, halfW, halfW);
+
+        pop();
+
+        return startX; // Return where the hand should stop
     }
 
     // --- Shadow Helpers ---
