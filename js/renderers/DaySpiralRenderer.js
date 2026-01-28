@@ -936,20 +936,23 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
         line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
 
-        // Draw Hour Hand (Tracks Spiral with Oval Tip)
+        // Draw Hour Hand (Two-Pass: Shadow then Clean)
         let totalPoints = this.numPointsPerTurn * 2;
         let hIdx = Math.floor((tk.hours + tk.minutes / 60) / 24.0 * totalPoints);
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
 
         let radii = this._getOvalTipRadii(hIdx);
-        let rInner = radii.min;
-        let rOuter = radii.max;
+        let handWeight = Math.max(3, this.secondaryStrokeWeight * 1.2);
 
-        // Draw Tip and get connection point
-        let tipConnectR = this._drawHourHandOvalTip(hourAngle, rInner, rOuter);
+        // Pass 1: Shadow (and Base Body)
+        // Shadow is already active from top of function
+        let connR = this._drawHourHandOvalTip(hourAngle, radii.min, radii.max);
+        this._drawHourHandGeometry(hourAngle, connR, handWeight);
 
-        strokeWeight(Math.max(3, this.secondaryStrokeWeight * 1.2));
-        line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * tipConnectR, this.centerY + sin(hourAngle) * tipConnectR);
+        // Pass 2: Clean Body (Covers shadow artifacts)
+        this._resetShadow();
+        this._drawHourHandOvalTip(hourAngle, radii.min, radii.max);
+        this._drawHourHandGeometry(hourAngle, connR, handWeight);
 
         this._resetShadow();
         pop();
@@ -1037,20 +1040,21 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeWeight(minWeight);
         line(this.centerX, this.centerY, this.centerX + cos(minRads) * minutesRadius, this.centerY + sin(minRads) * minutesRadius);
 
-        // Hour Hand with Oval Tip
+        // Hour Hand (Two-Pass: Shadow then Clean)
         let totalPointsH = this.numPointsPerTurn * 2;
         let hIdx = Math.floor((theHour / 24.0) * totalPointsH);
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
 
         let radii = this._getOvalTipRadii(hIdx);
-        let rInner = radii.min;
-        let rOuter = radii.max;
 
-        let tipConnectR = this._drawHourHandOvalTip(hourRads, rInner, rOuter);
+        // Pass 1: Shadow
+        let connR = this._drawHourHandOvalTip(hourRads, radii.min, radii.max);
+        this._drawHourHandGeometry(hourRads, connR, hourWeight);
 
-        strokeWeight(hourWeight);
-        strokeCap(ROUND);
-        line(this.centerX, this.centerY, this.centerX + cos(hourRads) * tipConnectR, this.centerY + sin(hourRads) * tipConnectR);
+        // Pass 2: Clean
+        this._resetShadow();
+        this._drawHourHandOvalTip(hourRads, radii.min, radii.max);
+        this._drawHourHandGeometry(hourRads, connR, hourWeight);
 
 
         this._resetShadow();
@@ -1205,7 +1209,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
         rectMode(CORNERS);
         let padding = 4;
-        let extra = (this.fontSize * 0.6) + padding;
+        // Reduced extra padding further as requested (0.48 -> 0.32)
+        let extra = (this.fontSize * 0.32) + padding;
 
         let startX = rMin - extra;
         let endX = rMax + extra;
@@ -1216,6 +1221,24 @@ class DaySpiralRenderer extends ClockRenderer {
         pop();
 
         return startX; // Return where the hand should stop
+    }
+
+    // Helper to draw the hour hand geometry (Round Center, Square Tip)
+    _drawHourHandGeometry(hourAngle, length, weight) {
+        push();
+        stroke(255);
+        strokeWeight(weight);
+
+        // Round Center (Point) - drawn as a zero-length line with ROUND cap? 
+        // Or actually just a point. Point with weight works.
+        strokeCap(ROUND);
+        point(this.centerX, this.centerY);
+
+        // Square Tip (Line)
+        strokeCap(SQUARE); // Square end at the tip
+        line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * length, this.centerY + sin(hourAngle) * length);
+
+        pop();
     }
 
     // --- Shadow Helpers ---
