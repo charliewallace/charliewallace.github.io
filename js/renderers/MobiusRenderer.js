@@ -231,6 +231,11 @@ class MobiusRenderer extends ClockRenderer {
     update(tk, loc) {
         if (!this.active) return;
 
+        // If an "Other" location is active, we focus the Mobius clock on that location entirely.
+        if (loc && loc.hasOtherLocation()) {
+            tk.update(loc.otherLocation.tzOffset);
+        }
+
         // Animation Logic
         if (this.rotationEnabled) {
             this.mobiusGroup.rotation.y += 0.005;

@@ -26,6 +26,11 @@ class TimeKeeper {
         this.sunriseHourString = "";
         this.sunsetHourString = "";
 
+        // Other location sun state (for dual-location mode)
+        this.otherSunriseTime = { hour: 6, minute: 0, totalSeconds: 0 };
+        this.otherSunsetTime = { hour: 18, minute: 0, totalSeconds: 0 };
+        this.otherSunriseHourString = "";
+        this.otherSunsetHourString = "";
     }
 
     /**
@@ -88,6 +93,26 @@ class TimeKeeper {
         this.updateDayState(); // Re-evaluate day state with new sun times
     }
 
+    /**
+     * Calculates Sunrise and Sunset times for the "other" location (dual-location mode)
+     * @param {number} lat - Latitude
+     * @param {number} lon - Longitude
+     * @param {number} tzOffset - Timezone offset
+     * @param {number} isDst - Is Daylight Savings Time?
+     */
+    calculateOtherLocationSunTimes(lat, lon, tzOffset, isDst) {
+        const rise = this._calcRiseSet(true, 0, lat, lon, tzOffset, isDst);
+        const set = this._calcRiseSet(false, 0, lat, lon, tzOffset, isDst);
+
+        this.otherSunriseTime = rise;
+        this.otherSunsetTime = set;
+
+        // Format strings
+        this.otherSunriseHourString = this._formatVisTime(rise.hour, rise.minute);
+        this.otherSunsetHourString = this._formatVisTime(set.hour, set.minute);
+    }
+
+
     updateDayState() {
         // Logic from sketch.js
         if (this.sunriseTime.hour < 0 || this.sunsetTime.hour < 0) {
@@ -114,6 +139,30 @@ class TimeKeeper {
         let h12 = h % 12;
         h12 = h12 ? h12 : 12;
         const mStr = m.toString().padStart(2, '0');
+        return `${h12}:${mStr} ${ampm}`;
+    }
+
+    /**
+     * static helper to get formatted time string for any offset
+     */
+    static getFormattedTimeForOffset(tzOffset, showSeconds = false) {
+        let now = new Date();
+        const browserOffsetHours = -now.getTimezoneOffset() / 60;
+        const diffHours = tzOffset - browserOffsetHours;
+        const targetTime = new Date(now.getTime() + diffHours * 60 * 60 * 1000);
+
+        let h = targetTime.getHours();
+        let m = targetTime.getMinutes();
+        let s = targetTime.getSeconds();
+
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        let h12 = h % 12 || 12;
+        const mStr = m.toString().padStart(2, '0');
+        const sStr = s.toString().padStart(2, '0');
+
+        if (showSeconds) {
+            return `${h12}:${mStr}:${sStr} ${ampm}`;
+        }
         return `${h12}:${mStr} ${ampm}`;
     }
 
