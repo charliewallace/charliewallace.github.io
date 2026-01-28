@@ -95,7 +95,7 @@ var HourDigitColor;
 var SecondsSoFar;
 var MsFromStartToResetTime;
 
-var Latitude, Longitude;
+var Latitude = 99999, Longitude = 99999;
 var NewLatitude, NewLongitude;
 var LastLat, LastLong;
 var LatLocal, LngLocal;
@@ -112,8 +112,8 @@ var IsLoadingLocation = false; // true if waiting for location data (network or 
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
 
 var OutputHour, OutputMin;
-var SunsetHour, SunsetMin, SecondsToSunset, BaseMsSunset;
-var SunriseHour, SunriseMin, SecondsToSunrise, BaseMsSunrise;
+var SunsetHour, SunsetMin, SecondsToSunset = 64800, BaseMsSunset;
+var SunriseHour, SunriseMin, SecondsToSunrise = 21600, BaseMsSunrise;
 
 var SunriseMinString;
 var SunriseAmpmString;
@@ -208,6 +208,8 @@ function fetchIpLocation() {
   IsDisplayingUserLocation = true;
   IsPreciseLocation = false;
   IsUserInitiatedLocation = false;
+
+  if (locManager) locManager.clearOtherLocation(); // Clear dual mode when locating primary user
 
   const providers = [
     {
@@ -1398,8 +1400,8 @@ function updateUIElements() {
         localeEl.textContent = "Loading Location...";
       }
     } else {
-      // In dual-mode, prioritize showing the "Other" city name in the header
-      if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
+      // Prioritize showing the "Other" city name in the title if it exists
+      if (locManager && locManager.hasOtherLocation()) {
         localeEl.textContent = locManager.otherLocation.cityName || LocaleTitle;
       } else {
         localeEl.textContent = LocaleTitle;
@@ -1413,9 +1415,15 @@ function updateUIElements() {
     if (IsLoadingLocation) {
       locDescEl.textContent = "Finding you...";
     } else {
-      // In dual-mode, prioritize showing the "Other" city name
-      if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
-        locDescEl.textContent = locManager.otherLocation.cityName || LocaleTitle;
+      // Prioritize showing the "Other" city name
+      if (locManager && locManager.hasOtherLocation()) {
+        let desc = locManager.otherLocation.cityName || LocaleTitle;
+        // DaySpiral Dual Mode: User wants time next to location name
+        if (activeRenderer === daySpiralRenderer) {
+          const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false); // No seconds
+          desc += " " + otherTimeStr;
+        }
+        locDescEl.textContent = desc;
       } else {
         locDescEl.textContent = LocaleTitle;
       }
@@ -1428,6 +1436,7 @@ function updateUIElements() {
     if (IsLoadingLocation) {
       // keep empty or show dots?
     } else if (TimeString) {
+      // For mobile 'time-display', stick to main time
       timeEl.textContent = TimeString;
     }
   }
@@ -1437,34 +1446,35 @@ function updateUIElements() {
   if (timeLargeEl) {
     if (IsLoadingLocation) {
       timeLargeEl.textContent = "..."; // Blank out or show placeholder during loading
-    } else if (TimeString) {
-      // Calculate target time based on Time Zone Offset difference
-      let now = new Date();
-      // TzOffset and TzOffsetLocal are in hours.
-      let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
-      let offsetDiffHours = TzOffset - localTz;
-      let targetTime = new Date(now.getTime() + (offsetDiffHours * 3600000));
+    } else {
+      // Get primary (user) time
+      const userTimeStr = TimeKeeper.getFormattedTimeForOffset(TzOffset, true);
 
-      let h = targetTime.getHours();
-      let m = targetTime.getMinutes();
-      let s = targetTime.getSeconds();
+      // Check if we are in Dual Mode (DaySpiral + Other Location)
+      const isDualTimeMode = locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer;
 
-      let ampm = h >= 12 ? 'PM' : 'AM';
-      let h12 = h % 12;
-      h12 = h12 ? h12 : 12; // hour '0' should be '12'
+      if (isDualTimeMode) {
+        // User requested the "other" time be in the location description (handled above).
+        // So here we should show the LOCAL time (User's time) as the main clock.
+        // OR: "Other Time | Local: User Time" ? 
+        // User said: "I want to clarify that the whole 'dual mode' concept doesn't extend to the mobius clock"
+        // and "I'd like the 'other' time to show up to the right of the location description."
+        // This suggests cleaning up the header.
+        // Let's show just Local Time here, since Other Time is now next to the Location Name.
+        timeLargeEl.textContent = userTimeStr;
+        if (timeEl) timeEl.textContent = userTimeStr; // Sync mobile
 
-      let mStr = nf(m, 2, 0); // Use p5 nf() for zero padding
-      let sStr = nf(s, 2, 0);
-
-      let formattedTime = `${h12}:${mStr}:${sStr} ${ampm}`;
-
-      timeLargeEl.textContent = formattedTime;
-
-      // Also update mobile time display
-      if (timeEl) timeEl.textContent = formattedTime;
-
-    } else { // Fallback if TimeString is not available or loading
-      timeLargeEl.textContent = TimeString;
+      } else if (locManager && locManager.hasOtherLocation() && activeRenderer === mobiusRenderer) {
+        // Mobius Mode with an Other Location set (e.g. switched from DaySpiral):
+        // Display the Other Location's time (Substitution behavior).
+        const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, true);
+        timeLargeEl.textContent = otherTimeStr;
+        if (timeEl) timeEl.textContent = otherTimeStr;
+      } else {
+        // standard single local time
+        timeLargeEl.textContent = userTimeStr;
+        if (timeEl) timeEl.textContent = userTimeStr;
+      }
     }
   }
 
@@ -1794,6 +1804,66 @@ function gotCityLocationDataModal(data) {
     clearLoadingState();
     errEl.html("City not found. Please try 'City, Country'.");
   }
+}
+
+// Unified City Submit Handler (used by both Desktop and Mobile modals)
+function handleCitySubmitUnified() {
+  CityName = select('#city-search-input').value();
+  if (CityName) {
+    // If Mobius is active, we treat this as a "Substitution" search (replacing current view)
+    // If DaySpiral is active, we treat it as an "Other Location" search (Dual Mode)
+    // BUT: The user might just want to set their PRIMARY location manually.
+    // The "Other Location" button in the UI triggers the modal.
+    // Let's check if we are in "Other Location" mode or "Primary" mode.
+    // Actually the modal has buttons for "Your Location" vs "Manual".
+    // The previous implementation likely surmised intent or had a flag.
+    // Let's assume for now this sets the "Other" location if we are in DaySpiral mode, 
+    // OR if we are in Mobius mode, it sets the ONLY location (Substitution).
+
+    // We'll use a flag IsSearchingForOtherLocation to differentiate if needed, 
+    // but typically the "Other Location" button opens this modal.
+    // Let's assume this is ALWAYS setting the "Selected/Other" location which
+    // overrides the view in Mobius, and adds a second view in DaySpiral.
+
+    IsSearchingForOtherLocation = true;
+
+    var url = `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
+    loadJSON(url, gotCityLocationDataUnified);
+
+    // Show loading
+    select('#city-error-msg').html("Searching...");
+  }
+}
+
+function gotCityLocationDataUnified(data) {
+  if (data.length > 0) {
+    var lat = data[0].lat;
+    var lon = data[0].lon;
+    // We found the city, now get TZ
+    // passing true for 'isOtherLocation' if we are indeed searching for other
+    getTzUsingLatLong(lat, lon, 0, data[0].display_name.split(',')[0], true);
+    select('#city-error-msg').html("");
+  } else {
+    select('#city-error-msg').html("City not found.");
+  }
+}
+
+// Unified Manual Coords Submit
+function handleCoordsSubmitUnified() {
+  var lat = float(select('#input-lat').value());
+  var lon = float(select('#input-lon').value());
+  var tz = float(select('#input-tz').value());
+
+  // Basic validation
+  if (isNaN(lat) || isNaN(lon) || isNaN(tz)) {
+    select('#coords-error-msg').html("Invalid numeric values.");
+    return;
+  }
+
+  // Set as "Other" location
+  var cityName = "Manual Location";
+  setOtherLocation(lat, lon, tz, cityName);
+  closeAllModals();
 }
 
 function handleCoordsSubmitModal() {
@@ -2211,6 +2281,13 @@ function updateTimeThisDay() {
   // Sync TimeKeeper
   if (timeKeeper) timeKeeper.update(TzOffset);
 
+  // Sync LocationManager (Always ensure it matches globals)
+  if (locManager && Latitude !== 99999) {
+    locManager.latitude = Latitude;
+    locManager.longitude = Longitude;
+    locManager.tzOffset = TzOffset;
+  }
+
 
   IDowPrevious = IDow; // save the previous day of week
 
@@ -2536,6 +2613,8 @@ function usePreciseLocation(isAuto = false) {
   IsTimezoneMismatch = false; // User intentionally requesting location
   IsUserInitiatedLocation = !isAuto; // Trigger URL update only if NOT auto-fetch
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
+
+  if (locManager) locManager.clearOtherLocation(); // Returning to precise primary location
 
   // Options for getCurrentPosition call below, designed for speed over accuracy.
   const options = {
@@ -3130,6 +3209,7 @@ function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherL
   if (data.length != 0) {
     let timeZoneOffset = data.gmtOffset;
 
+    // DUAL MODE (DaySpiral Only)
     if (isOther && daySpiralRenderer && daySpiralRenderer.active) {
       console.log(`  🌎 Dual mode: Setting other location to ${cityName}`);
       setOtherLocation(NewLatitude, NewLongitude, timeZoneOffset, cityName);
@@ -3140,6 +3220,16 @@ function gotCityTzData(data, requestId, cityName, isOther = IsSearchingForOtherL
       IsSearchingForOtherLocation = false;
       clearLoadingState();
       return;
+    }
+
+    // SUBSTITUTION MODE (Mobius or other)
+    // If isOther is true but we aren't in DaySpiral, we treat this as a replacement 
+    // of the primary location. We just let it fall through to the standard logic below.
+    if (isOther) {
+      console.log(`  🔄 Substitution mode: Replacing primary location with ${cityName}`);
+      IsSearchingForOtherLocation = false; // Clear flag so it sticks as primary
+      // We also need to ensure the UI updates the title to this new city
+      // The logic below uses 'cityName' or 'CityName' global.
     }
 
     TzOffset = timeZoneOffset;
@@ -3656,9 +3746,14 @@ function setOtherLocation(lat, lon, tz, cityName) {
   // NOTE: Negate longitude to match the behavior in calculateSunTimes (East positive vs West positive logic)
   timeKeeper.calculateOtherLocationSunTimes(lat, -lon, tz, IsDst);
 
+  // Trigger Mobius refresh if initialized
+  if (typeof mobiusRenderer !== 'undefined') {
+    mobiusRenderer.refreshDayNight();
+  }
+
   // Trigger spiral regeneration
   if (daySpiralRenderer && daySpiralRenderer.active) {
-    daySpiralRenderer.resize(width, height);
+    daySpiralRenderer.resize(window.innerWidth, window.innerHeight);
   }
 
   // Update URL hash to include the other location

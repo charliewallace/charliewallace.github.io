@@ -276,7 +276,7 @@ class DaySpiralRenderer extends ClockRenderer {
             let riseSeconds = 6 * 3600; // 6 AM
             let setSeconds = 18 * 3600; // 6 PM
 
-            if (loc.hasValidLocation && typeof tk.sunriseTime.totalSeconds === 'number') {
+            if (typeof tk.sunriseTime.totalSeconds === 'number') {
                 riseSeconds = tk.sunriseTime.totalSeconds;
                 setSeconds = tk.sunsetTime.totalSeconds;
             }

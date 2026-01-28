@@ -142,6 +142,30 @@ class TimeKeeper {
         return `${h12}:${mStr} ${ampm}`;
     }
 
+    /**
+     * static helper to get formatted time string for any offset
+     */
+    static getFormattedTimeForOffset(tzOffset, showSeconds = false) {
+        let now = new Date();
+        const browserOffsetHours = -now.getTimezoneOffset() / 60;
+        const diffHours = tzOffset - browserOffsetHours;
+        const targetTime = new Date(now.getTime() + diffHours * 60 * 60 * 1000);
+
+        let h = targetTime.getHours();
+        let m = targetTime.getMinutes();
+        let s = targetTime.getSeconds();
+
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        let h12 = h % 12 || 12;
+        const mStr = m.toString().padStart(2, '0');
+        const sStr = s.toString().padStart(2, '0');
+
+        if (showSeconds) {
+            return `${h12}:${mStr}:${sStr} ${ampm}`;
+        }
+        return `${h12}:${mStr} ${ampm}`;
+    }
+
     // --- Astronomy Math Ported from sketch.js ---
     _calcRiseSet(isSunrise, dayOffset, lat, lon, gmto, isDst) {
         // Math from sketch.js calcRiseSetTimeWithOffset
