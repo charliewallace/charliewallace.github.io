@@ -1402,7 +1402,13 @@ function updateUIElements() {
     } else {
       // Prioritize showing the "Other" city name in the title if it exists
       if (locManager && locManager.hasOtherLocation()) {
-        localeEl.textContent = locManager.otherLocation.cityName || LocaleTitle;
+        let mobileTitle = locManager.otherLocation.cityName || LocaleTitle;
+        // DaySpiral Dual Mode: Show time next to location name (matching desktop behavior)
+        if (activeRenderer === daySpiralRenderer) {
+          const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false); // No seconds
+          mobileTitle += " " + otherTimeStr;
+        }
+        localeEl.textContent = mobileTitle;
       } else {
         localeEl.textContent = LocaleTitle;
       }
