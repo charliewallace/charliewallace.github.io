@@ -67,7 +67,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.5.2 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.5.3 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -465,9 +465,9 @@ function oneTimeInit() {
   select('#btn-loc-melbourne-u').mousePressed(() => { setMelbourne(); closeAllModals(); });
 
 
-  GmtDisplayButtonLabel = "Show GMT";
-  GmtDisplayButton = select('#btn-gmt');
-  GmtDisplayButton.mousePressed(setGmtDisplay);
+
+
+  // GMT button removed - feature deprecated
 
   //    Location buttons - Removed old inline buttons, now using unified modal bindings below
 
