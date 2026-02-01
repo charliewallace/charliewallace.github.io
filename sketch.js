@@ -535,6 +535,9 @@ function oneTimeInit() {
   select('#opt-dayspiral').mousePressed(() => setClockMode('dayspiral'));
   select('#opt-mobius').mousePressed(() => setClockMode('mobius'));
 
+  // DaySpiral Hours Toggle
+  select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
+
   // --- MOBIUS SPECIFIC CONTROLS ---
   var btnRotate = select('#btn-rotate');
   if (btnRotate) btnRotate.mousePressed(() => {
@@ -868,10 +871,13 @@ function parseUrlHash() {
 
   var daySpiralStyle = params.get('daySpiralStyle');
   var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
-  if (daySpiralStyle || daySpiralTimeFormat) {
+  var daySpiralShowHours = params.get('daySpiralShowHours');
+
+  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null) {
     window._initialDaySpiralState = {
       style: daySpiralStyle || 'Classic',
-      timeFormat: daySpiralTimeFormat || '12'
+      timeFormat: daySpiralTimeFormat || '12',
+      showHours: daySpiralShowHours === '1' // Default false
     };
   }
 
@@ -1024,6 +1030,15 @@ function applyInitialState() {
       daySpiralRenderer.setTimeFormat(state.timeFormat);
       const selTimeFormat = select('#select-dayspiral-time-format');
       if (selTimeFormat) selTimeFormat.value(state.timeFormat);
+    }
+
+    if (state.showHours !== undefined) {
+      daySpiralRenderer.setHoursVisible(state.showHours);
+      const btnHours = select('#btn-dayspiral-hours');
+      if (btnHours) {
+        if (state.showHours) btnHours.addClass('toggled-on');
+        else btnHours.removeClass('toggled-on');
+      }
     }
 
     delete window._initialDaySpiralState; // Clean up
@@ -1223,6 +1238,11 @@ function updateUrlHash() {
     if (daySpiralRenderer.timeFormat && daySpiralRenderer.timeFormat !== '12') {
       params.set('daySpiralTimeFormat', daySpiralRenderer.timeFormat);
     }
+
+    // Add DaySpiral hour visibility (non-default: shown)
+    if (daySpiralRenderer.hoursVisible === true) {
+      params.set('daySpiralShowHours', '1');
+    }
   }
 
   // Mobius-specific state
@@ -1387,6 +1407,17 @@ function updateUIElements() {
       'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ';
     if (locationWarning) descText += locationWarning;
     if (descEl) descEl.textContent = descText;
+
+    // Manage 'Hours' button visibility
+    const btnHours = select('#btn-dayspiral-hours');
+    if (btnHours) {
+      const isDualMode = (locManager && locManager.hasOtherLocation());
+      if (daySpiralRenderer.style === 'Classic' && !isDualMode) {
+        btnHours.show();
+      } else {
+        btnHours.hide();
+      }
+    }
   }
 
   // About modal text is now static and set in oneTimeInit()
@@ -2483,6 +2514,25 @@ function setGmtDisplay()  // Toggling mode button
 
   // Update URL hash to reflect GMT state
   updateUrlHash();
+}
+
+
+//-----------------------------------------------------------------
+// Handler for the toggling DaySpiral Hours button
+function toggleDaySpiralHours() {
+  if (daySpiralRenderer) {
+    daySpiralRenderer.toggleHours();
+
+    // Update button visual state
+    let btn = select('#btn-dayspiral-hours');
+    if (daySpiralRenderer.hoursVisible) {
+      btn.addClass('toggled-on');
+    } else {
+      btn.removeClass('toggled-on');
+    }
+
+    updateUrlHash();
+  }
 }
 
 

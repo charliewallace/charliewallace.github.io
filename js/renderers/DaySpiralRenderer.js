@@ -41,6 +41,7 @@ class DaySpiralRenderer extends ClockRenderer {
         this.ySpiralInner = [];
         this.radiusSpiralInner = [];
         this.isDualLocationMode = false;
+        this.hoursVisible = false;
 
         this.initialized = false;
     }
@@ -63,6 +64,14 @@ class DaySpiralRenderer extends ClockRenderer {
 
     setTimeFormat(format) {
         this.timeFormat = format;
+    }
+
+    toggleHours() {
+        this.hoursVisible = !this.hoursVisible;
+    }
+
+    setHoursVisible(visible) {
+        this.hoursVisible = visible;
     }
 
     resize(w, h) {
@@ -677,6 +686,10 @@ class DaySpiralRenderer extends ClockRenderer {
      */
     drawInnerSpiralHours(locManager) {
         if (!this.xSpiralInner || this.xSpiralInner.length === 0) return;
+        if (!locManager) return;
+
+        // In dual mode, we always show hours for the inner spiral regardless of the toggle
+        // because the toggle only applies to the primary/outer spiral in single mode.
         if (!locManager.hasOtherLocation()) return;
 
         fill(150, 255, 150); // Light green for inner spiral (distinct from day/night blues)
@@ -771,6 +784,9 @@ class DaySpiralRenderer extends ClockRenderer {
      */
     drawOuterSpiralHours(locManager) {
         if (!this.xSpiral || this.xSpiral.length === 0) return;
+
+        // Only draw if hours are enabled OR we are in dual mode (where clarification is needed)
+        if (!this.hoursVisible && !this.isDualLocationMode) return;
 
         fill(255, 235, 120); // Yellow for outer spiral
         noStroke();
