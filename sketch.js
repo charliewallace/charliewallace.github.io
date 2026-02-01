@@ -1996,14 +1996,14 @@ function reInit() {
   var smallerDim = min(TheWidth, TheHeight);
   var radius = smallerDim / 2;
 
-  SecondsRadius = radius * 0.73;
-  MinutesRadius = radius * 0.7
-  HoursRadius = radius * 0.44;
-  ClockDiameter = radius * 1.78;
+  SecondsRadius = radius * 0.82;
+  MinutesRadius = radius * 0.80;
+  HoursRadius = radius * 0.55;
+  ClockDiameter = radius * 1.912;
 
   // radius to centers of numbers
-  HourNumbersRadius = radius * 0.83;
-  InnerFaceRadius = HourNumbersRadius * 0.93;
+  HourNumbersRadius = radius * 0.893;
+  InnerFaceRadius = radius * 0.83;
 
   CenterX = TheWidth / 2;  // center
   CenterY = TheHeight / 2; // center
@@ -2106,8 +2106,8 @@ function genSpiral() //III
   let endFrac = 0.72;
 
   // Always Day Spiral settings
-  startFrac = 0.32;
-  endFrac = 0.80;
+  startFrac = 0.29;
+  endFrac = 0.78;
 
   var smallerDim = CenterX;
   if (CenterX > CenterY) {

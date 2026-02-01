@@ -81,14 +81,14 @@ class DaySpiralRenderer extends ClockRenderer {
         let minDim = Math.min(w, h);
         let radius = minDim / 2;
 
-        this.clockDiameter = radius * 1.78;
+        this.clockDiameter = radius * 1.912;
         this.diameter = this.clockDiameter;
-        this.faceDiameter = (radius * 0.83 * 0.93) * 2;
-        this.numbersRadius = radius * 0.83;
+        this.faceDiameter = radius * 1.66;
+        this.numbersRadius = radius * 0.893;
 
         // Spiral settings default (Classic)
-        let startRadius = radius * 0.24;
-        let endRadius = radius * 0.66; // Increased by 10% (from 0.60) to reduce outer gap
+        let startRadius = radius * 0.27;
+        let endRadius = radius * 0.70; // Scaled down 5% to prevent dot collision
 
         // Check if we're in dual-location mode to set visual weights
         const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
