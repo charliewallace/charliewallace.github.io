@@ -3563,7 +3563,8 @@ function updateAboutModalContent() {
     descText = 'To show night and day you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
       'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
-      'The darker part of the spiral indicates night. ';
+      'The darker part of the spiral indicates night. ' +
+      'When showing both local and "Other" time, the green line shows when interaction is feasible. ';
     if (locationWarning) descText += locationWarning;
   } else if (activeRenderer === mobiusRenderer) {
     title = "About Mobius Clock";
