@@ -41,6 +41,7 @@ class DaySpiralRenderer extends ClockRenderer {
         this.ySpiralInner = [];
         this.radiusSpiralInner = [];
         this.isDualLocationMode = false;
+        this.hoursVisible = false;
 
         this.initialized = false;
     }
@@ -65,6 +66,14 @@ class DaySpiralRenderer extends ClockRenderer {
         this.timeFormat = format;
     }
 
+    toggleHours() {
+        this.hoursVisible = !this.hoursVisible;
+    }
+
+    setHoursVisible(visible) {
+        this.hoursVisible = visible;
+    }
+
     resize(w, h) {
         this.centerX = w / 2;
         this.centerY = h / 2;
@@ -72,26 +81,27 @@ class DaySpiralRenderer extends ClockRenderer {
         let minDim = Math.min(w, h);
         let radius = minDim / 2;
 
-        this.clockDiameter = radius * 1.78;
+        this.clockDiameter = radius * 1.912;
         this.diameter = this.clockDiameter;
-        this.faceDiameter = (radius * 0.83 * 0.93) * 2;
-        this.numbersRadius = radius * 0.83;
+        this.faceDiameter = radius * 1.66;
+        this.numbersRadius = radius * 0.893;
 
         // Spiral settings default (Classic)
-        let startRadius = radius * 0.24;
-        let endRadius = radius * 0.66; // Increased by 10% (from 0.60) to reduce outer gap
+        let startRadius = radius * 0.27;
+        let endRadius = radius * 0.70; // Scaled down 5% to prevent dot collision
 
         // Check if we're in dual-location mode to set visual weights
         const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
         this.isDualLocationMode = isDualMode;
 
         if (this.style === 'SpiralHours') {
-            // Shift center left to balance margins due to spiral asymmetry
-            this.centerX -= radius * 0.1;
+            // Shift center to balance gaps (Horizontal -0.06, Vertical +0.08)
+            this.centerX -= radius * 0.06;
+            this.centerY += radius * 0.08;
 
             // Legacy V3 settings for 'Hours in Spiral'
             startRadius = radius * 0.39;
-            endRadius = radius * 0.81;
+            endRadius = radius * 0.935; // Increased overall size further
 
             if (this.isDualLocationMode) {
                 this.outerStrokeWeight = radius * 0.14;
@@ -186,9 +196,15 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this.drawSpiral(timeKeeper, locManager);
 
-        // Draw inner spiral hours in dual-location mode
-        if (this.isDualLocationMode && this.style === 'Classic') {
-            this.drawInnerSpiralHours(locManager);
+        // Draw spiral hours in Classic mode
+        if (this.style === 'Classic') {
+            // Always draw outer spiral hours (local time)
+            this.drawOuterSpiralHours(locManager);
+
+            // Draw inner spiral hours only in dual mode
+            if (this.isDualLocationMode) {
+                this.drawInnerSpiralHours(locManager);
+            }
         }
 
         if (this.style === 'SpiralHours') {
@@ -211,7 +227,63 @@ class DaySpiralRenderer extends ClockRenderer {
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) {
             this.drawGMT(locManager);
         }
+
+        // Draw awakeness line in dual mode
+        if (this.isDualLocationMode) {
+            this.drawAwakenessArc(locManager);
+        }
+
         this.drawHands(timeKeeper);
+    }
+
+    /**
+     * Draw a bright green arc between inner and outer spirals
+     * to indicate when both locations are "awake" (9am - 8pm)
+     */
+    drawAwakenessArc(locManager) {
+        if (!this.isDualLocationMode || !locManager.hasOtherLocation()) return;
+
+        const tzDiff = locManager.getTimezoneOffsetDifference();
+        const awakeStart = 9;
+        const awakeEnd = 20;
+
+        push();
+        stroke(0, 255, 0); // Semantic Green (OK to interact)
+        strokeWeight(this.secondaryStrokeWeight * 0.225); // Weight kept from previous refinement
+        noFill();
+        strokeCap(ROUND);
+
+        const totalDailyPts = this.numPointsPerTurn * 2;
+        let inArc = false;
+
+        for (let i = 0; i < totalDailyPts; i++) {
+            const hour = (i / totalDailyPts) * 24;
+            const otherHour = (hour + tzDiff + 24) % 24;
+
+            // Define "awake" as between 9am and 8pm (20:00) inclusive
+            const isLocalAwake = (hour >= awakeStart && hour <= awakeEnd);
+            const isOtherAwake = (otherHour >= awakeStart && otherHour <= awakeEnd);
+
+            if (isLocalAwake && isOtherAwake) {
+                if (!inArc) {
+                    beginShape();
+                    inArc = true;
+                }
+                const rOuter = this.radiusSpiral[i];
+                const rInner = this.radiusSpiralInner[i];
+                // Center the arc in the gap by accounting for the difference in track widths
+                const midR = (rOuter + rInner) / 2 + ((this.innerStrokeWeight - this.outerStrokeWeight) / 4);
+                const theta = (TWO_PI * (i / this.numPointsPerTurn)) - HALF_PI;
+                vertex(this.centerX + midR * cos(theta), this.centerY + midR * sin(theta));
+            } else {
+                if (inArc) {
+                    endShape();
+                    inArc = false;
+                }
+            }
+        }
+        if (inArc) endShape();
+        pop();
     }
 
     drawHourLabels() {
@@ -537,12 +609,17 @@ class DaySpiralRenderer extends ClockRenderer {
     drawSpiralHours(xArray, yArray, rArray, isInner, locManager) {
         if (!xArray || xArray.length === 0) return;
 
-        fill(255, 235, 120); // Softer yellow for better aesthetics
+        // Color differentiation: cyan for inner spiral, yellow for outer
+        if (isInner) {
+            fill(180, 255, 255); // Light Cyan for inner spiral
+        } else {
+            fill(255, 235, 120); // Yellow for outer spiral
+        }
         noStroke();
 
         // Adjusted scales: Outer reduced by another 10% (1.134 -> 1.02), Inner increased by 10% (0.385 -> 0.42)
         let originalTextSize = this.fontSize;
-        let scale = isInner ? 0.42 : 1.02;
+        let scale = isInner ? 0.58 : 1.02; // Inner font scale increased for visibility (0.42 -> 0.58)
         textSize(this.fontSize * scale);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
@@ -622,9 +699,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 let x = this.centerX + cos(theta) * ri2;
                 let y = this.centerY + sin(theta) * ri2;
 
-                // Halved margin for tighter AM/PM grouping
+                // Halved margin for tighter AM/PM grouping; suffix increased for inner spiral readability
                 let hourStr = str(hour12);
-                let ampmSize = (this.fontSize * scale) * 0.45;
+                let ampmSize = (this.fontSize * scale) * (isInner ? 0.55 : 0.45);
                 let margin = (this.fontSize * scale) * 0.05; // reduced from 0.1
 
                 textSize(this.fontSize * scale);
@@ -665,9 +742,14 @@ class DaySpiralRenderer extends ClockRenderer {
      */
     drawInnerSpiralHours(locManager) {
         if (!this.xSpiralInner || this.xSpiralInner.length === 0) return;
+        if (!locManager) return;
+
+        // In dual mode, we always show hours for the inner spiral regardless of the toggle
+        // because the toggle only applies to the primary/outer spiral in single mode.
         if (!locManager.hasOtherLocation()) return;
 
-        fill(255, 235, 120); // Same yellow as outer
+        fill(180, 255, 255); // Light Cyan for inner spiral label
+        textSize(this.fontSize * 0.45);
         noStroke();
 
         // Smaller text size for inner spiral (reduced by 20% from 0.7)
@@ -681,17 +763,10 @@ class DaySpiralRenderer extends ClockRenderer {
         // Calculate timezone difference
         const tzDiffHours = locManager.getTimezoneOffsetDifference();
 
-        // For 12-hour mode, display with AM/PM
-        // Skip hour 0 (start) and include hour 24 (end) as requested
-        for (let h = 1; h <= 24; h++) {
+        // For 24-hour mode or 12-hour mode
+        for (let h = 0; h <= 24; h++) {
             // Calculate what hour this position represents at the "other" location
-            // The spiral is rotated, so we need to account for that
-            // If other location is 2 hours ahead, we ADD 2 to show their time
             let otherHour = (h + tzDiffHours + 24) % 24;
-
-            let hour12 = otherHour % 12;
-            if (hour12 === 0) hour12 = 12;
-            let ampm = (otherHour < 12) ? 'A' : 'P';
 
             // Calculate position on inner spiral
             let idx = Math.floor((h / 24.0) * (this.numPointsPerTurn * 2));
@@ -699,47 +774,150 @@ class DaySpiralRenderer extends ClockRenderer {
 
             let r = this.radiusSpiralInner[idx];
             let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
-
-            // Removed 1.008 tweak for true centering
             let ri2 = r;
 
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
-            // Shift first hour label right in dual mode
+            // Shift 12 o'clock position (h===0) rightward to avoid spiral label collision
             let shift = 0;
             let currentTextAlign = CENTER;
-            if (h === 1 && this.isDualLocationMode) {
-                shift = (this.fontSize * 0.5) * 0.1; // proportional shift
+            if (h === 0 && this.isDualLocationMode) {
+                shift = (this.fontSize * 0.60) * 0.3; // Small shift to be just inside spiral
                 currentTextAlign = LEFT;
             }
 
-            // Increased digit/ampm sizes by 10% (0.55 -> 0.60, 0.40 -> 0.44)
-            let hourStr = str(hour12);
-            let digitSize = this.fontSize * 0.60;
-            let ampmSize = this.fontSize * 0.44;
-            let margin = this.fontSize * 0.04;   // Halved from 0.08
+            if (this.timeFormat === '24') {
+                // 24-hour mode: simple 0-23
+                let displayStr = str(Math.floor(otherHour));
+                let digitSize = this.fontSize * 0.60;
 
-            textSize(digitSize);
-            let hourWidth = textWidth(hourStr);
-            textSize(ampmSize);
-            let ampmWidth = textWidth(ampm);
-            let totalW = hourWidth + margin + ampmWidth;
+                textSize(digitSize);
+                textAlign(currentTextAlign === LEFT ? LEFT : CENTER, CENTER);
+                text(displayStr, x + shift, y);
+            } else {
+                // 12-hour mode: display with AM/PM
+                let hour12 = otherHour % 12;
+                if (hour12 === 0) hour12 = 12;
+                let ampm = (otherHour < 12) ? 'A' : 'P';
 
-            // Start position for the combined label to be centered at (x,y)
-            let startX = x - totalW / 2 + shift;
-            if (currentTextAlign === LEFT) {
-                startX = x + shift;
+                let hourStr = str(hour12);
+                let digitSize = this.fontSize * 0.60;
+                let ampmSize = this.fontSize * 0.48; // Reduced to be smaller than digitSize (0.60)
+                let margin = this.fontSize * 0.04;   // Halved from 0.08
+
+                textSize(digitSize);
+                let hourWidth = textWidth(hourStr);
+                textSize(ampmSize);
+                let ampmWidth = textWidth(ampm);
+                let totalW = hourWidth + margin + ampmWidth;
+
+                // Start position for the combined label to be centered at (x,y)
+                let startX = x - totalW / 2 + shift;
+                if (currentTextAlign === LEFT) {
+                    startX = x + shift;
+                }
+
+                // Draw hour number
+                textAlign(LEFT, CENTER);
+                textSize(digitSize);
+                text(hourStr, startX, y);
+
+                // Draw AM/PM indicator
+                textSize(ampmSize);
+                text(ampm, startX + hourWidth + margin, y);
+            }
+        }
+
+        // Restore
+        this._resetShadow();
+        textStyle(NORMAL);
+        textSize(originalTextSize);
+    }
+
+    /**
+     * Draw hour labels on the outer spiral for Classic mode
+     * Shows the local/user location's time (works in both single and dual modes)
+     */
+    drawOuterSpiralHours(locManager) {
+        if (!this.xSpiral || this.xSpiral.length === 0) return;
+
+        // Only draw if hours are enabled OR we are in dual mode (where clarification is needed)
+        if (!this.hoursVisible && !this.isDualLocationMode) return;
+
+        fill(255, 235, 120); // Yellow for outer spiral
+        noStroke();
+
+        let originalTextSize = this.fontSize;
+        textStyle(BOLD);
+        textAlign(CENTER, CENTER);
+
+        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.7)'); // Shadow for outer spiral numbers
+
+        // For 24-hour mode or 12-hour mode
+        for (let h = 0; h <= 24; h++) {
+            // Outer spiral shows local time (no timezone offset)
+            let localHour = h % 24;
+
+            // Calculate position on outer spiral
+            let idx = Math.floor((h / 24.0) * (this.numPointsPerTurn * 2));
+            if (idx >= this.radiusSpiral.length) idx = this.radiusSpiral.length - 1;
+
+            let r = this.radiusSpiral[idx];
+            let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
+            let ri2 = r;
+
+            let x = this.centerX + cos(theta) * ri2;
+            let y = this.centerY + sin(theta) * ri2;
+
+            // Shift 12 o'clock position (h===0) rightward in both single and dual modes
+            let shift = 0;
+            let currentTextAlign = CENTER;
+            if (h === 0) {
+                shift = (this.fontSize * 0.63) * 0.3; // Small shift to be just inside spiral
+                currentTextAlign = LEFT;
             }
 
-            // Draw hour number
-            textAlign(LEFT, CENTER);
-            textSize(digitSize);
-            text(hourStr, startX, y);
+            if (this.timeFormat === '24') {
+                // 24-hour mode: simple 0-23
+                let displayStr = str(Math.floor(localHour));
+                let digitSize = this.fontSize * 0.63;
 
-            // Draw AM/PM indicator
-            textSize(ampmSize);
-            text(ampm, startX + hourWidth + margin, y);
+                textSize(digitSize);
+                textAlign(currentTextAlign === LEFT ? LEFT : CENTER, CENTER);
+                text(displayStr, x + shift, y);
+            } else {
+                // 12-hour mode: display with AM/PM
+                let hour12 = localHour % 12;
+                if (hour12 === 0) hour12 = 12;
+                let ampm = (localHour < 12) ? 'A' : 'P';
+
+                let hourStr = str(hour12);
+                let digitSize = this.fontSize * 0.63;
+                let ampmSize = this.fontSize * 0.46;
+                let margin = this.fontSize * 0.04;
+
+                textSize(digitSize);
+                let hourWidth = textWidth(hourStr);
+                textSize(ampmSize);
+                let ampmWidth = textWidth(ampm);
+                let totalW = hourWidth + margin + ampmWidth;
+
+                // Start position for the combined label to be centered at (x,y)
+                let startX = x - totalW / 2 + shift;
+                if (currentTextAlign === LEFT) {
+                    startX = x + shift;
+                }
+
+                // Draw hour number
+                textAlign(LEFT, CENTER);
+                textSize(digitSize);
+                text(hourStr, startX, y);
+
+                // Draw AM/PM indicator
+                textSize(ampmSize);
+                text(ampm, startX + hourWidth + margin, y);
+            }
         }
 
         // Restore
@@ -772,7 +950,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         if (this.style === 'SpiralHours') {
             outerFontSize = this.fontSize * 1.02; // Reduced further to match new HIS hours
-            innerFontSize = this.fontSize * 0.50; // matching HIS inner digitSize
+            innerFontSize = this.fontSize * 0.58; // matching HIS inner digitSize
         }
 
         // 1. Label for Outer Spiral ("Local")
@@ -781,7 +959,8 @@ class DaySpiralRenderer extends ClockRenderer {
         let y1 = this.centerY + this.ySpiral[0];
         text("Local", x1, y1);
 
-        // 2. Label for Inner Spiral (City Name or "Other")
+        // 2. Label for Inner Spiral (City Name or "Other") - use light cyan to match inner spiral hours
+        fill(180, 255, 255); // Light Cyan for inner spiral label
         textSize(innerFontSize);
         let cityName = locManager.otherLocation.cityName || "Other";
         // Extract just the city name if comma-separated
@@ -801,7 +980,7 @@ class DaySpiralRenderer extends ClockRenderer {
         if (this.style !== 'Classic') return;
 
         // Hide DOW abbreviations in dual mode as requested
-        if (locManager && locManager.hasOtherLocation()) return;
+        if (this.isDualLocationMode) return;
 
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
@@ -819,22 +998,17 @@ class DaySpiralRenderer extends ClockRenderer {
         noStroke();
         textSize(this.fontSize);
         textStyle(BOLD);
-        textAlign(LEFT, CENTER);
+        textAlign(RIGHT, CENTER); // RIGHT align so text appears to the left of the spiral start
 
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)'); // More visible shadow for text
 
-        let xOffset = 5; // Pixels to move labels to the right
+        let xOffset = -5; // Small negative offset to position just outside spiral start
 
-        // Start (Outer)
+        // Start (Outer) - show today's day abbreviation
         let idxStart = 0;
         text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart] + xOffset, this.centerY + this.ySpiral[idxStart]);
 
-        // End (Inner)
-        let idxEnd = this.xSpiral.length - 1;
-        // Only draw inner label if spiral is fully generating 24h
-        if (idxEnd > 0) {
-            text(dayNames[nextDayIdx], this.centerX + this.xSpiral[idxEnd] + xOffset, this.centerY + this.ySpiral[idxEnd]);
-        }
+        // End label removed - was colliding with last hour label and not adding much value
 
         this._resetShadow();
         textStyle(NORMAL);
@@ -1094,10 +1268,10 @@ class DaySpiralRenderer extends ClockRenderer {
             let outerStrokeWeight, innerStrokeWeight, gapBetweenSpirals;
 
             if (this.style === 'SpiralHours') {
-                // Custom interleaving for SpiralHours
-                outerStrokeWeight = spacePerTurn * 0.65;
-                gapBetweenSpirals = spacePerTurn * 0.01; // reduced from 0.05
-                innerStrokeWeight = outerStrokeWeight * 0.3;
+                // Custom interleaving for SpiralHours: Inner +50% width, Outer -same amt
+                outerStrokeWeight = spacePerTurn * 0.5525;
+                gapBetweenSpirals = spacePerTurn * 0.01;
+                innerStrokeWeight = spacePerTurn * 0.2925;
             } else {
                 // Existing percentages for Classic
                 outerStrokeWeight = spacePerTurn * 0.42;

@@ -35,28 +35,31 @@ CoolweirdClocks uses a URL hash (e.g., `#clock=mobius&zen=1`) added to the end o
 A unique visualization that shows you your whole day, including day and night, sunrise and sunset, all in a 12-hour clock face. To show night and day you need a 24-hour clock; using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face.
 - **Sunset/Sunrise**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun unique to your location.
 - **Spiral Geometry**: The hour hand follows the spiral path, making two full turns to complete a day.
- 
-**"Classic" style**
-- Provides a standard 12-hour clock face on the outside including the hour numbers, with the day spiral in the center. The tip of the hour hand follows along within the spiral.
-- The "Show GMT" button optionally shows the GMT hours within the spiral. ('gmt=1' in url hash)
+- **Hours In Spiral (HIS)**: An alternative style that embeds hour tick marks and numbers directly along the spiral track for specialized time visualization.
+- **Dual Location Mode**: Display a second location on an inner spiral to compare time and sunlight across the world.
+- **Awakeness Line**: A green arc appears in dual mode to indicate when both locations are simultaneously in their "awake" hours (9 AM - 8 PM), making it easy to see when interaction is feasible.
 
-**"Hours In Spiral" style**
-- Places the hours right into the spiral, clearly mapping out your day. All three of the hands follow the spiral.
-
+**Specific URL Parameters:**
+- `daySpiralStyle=SpiralHours`: Activates the "Hours In Spiral" (HIS) visual style.
+- `daySpiralShowHours=1`: Displays hour labels on the spiral face (non-HIS modes).
+- `daySpiralTimeFormat=24`: Sets the DaySpiral to 24-hour time format.
 
 ### Mobius Clock
 A 12-hour clock face where time moves along a fully three-dimensional Mobius strip (a strip with a single edge and a single surface).  You can even make it rotate in 3D space! 
 - **Hour shown on the edge**: The hour indicator moves along the edge of the strip, requiring two full loops to return to the start. Thus you have 24 hours shown on a 12-hour clock face.
-- **Minutes and seconds indicated along the strip's centerline**: Seconds and minutes move along the center line of the strip, thus only requiring one loop to complete.
-- **Lots of customization**: The setup dialog lets you change the shape of the hour, minute, and second indicators, select the ticks style and choose am/pm vs 24-hour time.
-- **Has it's own domain**: You can use 'mobiusclock.com' to get here; it redirects to dayspiral.com/#clock=mobius.
+- **Minutes and seconds shown in the center**: Seconds and minutes move along the center line of the strip, thus only requiring one loop to complete.
+- **Dali Mode**: A fluid, "melting" clock animation inspired by Salvador Dalí. A standard Mobius strip has a half-twist, but this has one-and-a-half twists. Shows an animation of the strip twisting in 3D space.
+- **Lots of customization**: You can change the shape of the hour, minute, and second indicators, select the ticks style and even make the strip rotate in 3D space.
 
-**Control Buttons for Mobius Clock (with url hash):**
-- Rotate: Enables the 3D rotation animation. (`rotation=1`)
-- Demo: Speeds up the hour and minute indicators to clarify how they move, so you don't have to wait around to see what they do. (`demo=1`)
-- Hours: Shows 3D hour number labels floating next to the strip. (`showHours=1`)
-- Day/Night: Colors the outer thirds of the strip to indicate day or night based on your location. ('dayNight=1')
-- Dali: Adds an extra twist, with an animation that's mind-bending! ('dali=1') ...why dali? Because it's strange...
+**Specific URL Parameters:**
+- `clock=mobius`: Activates the Mobius clock.
+- `timeStyle=[ampm|24h]`: Sets the label style.
+- `shapeHours`, `shapeMinutes`, `shapeSeconds`: Customize the indicator shapes (e.g., `sphere`, `ring`, `outer-ring`).
+- `rotation=1`: Enables the 3D rotation animation.
+- `demo=1`: Activates fast-motion demo mode.
+- `showHours=0`: Hides the hour number labels.
+- `dali=1`: Activates the "Dali" melting clock animation mode.
+- `dayNight=0`: Disables the day/night color coding.
 
 ---
 
