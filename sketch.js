@@ -1868,118 +1868,6 @@ function gotCityLocationDataModal(data, requestId) {
   }
 }
 
-// Unified City Submit Handler (used by both Desktop and Mobile modals)
-function handleCitySubmitUnified() {
-  CityName = select('#city-search-input').value();
-  if (CityName) {
-    // If Mobius is active, we treat this as a "Substitution" search (replacing current view)
-    // If DaySpiral is active, we treat it as an "Other Location" search (Dual Mode)
-    // BUT: The user might just want to set their PRIMARY location manually.
-    // The "Other Location" button in the UI triggers the modal.
-    // Let's check if we are in "Other Location" mode or "Primary" mode.
-    // Actually the modal has buttons for "Your Location" vs "Manual".
-    // The previous implementation likely surmised intent or had a flag.
-    // Let's assume for now this sets the "Other" location if we are in DaySpiral mode, 
-    // OR if we are in Mobius mode, it sets the ONLY location (Substitution).
-
-    // We'll use a flag IsSearchingForOtherLocation to differentiate if needed, 
-    // but typically the "Other Location" button opens this modal.
-    // Let's assume this is ALWAYS setting the "Selected/Other" location which
-    // overrides the view in Mobius, and adds a second view in DaySpiral.
-
-    IsSearchingForOtherLocation = true;
-
-    const requestId = ++LocationFetchSerial;
-    var url = `https://nominatim.openstreetmap.org/search?format=json&q=${CityName}`;
-    loadJSON(url, (data) => gotCityLocationDataUnified(data, requestId));
-
-    // Show loading
-    select('#city-error-msg').html("Searching...");
-  }
-}
-
-function gotCityLocationDataUnified(data, requestId) {
-  if (requestId && requestId !== LocationFetchSerial) return;
-  if (data.length > 0) {
-    var lat = data[0].lat;
-    var lon = data[0].lon;
-    // We found the city, now get TZ
-    // passing true for 'isOtherLocation' if we are indeed searching for other
-    getTzUsingLatLong(lat, lon, requestId, data[0].display_name.split(',')[0], true);
-    select('#city-error-msg').html("");
-  } else {
-    select('#city-error-msg').html("City not found.");
-  }
-}
-
-// Unified Manual Coords Submit
-function handleCoordsSubmitUnified() {
-  var lat = float(select('#input-lat').value());
-  var lon = float(select('#input-lon').value());
-  var tz = float(select('#input-tz').value());
-
-  // Basic validation
-  if (isNaN(lat) || isNaN(lon) || isNaN(tz)) {
-    select('#coords-error-msg').html("Invalid numeric values.");
-    return;
-  }
-
-  // Set as "Other" location
-  var cityName = "Manual Location";
-  setOtherLocation(lat, lon, tz, cityName);
-  closeAllModals();
-}
-
-function handleCoordsSubmitModal() {
-  var latVal = select('#input-lat-modal').value().trim();
-  var lngVal = select('#input-lng-modal').value().trim();
-  var tzVal = select('#input-tz-modal').value().trim();
-  var errEl = select('#coords-error-msg');
-  errEl.html('');
-
-  var lat = parseFloat(latVal);
-  var lng = parseFloat(lngVal);
-  var tz = parseFloat(tzVal);
-
-  if (latVal === "" || isNaN(lat) || lat < -90 || lat > 90) {
-    errEl.html("Invalid Latitude: must be between -90 and 90.");
-    return;
-  }
-  if (lngVal === "" || isNaN(lng) || lng < -180 || lng > 180) {
-    errEl.html("Invalid Longitude: must be between -180 and 180.");
-    return;
-  }
-  if (tzVal === "" || isNaN(tz) || tz < -13 || tz > 13) {
-    errEl.html("Invalid Time Zone: must be between -13 and 13.");
-    return;
-  }
-
-  // If we get here, all are valid
-  IsUserInitiatedLocation = true; // User manually entered coordinates
-  IsDisplayingUserLocation = false; // Manually entering coords means NOT using identification
-  Latitude = lat;
-  Longitude = lng;
-  TzOffset = tz;
-
-  // Update globals
-  LatLocal = Latitude;
-  LngLocal = Longitude;
-  TzOffsetLocal = TzOffset;
-  LastTz = TzOffset;
-
-  // Update main UI inputs to match
-  LatInput.value(str(Latitude));
-  LngInput.value(str(Longitude));
-  TzInput.value(str(TzOffset));
-
-  // Create descriptive title for mobile context
-  var tzStr = str(TzOffset);
-  if (TzOffset > 0) tzStr = "+" + tzStr;
-
-  LocaleTitle = "Lat:" + nfc(Latitude, 2) + " Lng:" + nfc(Longitude, 2) + " TZ:" + tzStr;
-  updateTimeThisDay();
-  closeAllModals();
-}
 
 
 
@@ -3220,7 +3108,7 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
         })
         .then(data => {
           // City search is NOT auto, it's user-initiated
-          gotCityTzData(data, requestId, extractedCity, isOther, false);
+          gotCityTzData(data, requestId, lat, lon, extractedCity, isOther, false);
         })
         .catch(error => {
           clearTimeout(timeoutId);
