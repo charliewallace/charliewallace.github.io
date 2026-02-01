@@ -645,7 +645,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
                 // Halved margin for tighter AM/PM grouping; suffix increased for inner spiral readability
                 let hourStr = str(hour12);
-                let ampmSize = (this.fontSize * scale) * (isInner ? 0.65 : 0.45);
+                let ampmSize = (this.fontSize * scale) * (isInner ? 0.55 : 0.45);
                 let margin = (this.fontSize * scale) * 0.05; // reduced from 0.1
 
                 textSize(this.fontSize * scale);
@@ -746,7 +746,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
                 let hourStr = str(hour12);
                 let digitSize = this.fontSize * 0.60;
-                let ampmSize = this.fontSize * 0.65; // Increased from 0.44 for readability
+                let ampmSize = this.fontSize * 0.48; // Reduced to be smaller than digitSize (0.60)
                 let margin = this.fontSize * 0.04;   // Halved from 0.08
 
                 textSize(digitSize);
