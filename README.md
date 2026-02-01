@@ -33,6 +33,8 @@ CoolweirdClocks uses a URL hash (e.g., `#clock=mobius&zen=1`) added to the end o
 A unique visualization that shows you your whole day, including day and night, sunrise and sunset. To show night and day you need a 24-hour clock; using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face.
 - **Sunset/Sunrise**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun at your location.
 - **Spiral Geometry**: The hour hand follows the spiral path, making two full turns to complete a day.
+- **Dual Location Mode**: Display a second location on an inner spiral to compare time and sunlight across the world.
+- **Awakeness Line**: A green arc appears in dual mode to indicate when both locations are simultaneously in their "awake" hours (9 AM - 8 PM), making it easy to see when interaction is feasible.
 
 **Specific URL Parameters:**
 - `gmt=1`: Optionally display the GMT hours on the spiral.
