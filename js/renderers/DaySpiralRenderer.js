@@ -227,7 +227,63 @@ class DaySpiralRenderer extends ClockRenderer {
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) {
             this.drawGMT(locManager);
         }
+
+        // Draw awakeness line in dual mode
+        if (this.isDualLocationMode) {
+            this.drawAwakenessArc(locManager);
+        }
+
         this.drawHands(timeKeeper);
+    }
+
+    /**
+     * Draw a bright green arc between inner and outer spirals
+     * to indicate when both locations are "awake" (9am - 8pm)
+     */
+    drawAwakenessArc(locManager) {
+        if (!this.isDualLocationMode || !locManager.hasOtherLocation()) return;
+
+        const tzDiff = locManager.getTimezoneOffsetDifference();
+        const awakeStart = 9;
+        const awakeEnd = 20;
+
+        push();
+        stroke(0, 255, 0); // Semantic Green (OK to interact)
+        strokeWeight(this.secondaryStrokeWeight * 0.225); // Weight kept from previous refinement
+        noFill();
+        strokeCap(ROUND);
+
+        const totalDailyPts = this.numPointsPerTurn * 2;
+        let inArc = false;
+
+        for (let i = 0; i < totalDailyPts; i++) {
+            const hour = (i / totalDailyPts) * 24;
+            const otherHour = (hour + tzDiff + 24) % 24;
+
+            // Define "awake" as between 9am and 8pm (20:00) inclusive
+            const isLocalAwake = (hour >= awakeStart && hour <= awakeEnd);
+            const isOtherAwake = (otherHour >= awakeStart && otherHour <= awakeEnd);
+
+            if (isLocalAwake && isOtherAwake) {
+                if (!inArc) {
+                    beginShape();
+                    inArc = true;
+                }
+                const rOuter = this.radiusSpiral[i];
+                const rInner = this.radiusSpiralInner[i];
+                // Center the arc in the gap by accounting for the difference in track widths
+                const midR = (rOuter + rInner) / 2 + ((this.innerStrokeWeight - this.outerStrokeWeight) / 4);
+                const theta = (TWO_PI * (i / this.numPointsPerTurn)) - HALF_PI;
+                vertex(this.centerX + midR * cos(theta), this.centerY + midR * sin(theta));
+            } else {
+                if (inArc) {
+                    endShape();
+                    inArc = false;
+                }
+            }
+        }
+        if (inArc) endShape();
+        pop();
     }
 
     drawHourLabels() {
@@ -553,9 +609,9 @@ class DaySpiralRenderer extends ClockRenderer {
     drawSpiralHours(xArray, yArray, rArray, isInner, locManager) {
         if (!xArray || xArray.length === 0) return;
 
-        // Color differentiation: light green for inner spiral, yellow for outer
+        // Color differentiation: cyan for inner spiral, yellow for outer
         if (isInner) {
-            fill(150, 255, 150); // Light green for inner spiral
+            fill(180, 255, 255); // Light Cyan for inner spiral
         } else {
             fill(255, 235, 120); // Yellow for outer spiral
         }
@@ -692,7 +748,8 @@ class DaySpiralRenderer extends ClockRenderer {
         // because the toggle only applies to the primary/outer spiral in single mode.
         if (!locManager.hasOtherLocation()) return;
 
-        fill(150, 255, 150); // Light green for inner spiral (distinct from day/night blues)
+        fill(180, 255, 255); // Light Cyan for inner spiral label
+        textSize(this.fontSize * 0.45);
         noStroke();
 
         // Smaller text size for inner spiral (reduced by 20% from 0.7)
@@ -902,8 +959,8 @@ class DaySpiralRenderer extends ClockRenderer {
         let y1 = this.centerY + this.ySpiral[0];
         text("Local", x1, y1);
 
-        // 2. Label for Inner Spiral (City Name or "Other") - use light green to match inner spiral hours
-        fill(150, 255, 150); // Light green for inner spiral label
+        // 2. Label for Inner Spiral (City Name or "Other") - use light cyan to match inner spiral hours
+        fill(180, 255, 255); // Light Cyan for inner spiral label
         textSize(innerFontSize);
         let cityName = locManager.otherLocation.cityName || "Other";
         // Extract just the city name if comma-separated
