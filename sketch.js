@@ -209,7 +209,9 @@ function fetchIpLocation() {
   IsPreciseLocation = false;
   IsUserInitiatedLocation = false;
 
-  if (locManager) locManager.clearOtherLocation(); // Clear dual mode when locating primary user
+  if (locManager) {
+    // locManager.clearOtherLocation(); // Removed: preserving other location when locating primary user
+  }
 
   const providers = [
     {
@@ -2620,7 +2622,9 @@ function usePreciseLocation(isAuto = false) {
   IsUserInitiatedLocation = !isAuto; // Trigger URL update only if NOT auto-fetch
   PrevLocaleTitle = LocaleTitle; // Capture for error reversion
 
-  if (locManager) locManager.clearOtherLocation(); // Returning to precise primary location
+  if (locManager) {
+    // locManager.clearOtherLocation(); // Removed: preserving other location when upgrading to precise
+  }
 
   // Options for getCurrentPosition call below, designed for speed over accuracy.
   const options = {

@@ -893,7 +893,7 @@ class DaySpiralRenderer extends ClockRenderer {
         if (this.style !== 'Classic') return;
 
         // Hide DOW abbreviations in dual mode as requested
-        if (locManager && locManager.hasOtherLocation()) return;
+        if (this.isDualLocationMode) return;
 
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
