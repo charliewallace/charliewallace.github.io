@@ -67,7 +67,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.5.4 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.5.5 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -769,17 +769,15 @@ function oneTimeInit() {
   // ==== INITIAL LOCATION LOGIC ====
 
   // 1. Parse URL hash
-  var locationFoundInUrlHash = false;
-  if (parseUrlHash()) {
-    console.log("Location found in URL hash, using it.");
-    locationFoundInUrlHash = true;
-  }
+  var locationStatus = parseUrlHash();
 
   // 2. Apply initial state (mode, settings, etc.)
   applyInitialState();
 
   // 3. Coordinate initial location fetch (GPS or IP)
-  if (!locationFoundInUrlHash && navigator.permissions && navigator.permissions.query) {
+  // Only skip if a PRIMARY location was found in the URL. 
+  // If only an 'other' location was found, we still need to find 'you'.
+  if (!locationStatus.primaryFound && navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(function (result) {
       function checkPerm(state) {
         if (state === 'granted') {
@@ -833,14 +831,14 @@ function oneTimeInit() {
       console.warn("Permissions query failed:", err);
       fetchIpLocation();
     });
-  } else if (!locationFoundInUrlHash) {
+  } else if (!locationStatus.primaryFound) {
     // Fallback if browser doesn't support permissions API or URL has no location
-    console.log("Permissions API not available or no location in URL, defaulting to IP.");
+    console.log("Permissions API not available or no primary location in URL, defaulting to IP.");
     fetchIpLocation();
   }
 
   // Final check: if we found a location in URL, ensure we aren't "Finding you..."
-  if (locationFoundInUrlHash) {
+  if (locationStatus.primaryFound || locationStatus.otherFound) {
     clearLoadingState();
   }
 } // end of oneTimeInit()  ====================
@@ -849,9 +847,10 @@ function oneTimeInit() {
 // Parse location and state from URL hash
 function parseUrlHash() {
   var hash = window.location.hash.substring(1); // remove #
-  if (!hash) return false;
+  if (!hash) return { primaryFound: false, otherFound: false };
 
-  var locationFound = false;
+  var primaryFound = false;
+  var otherFound = false;
 
   // Expected format: lat=33.743&lon=-117.643&tz=-8&city=Silverado&clock=mobius&...
   // or legacy comma separated: 33.743,-117.643,-8,Silverado
@@ -974,7 +973,7 @@ function parseUrlHash() {
     // Recalculate everything
     IsSunRiseSetObtained = false;
     updateTimeThisDay();
-    locationFound = true;
+    primaryFound = true;
   }
 
   // Parse Alternate Location if present
@@ -991,10 +990,10 @@ function parseUrlHash() {
       tz: parseFloat(otherTz || 0),
       city: otherCity ? decodeURIComponent(otherCity) : "URL Location"
     };
-    locationFound = true;
+    otherFound = true;
   }
 
-  return locationFound;
+  return { primaryFound, otherFound };
 }
 
 // Apply initial state from URL parameters (called after renderers are initialized)
