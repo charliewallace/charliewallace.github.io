@@ -3297,6 +3297,13 @@ function gotReverseGeocodeData(data, requestId, isOther = IsSearchingForOtherLoc
       }
     }
 
+    // User Request: If a city/town/village/hamlet is provided, omit the county to save space
+    if (activeParts['city'] || activeParts['town'] || activeParts['village'] || activeParts['hamlet']) {
+      if (activeParts['county']) {
+        delete activeParts['county'];
+      }
+    }
+
     // Function to construct LocaleTitle from activeParts
     const constructTitle = (partsObj) => {
       let tempParts = [];
