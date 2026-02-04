@@ -107,6 +107,7 @@ var TimezoneWarningShown = false;  // true if timezone mismatch warning has been
 var IsPreciseLocation = false; // true if using GPS location
 var IsRequestingPrecise = false; // true if a GPS request is currently in flight
 var LocationFetchSerial = 0; // Incrementing ID to track async location requests
+var OtherLocationFetchSerial = 0; // Separate ID for "Other" location requests to prevent race conditions
 var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
@@ -976,21 +977,46 @@ function parseUrlHash() {
     primaryFound = true;
   }
 
-  // Parse Alternate Location if present
+  // Parse Alternate Location attributes
   var otherLat = params.get('otherLat');
   var otherLon = params.get('otherLon');
-  var otherTz = params.get('otherTz');
+  var otherTz = params.get('otherTz'); // might be null
   var otherCity = params.get('otherCity');
 
-  if (isValidCoord(otherLat) && isValidCoord(otherLon)) {
-    console.log("Parsed alternate URL location:", { otherLat, otherLon, otherTz, otherCity });
-    window._initialOtherLocation = {
-      lat: parseFloat(otherLat),
-      lon: parseFloat(otherLon),
-      tz: parseFloat(otherTz || 0),
-      city: otherCity ? decodeURIComponent(otherCity) : "URL Location"
-    };
-    otherFound = true;
+  // Check validity of coordinates
+  var hasOtherCoords = isValidCoord(otherLat) && isValidCoord(otherLon);
+  var hasOtherTz = isValidCoord(otherTz);
+
+  if (hasOtherCoords) {
+    // SCENARIO 1: We have coordinates
+    if (hasOtherTz) {
+      // 1A: Full data (Lat/Lon + TZ) -> Immediate apply
+      console.log("Parsed alternate URL location:", { otherLat, otherLon, otherTz, otherCity });
+      window._initialOtherLocation = {
+        lat: parseFloat(otherLat),
+        lon: parseFloat(otherLon),
+        tz: parseFloat(otherTz),
+        city: otherCity ? decodeURIComponent(otherCity) : "URL Location"
+      };
+      otherFound = true;
+    } else {
+      // 1B: Missing Timezone -> Async Fetch
+      console.log("Parsed alternate URL coords but missing TZ. Fetching...", { otherLat, otherLon });
+      // Trigger async TZ lookup.
+      // Note: We do NOT set otherFound=true here because we don't have the full data yet.
+      // The async callback will set the location and clear loading state.
+      setLoadingState();
+      // Pass 0 as requestId to auto-increment, isOther=true, isAuto=true (to avoid overwriting user manual entry logic if any)
+      getTzUsingLatLong(parseFloat(otherLat), parseFloat(otherLon), 0,
+        otherCity ? decodeURIComponent(otherCity) : "URL Location", true, true);
+    }
+  } else if (otherCity) {
+    // SCENARIO 2: No coordinates, but we have a City Name -> Async Lookup
+    console.log("Parsed alternate URL city only. Looking up:", otherCity);
+    setLoadingState();
+    // Trigger async City lookup. 
+    // isOther=true
+    getLocationUsingCityName(decodeURIComponent(otherCity), 0, true);
   }
 
   return { primaryFound, otherFound };
@@ -2881,19 +2907,25 @@ function processLongInputEvent() {
 // The entered city name may contain additional fields such as state/province and 
 // country, comma separated.
 function handleCitySubmitUnified() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] handleCitySubmitUnified()`);
+
+  // Determine context first
+  var isOther = false;
+  if (daySpiralRenderer && daySpiralRenderer.active) {
+    isOther = true;
+    IsSearchingForOtherLocation = true;
+    console.log("  🔍 Searching for alternate location");
+  } else {
+    isOther = false;
+    IsSearchingForOtherLocation = false;
+  }
+
+  const requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
+  console.log(`[${requestId}] handleCitySubmitUnified(isOther=${isOther})`);
+
   var input = select('#city-search-input');
   var city = input.value();
   if (city && city.length > 1) {
-    // In DaySpiral mode, searches now target the alternate location
-    if (daySpiralRenderer && daySpiralRenderer.active) {
-      IsSearchingForOtherLocation = true;
-      console.log("  🔍 Searching for alternate location");
-    } else {
-      IsSearchingForOtherLocation = false;
-    }
-    getLocationUsingCityName(city, requestId);
+    getLocationUsingCityName(city, requestId, isOther);
     closeAllModals();
   } else {
     var errEl = select('#city-error-msg');
@@ -2992,7 +3024,9 @@ function handleCitySubmit() {
 // ==============
 // Alternate way to set location, timezone, and IsDst using passed city name.
 function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSearchingForOtherLocation) {
-  if (requestId === 0) requestId = ++LocationFetchSerial;
+  if (requestId === 0) {
+    requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
+  }
   console.log(`[${requestId}] getLocationUsingCityName(${passedCityName}, isOther=${isOther})`);
 
   if (!isOther) PrevLocaleTitle = LocaleTitle; // Only capture for primary location reversion
@@ -3047,7 +3081,8 @@ function gotCityLocationDataGeoNames(data)
 // using Nominatim OpenStreetMap API
 // The response to the API call for the city name has arrived.
 function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForOtherLocation) {
-  if (requestId && requestId !== LocationFetchSerial) {
+  const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+  if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotCityLocationDataOpenStMap: Ignoring stale callback.`);
     return;
   }
@@ -3134,7 +3169,8 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
  * Timezone callback from GeoNames or failover
  */
 function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchingForOtherLocation, isAuto = false) {
-  if (requestId && requestId !== LocationFetchSerial) {
+  const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+  if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotCityTzData: Ignoring stale callback.`);
     return;
   }
@@ -3218,6 +3254,7 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
 
 // Helper for reverse geocoding results from Nominatim
 function gotReverseGeocodeData(data, requestId, isAuto = false) {
+  // Reverse geocode is currently only used for primary location (GPS/IP)
   if (requestId && requestId !== LocationFetchSerial) {
     console.log(`[${requestId}] gotReverseGeocodeData: Ignoring stale callback.`);
     return;
@@ -3326,7 +3363,8 @@ function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
   let currentIdx = 0;
 
   const tryNext = () => {
-    if (requestId !== LocationFetchSerial) return;
+    const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+    if (requestId !== currentSerial) return;
     if (currentIdx >= providers.length) {
       console.warn(`[${requestId}] All reverse geocode providers failed.`);
       return;
@@ -3394,7 +3432,8 @@ function fetchTimezoneWithFailover(lat, lon, requestId, cityName, isOther, isAut
   let currentIdx = 0;
 
   const tryNext = () => {
-    if (requestId !== LocationFetchSerial) return;
+    const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+    if (requestId !== currentSerial) return;
 
     if (currentIdx >= providers.length) {
       console.warn(`[${requestId}] All timezone APIs failed. Using mathematical estimate.`);
