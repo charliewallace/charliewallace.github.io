@@ -161,26 +161,41 @@ class DaySpiralRenderer extends ClockRenderer {
         // --- Animation Logic ---
         this.outerBrightness = 0;
         this.innerBrightness = 0;
+        this.animationPhase = 'idle'; // 'idle', 'outer', 'intermission', 'inner'
+
+        // Config
+        this.introAnimationDuration = 5000;
 
         if (this.isDualLocationMode && this.introAnimationStart > 0) {
             let elapsed = millis() - this.introAnimationStart;
 
             if (elapsed < this.introAnimationDuration) {
-                // Phase 1: Outer Brightness (Start at 200ms, Peak 700ms, End 1200ms)
-                if (elapsed > 200 && elapsed < 1200) {
-                    // Map 200-1200 to 0-PI for sine wave
-                    let p = map(elapsed, 200, 1200, 0, PI);
-                    this.outerBrightness = sin(p); // 0.0 to 1.0
+
+                // Phase 1: Local / Outer (200ms - 2200ms)
+                if (elapsed > 200 && elapsed < 2200) {
+                    this.animationPhase = 'outer';
+                    // Map 200-2200 to 0 -> 2*PI for TWO pulses
+                    let p = map(elapsed, 200, 2200, 0, TWO_PI);
+                    // Use abs(sin) to get positive humps: 0->1->0->1->0
+                    this.outerBrightness = Math.abs(sin(p));
                 }
 
-                // Phase 2: Inner Brightness (Start 1000ms, Peak 1500ms, End 2000ms)
-                if (elapsed > 1000 && elapsed < 2000) {
-                    let p = map(elapsed, 1000, 2000, 0, PI);
-                    this.innerBrightness = sin(p); // 0.0 to 1.0
+                // Intermission: Both Hidden (2200ms - 2600ms)
+                else if (elapsed >= 2200 && elapsed < 2600) {
+                    this.animationPhase = 'intermission';
+                    // Brightness stays 0
+                }
+
+                // Phase 2: Other / Inner (2600ms - 4600ms)
+                else if (elapsed >= 2600 && elapsed < 4600) {
+                    this.animationPhase = 'inner';
+                    let p = map(elapsed, 2600, 4600, 0, TWO_PI);
+                    this.innerBrightness = Math.abs(sin(p));
                 }
             } else {
                 // End animation
                 this.introAnimationStart = -9999;
+                this.animationPhase = 'idle';
             }
         }
 
@@ -713,12 +728,14 @@ class DaySpiralRenderer extends ClockRenderer {
         if (!xArray || xArray.length === 0) return;
 
         // Hard Hide Logic for Animation
-        if (isInner) {
-            // If this is Inner (Other), hide if Outer (Local) is active
-            if (this.outerBrightness > 0.1) return;
-        } else {
-            // If this is Outer (Local), hide if Inner (Other) is active
-            if (this.innerBrightness > 0.1) return;
+        if (this.animationPhase && this.animationPhase !== 'idle') {
+            if (isInner) {
+                // If this is Inner: Show ONLY if phase is 'inner'
+                if (this.animationPhase !== 'inner') return;
+            } else {
+                // If this is Outer: Show ONLY if phase is 'outer'
+                if (this.animationPhase !== 'outer') return;
+            }
         }
 
         // Color differentiation: cyan for inner spiral, yellow for outer
@@ -876,8 +893,10 @@ class DaySpiralRenderer extends ClockRenderer {
         // Animate Inner Spiral Digits (Other Location)
         let activeBrightness = this.innerBrightness || 0;
 
-        // Hide inactive spiral numbers completely
-        if (this.outerBrightness > 0.1) return;
+        // ANIMATION HIDE LOGIC
+        // If animating and NOT in 'inner' phase, HIDE.
+        // This covers 'outer' phase AND 'intermission' phase.
+        if (this.animationPhase && this.animationPhase !== 'idle' && this.animationPhase !== 'inner') return;
 
         let digitColor = color(180, 255, 255); // Light Cyan
         let shadowColor = 'rgba(0,0,0,0.7)';
@@ -990,8 +1009,9 @@ class DaySpiralRenderer extends ClockRenderer {
         // Animate Outer Spiral Digits (Local Location)
         let activeBrightness = this.outerBrightness || 0;
 
-        // Hide inactive spiral numbers completely
-        if (this.innerBrightness > 0.1) return;
+        // ANIMATION HIDE LOGIC
+        // If animating and NOT in 'outer' phase, HIDE.
+        if (this.animationPhase && this.animationPhase !== 'idle' && this.animationPhase !== 'outer') return;
 
         let digitColor = color(255, 235, 120); // Yellow
         let shadowColor = 'rgba(0,0,0,0.7)';
