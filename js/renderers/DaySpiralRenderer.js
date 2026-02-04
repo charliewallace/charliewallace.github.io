@@ -712,6 +712,15 @@ class DaySpiralRenderer extends ClockRenderer {
     drawSpiralHours(xArray, yArray, rArray, isInner, locManager) {
         if (!xArray || xArray.length === 0) return;
 
+        // Hard Hide Logic for Animation
+        if (isInner) {
+            // If this is Inner (Other), hide if Outer (Local) is active
+            if (this.outerBrightness > 0.1) return;
+        } else {
+            // If this is Outer (Local), hide if Inner (Other) is active
+            if (this.innerBrightness > 0.1) return;
+        }
+
         // Color differentiation: cyan for inner spiral, yellow for outer
         if (isInner) {
             fill(180, 255, 255); // Light Cyan for inner spiral
@@ -729,7 +738,20 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let tzDiffHours = (isInner && locManager) ? locManager.getTimezoneOffsetDifference() : 0;
 
-        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)'); // Pronounced shadow for spiral numbers
+        // Animation Brightness
+        let activeBrightness = isInner ? (this.innerBrightness || 0) : (this.outerBrightness || 0);
+        let shadowColor = 'rgba(0,0,0,0.7)';
+        let shadowBlur = 8;
+
+        if (activeBrightness > 0.1) {
+            let baseColor = isInner ? color(180, 255, 255) : color(255, 235, 120);
+            let brightColor = lerpColor(baseColor, color(255), activeBrightness * 0.8);
+            fill(brightColor);
+            shadowColor = color(255, 255, 255, activeBrightness * 255);
+            shadowBlur = 15;
+        }
+
+        this._applyShadow(shadowBlur, 0, 4, shadowColor); // Pronounced shadow for spiral numbers
 
         if (this.timeFormat === '24') {
             // 24-hour mode: Display 0-23
@@ -854,6 +876,9 @@ class DaySpiralRenderer extends ClockRenderer {
         // Animate Inner Spiral Digits (Other Location)
         let activeBrightness = this.innerBrightness || 0;
 
+        // Hide inactive spiral numbers completely
+        if (this.outerBrightness > 0.1) return;
+
         let digitColor = color(180, 255, 255); // Light Cyan
         let shadowColor = 'rgba(0,0,0,0.7)';
         let shadowBlur = 6;
@@ -964,6 +989,9 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Animate Outer Spiral Digits (Local Location)
         let activeBrightness = this.outerBrightness || 0;
+
+        // Hide inactive spiral numbers completely
+        if (this.innerBrightness > 0.1) return;
 
         let digitColor = color(255, 235, 120); // Yellow
         let shadowColor = 'rgba(0,0,0,0.7)';
@@ -1085,13 +1113,22 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // 1. Label for Outer Spiral ("Local")
         // Apply Brightness Animation to Shadow/Fill
+        let localColor = color(255, 235, 120);
+        let localShadow = 'rgba(0,0,0,0.8)';
+
         if (this.outerBrightness > 0.1) {
             let glowColor = color(255, 255, 255, this.outerBrightness * 255);
             this._applyShadow(15, 0, 0, glowColor);
-            fill(lerpColor(color(255, 235, 120), color(255), this.outerBrightness * 0.8));
+            localColor = lerpColor(localColor, color(255), this.outerBrightness * 0.8);
+            fill(localColor); // will be overridden if we fade? No, fill sets the context.
+        } else if (this.innerBrightness > 0.1) {
+            // Hide completely
+            localColor.setAlpha(0);
+            this._applyShadow(0, 0, 0, 0); // No shadow
+            fill(localColor);
         } else {
             this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
-            fill(255, 235, 120);
+            fill(localColor);
         }
 
         textSize(outerFontSize);
@@ -1102,13 +1139,24 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // 2. Label for Inner Spiral (City Name or "Other")
 
+        // Reset Shadow context for next label
+        this._resetShadow();
+
+        let otherColor = color(180, 255, 255); // Light Cyan
+
         if (this.innerBrightness > 0.1) {
             let glowColor = color(255, 255, 255, this.innerBrightness * 255);
             this._applyShadow(15, 0, 0, glowColor);
-            fill(lerpColor(color(180, 255, 255), color(255), this.innerBrightness * 0.8));
+            otherColor = lerpColor(otherColor, color(255), this.innerBrightness * 0.8);
+            fill(otherColor);
+        } else if (this.outerBrightness > 0.1) {
+            // Hide completely
+            otherColor.setAlpha(0);
+            this._applyShadow(0, 0, 0, 0);
+            fill(otherColor);
         } else {
             this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
-            fill(180, 255, 255); // Light Cyan
+            fill(otherColor);
         }
 
         textSize(innerFontSize);
