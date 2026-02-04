@@ -3015,6 +3015,11 @@ function handleCoordsSubmitUnified() {
   if (daySpiralRenderer && daySpiralRenderer.active) {
     console.log("  📍 Setting manual alternate location");
     setOtherLocation(lat, lng, isNaN(tz) ? 0 : tz, "Manual Location");
+
+    // Trigger reverse geocoding to find the city name
+    // Signature: fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto, isOther)
+    fetchReverseGeocodeWithFailover(lat, lng, 0, false, true);
+
     closeAllModals();
     return;
   }
@@ -3035,6 +3040,10 @@ function handleCoordsSubmitUnified() {
   IsUserInitiatedLocation = true;
   IsLoadingLocation = false; // Ensure not loading
   LocaleTitle = "Manual Location";
+
+  // Trigger reverse geocoding to find the city name
+  // Signature: fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto, isOther)
+  fetchReverseGeocodeWithFailover(lat, lng, 0, false, false);
 
   updateTimeThisDay();
   updateUrlHash();
