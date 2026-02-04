@@ -999,16 +999,26 @@ function parseUrlHash() {
         city: otherCity ? decodeURIComponent(otherCity) : "URL Location"
       };
       otherFound = true;
+
+      // If city is missing (but we have coords+TZ), trigger reverse geocode to get a better name
+      // Also trigger if the city is the generic fallback "URL Location"
+      if (!otherCity || decodeURIComponent(otherCity) === "URL Location") {
+        console.log("Parsed alternate URL coords but missing/generic City Name. Fetching name...");
+        fetchReverseGeocodeWithFailover(parseFloat(otherLat), parseFloat(otherLon), 0, true, true);
+      }
     } else {
       // 1B: Missing Timezone -> Async Fetch
       console.log("Parsed alternate URL coords but missing TZ. Fetching...", { otherLat, otherLon });
       // Trigger async TZ lookup.
-      // Note: We do NOT set otherFound=true here because we don't have the full data yet.
-      // The async callback will set the location and clear loading state.
       setLoadingState();
-      // Pass 0 as requestId to auto-increment, isOther=true, isAuto=true (to avoid overwriting user manual entry logic if any)
       getTzUsingLatLong(parseFloat(otherLat), parseFloat(otherLon), 0,
         otherCity ? decodeURIComponent(otherCity) : "URL Location", true, true);
+
+      // If city is ALSO missing, trigger reverse geocode as well
+      if (!otherCity || decodeURIComponent(otherCity) === "URL Location") {
+        console.log("Parsed alternate URL coords also missing/generic City Name. Fetching name...");
+        fetchReverseGeocodeWithFailover(parseFloat(otherLat), parseFloat(otherLon), 0, true, true);
+      }
     }
   } else if (otherCity) {
     // SCENARIO 2: No coordinates, but we have a City Name -> Async Lookup
@@ -3253,9 +3263,10 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
 }
 
 // Helper for reverse geocoding results from Nominatim
-function gotReverseGeocodeData(data, requestId, isAuto = false) {
+function gotReverseGeocodeData(data, requestId, isOther = IsSearchingForOtherLocation, isAuto = false) {
   // Reverse geocode is currently only used for primary location (GPS/IP)
-  if (requestId && requestId !== LocationFetchSerial) {
+  const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+  if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotReverseGeocodeData: Ignoring stale callback.`);
     return;
   }
@@ -3267,6 +3278,12 @@ function gotReverseGeocodeData(data, requestId, isAuto = false) {
 
     // Order of local importance: hamlet, village, town, city, county, state, country
     let hierarchy = ['hamlet', 'village', 'town', 'city', 'county', 'state', 'country'];
+
+    // Additional logic: if we find a county, ensure "County" is appended
+    // (User specific request)
+    if (addr.county && !addr.county.toLowerCase().endsWith(' county')) {
+      addr.county = addr.county + " County";
+    }
 
     // Gather all parts first
     let activeParts = {};
@@ -3289,33 +3306,47 @@ function gotReverseGeocodeData(data, requestId, isAuto = false) {
       return tempParts.join(", ");
     };
 
-    LocaleTitle = constructTitle(activeParts);
+    let foundName = constructTitle(activeParts);
 
     // If too long, remove parts by priority: hamlet, village, town, county, country
     let removalPriority = ['hamlet', 'village', 'town', 'county', 'country'];
     for (let key of removalPriority) {
-      if (LocaleTitle.length <= 35) break;
+      if (foundName.length <= 35) break;
       if (activeParts[key]) {
         delete activeParts[key];
-        LocaleTitle = constructTitle(activeParts);
+        foundName = constructTitle(activeParts);
       }
     }
 
     // Fallback if still too long or no parts found
-    if (LocaleTitle.length === 0 && data.display_name) {
-      LocaleTitle = data.display_name.split(',')[0];
+    if (foundName.length === 0 && data.display_name) {
+      foundName = data.display_name.split(',')[0];
     }
 
     // Prefix with "Near " if this was an automatic GPS/IP check and we don't have precise coords yet
-    if (isAuto && IsDisplayingUserLocation && !IsPreciseLocation && !LocaleTitle.startsWith("Near ")) {
-      LocaleTitle = "Near " + LocaleTitle;
+    // Only applies to PRIMARY location
+    if (!isOther && isAuto && IsDisplayingUserLocation && !IsPreciseLocation && !foundName.startsWith("Near ")) {
+      foundName = "Near " + foundName;
     }
 
-    console.log("Updated LocaleTitle from reverse geocode:", LocaleTitle);
-    if (IsUserInitiatedLocation || IsPreciseLocation) {
+    console.log("Updated location name from reverse geocode:", foundName);
+
+    if (isOther) {
+      // Update Other Location Name
+      if (locManager && locManager.otherLocation) {
+        // Correctly target the nested property
+        locManager.otherLocation.cityName = foundName;
+        console.log(`Updated Other Location Name to: ${foundName}`);
+      }
       updateUrlHash();
+    } else {
+      // Primary Location
+      LocaleTitle = foundName;
+      if (IsUserInitiatedLocation || IsPreciseLocation) {
+        updateUrlHash();
+      }
+      updateUIElements();
     }
-    updateUIElements();
   }
 }
 
@@ -3329,8 +3360,12 @@ function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingF
 /**
  * Multi-service reverse geocoding with failover
  */
-function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
-  console.log(`[${requestId}] Starting reverse geocode lookup for ${lat}, ${lon}...`);
+function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto, isOther = false) {
+  // if requestId is 0, auto-assign
+  if (requestId === 0) {
+    requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
+  }
+  console.log(`[${requestId}] Starting reverse geocode lookup for ${lat}, ${lon} (isOther=${isOther})...`);
 
   const providers = [
     {
@@ -3352,7 +3387,10 @@ function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
           address: {
             city: city,
             state: d.principalSubdivision,
-            country: d.countryName
+            country: d.countryName,
+            county: d.localityInfo && d.localityInfo.administrative ?
+              d.localityInfo.administrative.find(x => x.order == 6 || x.name && x.name.includes("County"))?.name
+              : null
           },
           display_name: city
         };
@@ -3386,7 +3424,7 @@ function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
         const result = provider.parse(data);
         if (!result) throw new Error("No data found");
         console.log(`[${requestId}] Reverse geocode success via ${provider.name}`);
-        gotReverseGeocodeData(result, requestId, isAuto);
+        gotReverseGeocodeData(result, requestId, isOther, isAuto);
       })
       .catch(err => {
         clearTimeout(timeoutId);
