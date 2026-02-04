@@ -1131,7 +1131,7 @@ function applyInitialState() {
 
     // Apply Dali mode
     if (state.dali !== undefined) {
-      mobiusRenderer.setDaliMode(state.dali);
+      mobiusRenderer.setDaliMode(state.dali, true);
       const btnDali = select('#btn-dali');
       if (btnDali) {
         if (state.dali) btnDali.addClass('toggled-on');

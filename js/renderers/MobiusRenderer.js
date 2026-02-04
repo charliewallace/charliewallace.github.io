@@ -815,15 +815,27 @@ class MobiusRenderer extends ClockRenderer {
         return this.hoursVisible;
     }
 
-    setDaliMode(enabled) {
-        if (this.daliMode === enabled) return;
+    setDaliMode(enabled, immediate = false) {
+        if (this.daliMode === enabled && !immediate) return;
         this.daliMode = enabled;
 
-        // Start Transition
-        this.isTransitioning = true;
-        this.transitionStartTime = millis();
-        this.targetTwistMultiplier = enabled ? 3 : 1;
-        this.startTwistMultiplier = enabled ? 1 : 3; // Explicitly set start
+        if (immediate) {
+            this.isTransitioning = false;
+            this.currentTwistMultiplier = enabled ? 3 : 1;
+            this.targetTwistMultiplier = this.currentTwistMultiplier;
+            this.startTwistMultiplier = null;
+            this.generateMobius3dPoints(this.currentTwistMultiplier);
+            if (this.initialized) {
+                this.updateMobiusStripVertices();
+                this.updateHourNumberPositions();
+            }
+        } else {
+            // Start Transition
+            this.isTransitioning = true;
+            this.transitionStartTime = millis();
+            this.targetTwistMultiplier = enabled ? 3 : 1;
+            this.startTwistMultiplier = enabled ? 1 : 3; // Explicitly set start
+        }
     }
 
     setDayNight(enabled) {
