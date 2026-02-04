@@ -445,9 +445,21 @@ function oneTimeInit() {
   });
 
   // --- MODAL SUBMIT BUTTONS ---
-  // City search button in the Select Location modal
-  var citySrchBtn = select('#btn-city-submit-unified');
-  if (citySrchBtn) citySrchBtn.mousePressed(handleCitySubmitUnified);
+
+  // Note: "Go" button removed. The "OK" button (#btn-select-location-ok) now triggers lookup.
+  var okSelectLocBtn = select('#btn-select-location-ok');
+  if (okSelectLocBtn) {
+    okSelectLocBtn.mousePressed(() => {
+      let val = CityNameInput.value();
+      if (val && val.trim().length > 0) {
+        // Trigger lookup, pass callback to close modal on success
+        handleCitySubmitUnified(() => closeAllModals());
+      } else {
+        // No input, just close (act as Cancel/Close)
+        closeAllModals();
+      }
+    });
+  }
 
   // Manual coords submit button
   var coordsSubmitBtn = select('#btn-coords-submit-modal');
@@ -1695,6 +1707,14 @@ function openModal(modalId) {
   document.getElementById('modal-overlay').classList.remove('hidden');
   document.querySelectorAll('.modal-content').forEach(el => el.classList.add('hidden'));
   document.getElementById(modalId).classList.remove('hidden');
+
+  // Clear inputs if opening select location modal
+  if (modalId === 'modal-select-location') {
+    let input = select('#city-search-input');
+    if (input) input.value('');
+    let err = select('#city-error-msg');
+    if (err) err.html('');
+  }
 }
 
 function closeAllModals() {
@@ -1897,9 +1917,18 @@ function gotCityLocationDataModal(data, requestId) {
 
     getTzUsingLatLong(Latitude, Longitude, requestId); // This updates TZ and closes loop
     closeAllModals();
+    // If we have a success callback (from the OK button), call it now
+    if (successCallback) {
+      successCallback();
+    }
+    // Also clear input on success
+    if (CityNameInput) CityNameInput.value('');
+
   } else {
     clearLoadingState();
-    errEl.html("City not found. Please try 'City, Country'.");
+    let errEl = select('#city-error-msg');
+    if (errEl) errEl.html("City not found. Please try 'City, Country'.");
+    // DO NOT call successCallback here, so modal stays open for user to fix input
   }
 }
 
@@ -2916,31 +2945,55 @@ function processLongInputEvent() {
 // handler for the Submit button that enters a city name
 // The entered city name may contain additional fields such as state/province and 
 // country, comma separated.
-function handleCitySubmitUnified() {
-
+//========================================================
+// Handle City Search Submit (Unified for both Primary and Other)
+// Now accepts an optional successCallback (used by OK button to close modal)
+function handleCitySubmitUnified(successCallback = null) {
   // Determine context first
   var isOther = false;
   if (daySpiralRenderer && daySpiralRenderer.active) {
-    isOther = true;
-    IsSearchingForOtherLocation = true;
-    console.log("  🔍 Searching for alternate location");
+    // If DaySpiral is active, we check if we are setting the "Other" location
+    // But wait, the modal is global. IsSearchingForOtherLocation should be set when opening.
+    if (typeof IsSearchingForOtherLocation !== 'undefined') {
+      isOther = IsSearchingForOtherLocation;
+    }
   } else {
+    // Mobius etc
     isOther = false;
-    IsSearchingForOtherLocation = false;
+  }
+
+  // Also check explicit global flag which overrides renderer check
+  if (typeof IsSearchingForOtherLocation !== 'undefined' && IsSearchingForOtherLocation) {
+    isOther = true;
   }
 
   const requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
   console.log(`[${requestId}] handleCitySubmitUnified(isOther=${isOther})`);
 
-  var input = select('#city-search-input');
-  var city = input.value();
-  if (city && city.length > 1) {
-    getLocationUsingCityName(city, requestId, isOther);
-    closeAllModals();
-  } else {
-    var errEl = select('#city-error-msg');
-    if (errEl) errEl.html("Please enter a valid city name.");
+  // Clear previous errors
+  let errEl = select('#city-error-msg');
+  if (errEl) errEl.html("");
+
+  // Get input
+  if (!CityNameInput) return;
+  var rawInput = CityNameInput.value();
+
+  if (!rawInput || rawInput.trim().length === 0) {
+    // Should handle empty input? 
+    // If called from OK button logic, this block might be unreachable if checked there,
+    // but good for safety.
+    return;
   }
+
+  CityName = rawInput.trim(); // Global CityName updated
+
+  // Use the full string entered by the user
+  // Pass the callback down the chain
+  getLocationUsingCityName(CityName, requestId, isOther, successCallback);
+
+  // Clear the input field? Maybe wait until success?
+  // If we clear now, and it fails, user has to retype. 
+  // Better to clear only on success.
 }
 
 function handleCoordsSubmitUnified() {
@@ -3033,7 +3086,8 @@ function handleCitySubmit() {
 
 // ==============
 // Alternate way to set location, timezone, and IsDst using passed city name.
-function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSearchingForOtherLocation) {
+// Alternate way to set location, timezone, and IsDst using passed city name.
+function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSearchingForOtherLocation, successCallback = null) {
   if (requestId === 0) {
     requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
   }
@@ -3045,7 +3099,8 @@ function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSea
 
   let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(CityName)}`;
   setLoadingState();
-  loadJSON(apiUrl, (data) => gotCityLocationDataOpenStMap(data, requestId, isOther), handleNetworkError);
+  // Pass callback to the completion handler
+  loadJSON(apiUrl, (data) => gotCityLocationDataOpenStMap(data, requestId, isOther, successCallback), handleNetworkError);
 }
 
 
@@ -3089,8 +3144,8 @@ function gotCityLocationDataGeoNames(data)
 
 
 // using Nominatim OpenStreetMap API
-// The response to the API call for the city name has arrived.
-function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForOtherLocation) {
+// The response to the API call for the city name has// Callback
+function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForOtherLocation, successCallback = null) {
   const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
   if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotCityLocationDataOpenStMap: Ignoring stale callback.`);
@@ -3152,7 +3207,8 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
         })
         .then(data => {
           // City search is NOT auto, it's user-initiated
-          gotCityTzData(data, requestId, lat, lon, extractedCity, isOther, false);
+          // Pass successCallback down to gotCityTzData
+          gotCityTzData(data, requestId, lat, lon, extractedCity, isOther, false, successCallback);
         })
         .catch(error => {
           clearTimeout(timeoutId);
@@ -3178,7 +3234,7 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
 /**
  * Timezone callback from GeoNames or failover
  */
-function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchingForOtherLocation, isAuto = false) {
+function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchingForOtherLocation, isAuto = false, successCallback = null) {
   const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
   if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotCityTzData: Ignoring stale callback.`);
@@ -3197,6 +3253,9 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
       // Reset flags
       IsSearchingForOtherLocation = false;
       clearLoadingState();
+
+      // Call success callback (closes modal)
+      if (successCallback) successCallback();
       return;
     }
 
@@ -3251,6 +3310,9 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
 
     updateUrlHash();
     clearLoadingState();
+
+    // Call success callback (closes modal) if provided
+    if (successCallback) successCallback();
   }
   else {
     console.log(`No timezone results returned from GeoNames.`);
