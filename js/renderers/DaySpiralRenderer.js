@@ -458,75 +458,20 @@ class DaySpiralRenderer extends ClockRenderer {
                 }
             }
         } else {
-            // Dual Spiral Mode
+            // Dual Spiral Mode - Just draw both spirals normally
+            // Animation effect is handled by number visibility, not spiral glow
 
-            // Standard Stroke Weights
             let outerW = this.outerStrokeWeight;
             let innerW = this.innerStrokeWeight;
 
-            // Helper to draw standard spirals
-            let drawOuter = () => {
-                this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
-                    dayColor, nightColor, baseColor, true, 0, outerW);
-            };
+            // Draw outer spiral (local time)
+            this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
+                dayColor, nightColor, baseColor, true, 0, outerW);
 
-            let drawInner = () => {
-                const tzDiffHours = locManager ? locManager.getTimezoneOffsetDifference() : 0;
-                this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
-                    dayColor, nightColor, baseColor, true, tzDiffHours, innerW);
-            };
-
-            // Helper to draw GLOW track (white, wider, variable alpha)
-            // It uses the same geometry but with a single color and transparency
-            let drawOuterGlow = () => {
-                if (this.outerGlowAlpha < 1) return;
-                stroke(255, 255, 255, this.outerGlowAlpha);
-                strokeWeight(outerW * 1.6); // 60% wider
-                noFill();
-                beginShape();
-                for (let i = 0; i < this.xSpiral.length; i++) {
-                    vertex(this.centerX + this.xSpiral[i], this.centerY + this.ySpiral[i]);
-                }
-                endShape();
-            };
-
-            let drawInnerGlow = () => {
-                if (this.innerGlowAlpha < 1) return;
-                stroke(255, 255, 255, this.innerGlowAlpha);
-                strokeWeight(innerW * 1.8); // 80% wider (inner is thinner)
-                noFill();
-                beginShape();
-                for (let i = 0; i < this.xSpiralInner.length; i++) {
-                    vertex(this.centerX + this.xSpiralInner[i], this.centerY + this.ySpiralInner[i]);
-                }
-                endShape();
-            };
-
-            // Z-Order Logic:
-            // 1. Inactive Spiral (bottom)
-            // 2. Active Spiral Glow (middle)
-            // 3. Active Spiral (top)
-
-            // Note: The user requested "placing an arc underneath with a slightly larger weight... 
-            // note that it needs to be below the given inner or outer spiral, but above the other spiral".
-
-            if (this.outerGlowAlpha > 10) {
-                // Phase 1: Outer Active
-                drawInner();     // Bottom: Inactive Other
-                drawOuterGlow(); // Middle: Active Local Glow
-                drawOuter();     // Top: Active Local
-            }
-            else if (this.innerGlowAlpha > 10) {
-                // Phase 2: Inner Active
-                drawOuter();     // Bottom: Inactive Local
-                drawInnerGlow(); // Middle: Active Other Glow
-                drawInner();     // Top: Active Other
-            }
-            else {
-                // Default / No Animation
-                drawOuter();
-                drawInner();
-            }
+            // Draw inner spiral (other location)
+            const tzDiffHours = locManager ? locManager.getTimezoneOffsetDifference() : 0;
+            this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
+                dayColor, nightColor, baseColor, true, tzDiffHours, innerW);
         }
         this._resetShadow();
     }
@@ -1132,64 +1077,57 @@ class DaySpiralRenderer extends ClockRenderer {
         }
 
         // 1. Label for Outer Spiral ("Local")
-        // Apply Brightness Animation to Shadow/Fill
-        let localColor = color(255, 235, 120);
-        let localShadow = 'rgba(0,0,0,0.8)';
+        // Use animation phase to control visibility
+        if (this.animationPhase === 'outer' || this.animationPhase === 'idle' || this.animationPhase === 'intermission') {
+            let localColor = color(255, 235, 120);
 
-        if (this.outerBrightness > 0.1) {
-            let glowColor = color(255, 255, 255, this.outerBrightness * 255);
-            this._applyShadow(15, 0, 0, glowColor);
-            localColor = lerpColor(localColor, color(255), this.outerBrightness * 0.8);
-            fill(localColor); // will be overridden if we fade? No, fill sets the context.
-        } else if (this.innerBrightness > 0.1) {
-            // Hide completely
-            localColor.setAlpha(0);
-            this._applyShadow(0, 0, 0, 0); // No shadow
-            fill(localColor);
-        } else {
-            this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
-            fill(localColor);
+            if (this.outerBrightness > 0.1) {
+                let glowColor = color(255, 255, 255, this.outerBrightness * 255);
+                this._applyShadow(15, 0, 0, glowColor);
+                localColor = lerpColor(localColor, color(255), this.outerBrightness * 0.8);
+                fill(localColor);
+            } else {
+                this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
+                fill(localColor);
+            }
+
+            textSize(outerFontSize);
+
+            let x1 = this.centerX + this.xSpiral[0] - margin;
+            let y1 = this.centerY + this.ySpiral[0];
+            text("Local", x1, y1);
+
+            this._resetShadow();
         }
-
-        textSize(outerFontSize);
-
-        let x1 = this.centerX + this.xSpiral[0] - margin;
-        let y1 = this.centerY + this.ySpiral[0];
-        text("Local", x1, y1);
 
         // 2. Label for Inner Spiral (City Name or "Other")
+        // Use animation phase to control visibility
+        if (this.animationPhase === 'inner' || this.animationPhase === 'idle' || this.animationPhase === 'intermission') {
+            let otherColor = color(180, 255, 255); // Light Cyan
 
-        // Reset Shadow context for next label
-        this._resetShadow();
+            if (this.innerBrightness > 0.1) {
+                let glowColor = color(255, 255, 255, this.innerBrightness * 255);
+                this._applyShadow(15, 0, 0, glowColor);
+                otherColor = lerpColor(otherColor, color(255), this.innerBrightness * 0.8);
+                fill(otherColor);
+            } else {
+                this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
+                fill(otherColor);
+            }
 
-        let otherColor = color(180, 255, 255); // Light Cyan
+            textSize(innerFontSize);
 
-        if (this.innerBrightness > 0.1) {
-            let glowColor = color(255, 255, 255, this.innerBrightness * 255);
-            this._applyShadow(15, 0, 0, glowColor);
-            otherColor = lerpColor(otherColor, color(255), this.innerBrightness * 0.8);
-            fill(otherColor);
-        } else if (this.outerBrightness > 0.1) {
-            // Hide completely
-            otherColor.setAlpha(0);
-            this._applyShadow(0, 0, 0, 0);
-            fill(otherColor);
-        } else {
-            this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
-            fill(otherColor);
+            let cityName = locManager.otherLocation.cityName || "Other";
+            // Extract just the city name if comma-separated
+            if (cityName.includes(',')) cityName = cityName.split(',')[0].trim();
+
+            let x2 = this.centerX + this.xSpiralInner[0] - margin;
+            let y2 = this.centerY + this.ySpiralInner[0];
+            text(cityName, x2, y2);
+
+            this._resetShadow();
         }
 
-        textSize(innerFontSize);
-
-        let cityName = locManager.otherLocation.cityName || "Other";
-        // Extract just the city name if comma-separated
-        if (cityName.includes(',')) cityName = cityName.split(',')[0].trim();
-
-        let x2 = this.centerX + this.xSpiralInner[0] - margin;
-        let y2 = this.centerY + this.ySpiralInner[0];
-        text(cityName, x2, y2);
-
-        this._resetShadow();
         textStyle(NORMAL);
     }
 
