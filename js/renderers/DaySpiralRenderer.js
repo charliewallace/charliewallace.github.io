@@ -1169,7 +1169,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // (It was at the bottom of the previous file view, assuming it's correct)
 
         // Just redundant check removal for safely rendering:
-        let dayNames = ["su", "m", "tu", "w", "th", "f", "sa"];
+        let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         let todayIdx = tk.dayOfWeek;
         let nextDayIdx = (todayIdx + 1) % 7;
 
