@@ -1550,7 +1550,7 @@ function updateUIElements() {
         // Stage 1: Triple Blink Yellow (50% duty cycle square wave, 3 cycles)
         const progress = daySpiralRenderer.getAnimationProgress();
         const isVisible = (progress * 3 % 1.0) < 0.5;
-        const colorStr = '#ffff00';
+        const colorStr = '#ffffaa';
         const opVal = isVisible ? '1' : '0';
 
         if (localeEl) { localeEl.style.color = colorStr; localeEl.style.opacity = opVal; }

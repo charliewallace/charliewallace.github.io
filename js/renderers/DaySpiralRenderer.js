@@ -549,13 +549,13 @@ class DaySpiralRenderer extends ClockRenderer {
             if (this.isAnimatingDualMode && this.animationStage === 4) {
                 // Stage 4: Progressive Yellow Drawing
                 const progress = this.getAnimationProgress();
-                const yellow = color(255, 255, 0);
+                const yellow = color(255, 255, 170);
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
                     yellow, yellow, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, yellow);
             } else if (this.isAnimatingDualMode && this.animationStage === 5) {
                 // Stage 5: Color Cross-fade from Yellow
                 const progress = this.getAnimationProgress();
-                const yellow = color(255, 255, 0);
+                const yellow = color(255, 255, 170);
                 const curDay = lerpColor(yellow, dayColor, progress);
                 const curNight = lerpColor(yellow, nightColor, progress);
                 const curBase = lerpColor(yellow, baseColor, progress);
@@ -1148,13 +1148,13 @@ class DaySpiralRenderer extends ClockRenderer {
             }
 
             // Keep text highlighted Yellow during Stage 2, 3 and 4
-            fill(255, 255, 0);
+            fill(255, 255, 170);
             text(cityName, curX, curY);
 
         } else if (this.isAnimatingDualMode && this.animationStage === 5) {
             // Stage 5: Color Cross-fade from Yellow to Cyan
             const progress = this.getAnimationProgress();
-            let yellowColor = color(255, 255, 0);
+            let yellowColor = color(255, 255, 170);
             let finalColor = color(180, 255, 255);
             fill(lerpColor(yellowColor, finalColor, progress));
             text(cityName, targetX, targetY);
