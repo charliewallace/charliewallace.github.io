@@ -235,8 +235,8 @@ class DaySpiralRenderer extends ClockRenderer {
             let deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
 
             this.singleModeStrokeWeight = deltaRadiusPerTurn * 0.66;
-            this.dualModeStrokeWeight = deltaRadiusPerTurn * 0.42;
-            this.innerStrokeWeight = deltaRadiusPerTurn * 0.35;
+            this.dualModeStrokeWeight = deltaRadiusPerTurn * 0.462;
+            this.innerStrokeWeight = deltaRadiusPerTurn * 0.308;
         }
 
         // Default to whichever is appropriate for current mode
@@ -1454,9 +1454,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 innerStrokeWeight = spacePerTurn * 0.2925;
             } else {
                 // Existing percentages for Classic
-                outerStrokeWeight = spacePerTurn * 0.42;
+                outerStrokeWeight = spacePerTurn * 0.462;
                 gapBetweenSpirals = spacePerTurn * 0.02; // increased from 0.01 to prevent touching
-                innerStrokeWeight = spacePerTurn * 0.35;
+                innerStrokeWeight = spacePerTurn * 0.308;
             }
 
             // Sync with member variables (Weight is preferred naming)
