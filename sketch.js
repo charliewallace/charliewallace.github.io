@@ -1543,33 +1543,33 @@ function updateUIElements() {
       }
     }
 
-    // --- ANIMATION: Stage 1 Location Blink ---
-    if (daySpiralRenderer && daySpiralRenderer.isAnimatingDualMode && daySpiralRenderer.animationStage === 1) {
-      const progress = daySpiralRenderer.getAnimationProgress();
-      const pulse = Math.abs(Math.sin(progress * Math.PI * 2));
+    // --- ANIMATION: Location Visibility & Blink (Dual Mode Transition) ---
+    if (daySpiralRenderer && daySpiralRenderer.isAnimatingDualMode) {
+      const stage = daySpiralRenderer.animationStage;
+      if (stage === 1) {
+        // Stage 1: Triple Blink Yellow (50% duty cycle square wave, 3 cycles)
+        const progress = daySpiralRenderer.getAnimationProgress();
+        const isVisible = (progress * 3 % 1.0) < 0.5;
+        const colorStr = '#ffff00';
+        const opVal = isVisible ? '1' : '0';
 
-      const b = Math.floor(255 * (1 - pulse));
-      const colorStr = `rgb(255, 255, ${b})`;
-
-      if (localeEl) localeEl.style.color = colorStr;
-      if (locDescEl) locDescEl.style.color = colorStr;
-    } else {
-      // Reset color
-      if (localeEl && localeEl.style.color !== '') {
-        localeEl.style.color = '';
+        if (localeEl) { localeEl.style.color = colorStr; localeEl.style.opacity = opVal; }
+        if (locDescEl) { locDescEl.style.color = colorStr; locDescEl.style.opacity = opVal; }
+      } else if (stage >= 2 && stage <= 6) {
+        // Stage 2-6: Completely hide DOM (migrated to canvas)
+        if (localeEl) { localeEl.style.opacity = '0'; }
+        if (locDescEl) { locDescEl.style.opacity = '0'; }
       }
-      if (locDescEl && locDescEl.style.color !== '') {
-        locDescEl.style.color = '';
-      }
-    }
-
-    // --- ANIMATION: Hide DOM during Stage 2-5 ---
-    if (daySpiralRenderer && daySpiralRenderer.isAnimatingDualMode && daySpiralRenderer.animationStage >= 2 && daySpiralRenderer.animationStage <= 5) {
-      if (localeEl) localeEl.style.opacity = '0';
-      if (locDescEl) locDescEl.style.opacity = '0';
     } else {
-      if (localeEl) localeEl.style.opacity = '';
-      if (locDescEl) locDescEl.style.opacity = '';
+      // Reset color & opacity when not animating
+      if (localeEl) {
+        if (localeEl.style.color !== '') localeEl.style.color = '';
+        if (localeEl.style.opacity !== '') localeEl.style.opacity = '';
+      }
+      if (locDescEl) {
+        if (locDescEl.style.color !== '') locDescEl.style.color = '';
+        if (locDescEl.style.opacity !== '') locDescEl.style.opacity = '';
+      }
     }
   }
 
