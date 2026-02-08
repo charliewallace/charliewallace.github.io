@@ -1086,7 +1086,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
 
-        let margin = this.fontSize * 0.7;
+        let margin = (this.style === 'SpiralHours') ? this.fontSize * 1.1 : this.fontSize * 0.7;
 
         // Determine font sizes based on style (match hour numbers)
         let outerFontSize = this.fontSize * 0.63; // Classic default
