@@ -549,6 +549,15 @@ function oneTimeInit() {
     }
   });
 
+  // DaySpiral Guided Transition Checkbox
+  var transitionCheck = select('#check-dayspiral-guided-transition');
+  if (transitionCheck) transitionCheck.changed(() => {
+    if (daySpiralRenderer) {
+      daySpiralRenderer.dualModeAnimationEnabled = transitionCheck.checked();
+      updateUrlHash();
+    }
+  });
+
 
   // Select Different Location Button
   var selectLocBtn = select('#btn-select-loc');
@@ -1109,6 +1118,8 @@ function applyInitialState() {
 
     if (state.dualAnim !== undefined) {
       daySpiralRenderer.dualModeAnimationEnabled = state.dualAnim;
+      const chk = select('#check-dayspiral-guided-transition');
+      if (chk) chk.checked(state.dualAnim);
     }
 
     delete window._initialDaySpiralState; // Clean up
