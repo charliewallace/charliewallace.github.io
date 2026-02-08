@@ -901,12 +901,14 @@ function parseUrlHash() {
   var daySpiralStyle = params.get('daySpiralStyle');
   var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
   var daySpiralShowHours = params.get('daySpiralShowHours');
+  var dualAnim = params.get('dualAnim');
 
-  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null) {
+  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null) {
     window._initialDaySpiralState = {
       style: daySpiralStyle || 'Classic',
       timeFormat: daySpiralTimeFormat || '12',
-      showHours: daySpiralShowHours === '1' // Default false
+      showHours: daySpiralShowHours === '1', // Default false
+      dualAnim: dualAnim !== '0' // Default true
     };
   }
 
@@ -1103,6 +1105,10 @@ function applyInitialState() {
         if (state.showHours) btnHours.addClass('toggled-on');
         else btnHours.removeClass('toggled-on');
       }
+    }
+
+    if (state.dualAnim !== undefined) {
+      daySpiralRenderer.dualModeAnimationEnabled = state.dualAnim;
     }
 
     delete window._initialDaySpiralState; // Clean up
@@ -1306,6 +1312,11 @@ function updateUrlHash() {
     // Add DaySpiral hour visibility (non-default: shown)
     if (daySpiralRenderer.hoursVisible === true) {
       params.set('daySpiralShowHours', '1');
+    }
+
+    // Add dualAnim setting (non-default: disabled)
+    if (daySpiralRenderer.dualModeAnimationEnabled === false) {
+      params.set('dualAnim', '0');
     }
   }
 
@@ -3799,6 +3810,9 @@ function setDaySpiralStyle(styleName) {
 function setOtherLocation(lat, lon, tz, cityName) {
   console.log(`🌍 Setting other location: ${cityName}`);
 
+  // Check if we're transitioning from single to dual mode (for animation trigger)
+  const wasInSingleMode = !locManager.hasOtherLocation();
+
   // Set in LocationManager
   locManager.setOtherLocation(lat, lon, tz, cityName);
 
@@ -3811,8 +3825,12 @@ function setOtherLocation(lat, lon, tz, cityName) {
     mobiusRenderer.refreshDayNight();
   }
 
-  // Trigger spiral regeneration
+  // Trigger spiral regeneration and animation
   if (daySpiralRenderer && daySpiralRenderer.active) {
+    // Start animation if transitioning from single to dual mode
+    if (wasInSingleMode) {
+      daySpiralRenderer.startDualModeAnimation();
+    }
     daySpiralRenderer.resize(window.innerWidth, window.innerHeight);
   }
 

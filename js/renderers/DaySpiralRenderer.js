@@ -43,6 +43,21 @@ class DaySpiralRenderer extends ClockRenderer {
         this.isDualLocationMode = false;
         this.hoursVisible = false;
 
+        // Dual Mode Transition Animation State
+        this.dualModeAnimationEnabled = true; // Enable/disable animation feature (future: settings + URL hash)
+        this.isAnimatingDualMode = false; // Currently animating flag
+        this.animationStartTime = 0; // Timestamp when animation started (millis)
+        this.animationStage = 0; // Current stage (0 = not animating, 1-5 = stages)
+        this.animationElapsed = 0; // Elapsed time since animation start (ms)
+
+        // Animation Stage Durations (milliseconds)
+        this.STAGE_1_DURATION = 1000; // Location blink
+        this.STAGE_2_DURATION = 700;  // City migration
+        this.STAGE_3_DURATION = 700;  // Inner spiral drawing
+        this.STAGE_4_DURATION = 400;  // Inner spiral styling
+        this.STAGE_5_DURATION = 200;  // Finalization
+        this.TOTAL_ANIMATION_DURATION = 3000; // Total duration
+
         this.initialized = false;
     }
 
@@ -72,6 +87,105 @@ class DaySpiralRenderer extends ClockRenderer {
 
     setHoursVisible(visible) {
         this.hoursVisible = visible;
+    }
+
+    /**
+     * Start the dual mode transition animation
+     * Called when entering dual mode from single mode
+     */
+    startDualModeAnimation() {
+        // Check if animation is enabled
+        if (!this.dualModeAnimationEnabled) {
+            console.log('Dual mode animation disabled, skipping transition');
+            return;
+        }
+
+        console.log('🎬 Starting dual mode transition animation');
+        this.isAnimatingDualMode = true;
+        this.animationStartTime = millis();
+        this.animationStage = 1;
+        this.animationElapsed = 0;
+    }
+
+    /**
+     * Update animation state based on elapsed time
+     * Called from update() when isAnimatingDualMode is true
+     */
+    updateAnimationState() {
+        this.animationElapsed = millis() - this.animationStartTime;
+
+        // Determine current stage based on elapsed time
+        if (this.animationElapsed < this.STAGE_1_DURATION) {
+            this.animationStage = 1;
+        } else if (this.animationElapsed < this.STAGE_1_DURATION + this.STAGE_2_DURATION) {
+            this.animationStage = 2;
+        } else if (this.animationElapsed < this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION) {
+            this.animationStage = 3;
+        } else if (this.animationElapsed < this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION + this.STAGE_4_DURATION) {
+            this.animationStage = 4;
+        } else if (this.animationElapsed < this.TOTAL_ANIMATION_DURATION) {
+            this.animationStage = 5;
+        } else {
+            // Animation complete
+            console.log('✅ Dual mode animation complete');
+            this.isAnimatingDualMode = false;
+            this.animationStage = 0;
+            this.animationElapsed = 0;
+        }
+
+        // Log stage transitions
+        if (this.animationStage > 0) {
+            const progress = this.getAnimationProgress();
+            console.log(`Stage ${this.animationStage} - Elapsed: ${this.animationElapsed}ms - Progress: ${(progress * 100).toFixed(1)}%`);
+        }
+    }
+
+    /**
+     * Get animation progress within current stage (0.0 to 1.0)
+     * Uses ease-in-out for smooth transitions
+     */
+    getAnimationProgress() {
+        if (this.animationStage === 0) return 0;
+
+        // Calculate stage start time
+        let stageStart = 0;
+        let stageDuration = 0;
+
+        switch (this.animationStage) {
+            case 1:
+                stageStart = 0;
+                stageDuration = this.STAGE_1_DURATION;
+                break;
+            case 2:
+                stageStart = this.STAGE_1_DURATION;
+                stageDuration = this.STAGE_2_DURATION;
+                break;
+            case 3:
+                stageStart = this.STAGE_1_DURATION + this.STAGE_2_DURATION;
+                stageDuration = this.STAGE_3_DURATION;
+                break;
+            case 4:
+                stageStart = this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION;
+                stageDuration = this.STAGE_4_DURATION;
+                break;
+            case 5:
+                stageStart = this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION + this.STAGE_4_DURATION;
+                stageDuration = this.STAGE_5_DURATION;
+                break;
+        }
+
+        // Calculate linear progress within stage
+        const stageElapsed = this.animationElapsed - stageStart;
+        let progress = stageElapsed / stageDuration;
+        progress = Math.max(0, Math.min(1, progress)); // Clamp to [0, 1]
+
+        // Apply ease-in-out easing
+        // Formula: t < 0.5 ? 2*t^2 : 1 - 2*(1-t)^2
+        if (progress < 0.5) {
+            return 2 * progress * progress;
+        } else {
+            return 1 - 2 * (1 - progress) * (1 - progress);
+        }
     }
 
     resize(w, h) {
@@ -136,6 +250,11 @@ class DaySpiralRenderer extends ClockRenderer {
 
     update(timeKeeper, locManager) {
         if (!this.active) return;
+
+        // Update animation state if animating
+        if (this.isAnimatingDualMode) {
+            this.updateAnimationState();
+        }
 
         // p5.js drawing calls
         clear(); // Transparent background to let CSS show through
