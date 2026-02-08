@@ -802,13 +802,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
-                // Logic to shift first hour label rightward in dual mode
+                // Removed rightward shift logic to center on leading edge
                 let shift = 0;
                 let currentTextAlign = CENTER;
-                if (h === 0 && this.isDualLocationMode) {
-                    shift = (this.fontSize * scale) * 0.5;
-                    currentTextAlign = LEFT;
-                }
 
                 // Removed 1.008 tweak for true centering on spiral track
                 let ri2 = r;
@@ -841,13 +837,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
-                // Logic to shift first hour label rightward in dual mode
+                // Removed rightward shift logic for AM/PM layout
                 let shift = 0;
                 let currentTextAlign = CENTER;
-                if (h === 0 && this.isDualLocationMode) {
-                    shift = (this.fontSize * scale) * 0.1; // Small shift for AM/PM layout
-                    currentTextAlign = LEFT;
-                }
 
                 // Removed 1.008 tweak for true centering
                 let ri2 = r;
@@ -936,13 +928,9 @@ class DaySpiralRenderer extends ClockRenderer {
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
-            // Shift 12 o'clock position (h===0) rightward to avoid spiral label collision
+            // Removed rightward shift logic
             let shift = 0;
             let currentTextAlign = CENTER;
-            if (h === 0 && this.isDualLocationMode) {
-                shift = (this.fontSize * 0.60) * 0.3; // Small shift to be just inside spiral
-                currentTextAlign = LEFT;
-            }
 
             if (this.timeFormat === '24') {
                 // 24-hour mode: simple 0-23
@@ -1027,13 +1015,9 @@ class DaySpiralRenderer extends ClockRenderer {
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
-            // Shift 12 o'clock position (h===0) rightward in both single and dual modes
+            // Removed rightward shift logic
             let shift = 0;
             let currentTextAlign = CENTER;
-            if (h === 0) {
-                shift = (this.fontSize * 0.63) * 0.3; // Small shift to be just inside spiral
-                currentTextAlign = LEFT;
-            }
 
             if (this.timeFormat === '24') {
                 // 24-hour mode: simple 0-23
@@ -1102,7 +1086,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
 
-        let margin = this.fontSize * 0.2;
+        let margin = this.fontSize * 0.7;
 
         // Determine font sizes based on style (match hour numbers)
         let outerFontSize = this.fontSize * 0.63; // Classic default
