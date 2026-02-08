@@ -1542,6 +1542,35 @@ function updateUIElements() {
         locDescEl.textContent = LocaleTitle;
       }
     }
+
+    // --- ANIMATION: Stage 1 Location Blink ---
+    if (daySpiralRenderer && daySpiralRenderer.isAnimatingDualMode && daySpiralRenderer.animationStage === 1) {
+      const progress = daySpiralRenderer.getAnimationProgress();
+      const pulse = Math.abs(Math.sin(progress * Math.PI * 2));
+
+      const b = Math.floor(255 * (1 - pulse));
+      const colorStr = `rgb(255, 255, ${b})`;
+
+      if (localeEl) localeEl.style.color = colorStr;
+      if (locDescEl) locDescEl.style.color = colorStr;
+    } else {
+      // Reset color
+      if (localeEl && localeEl.style.color !== '') {
+        localeEl.style.color = '';
+      }
+      if (locDescEl && locDescEl.style.color !== '') {
+        locDescEl.style.color = '';
+      }
+    }
+
+    // --- ANIMATION: Hide DOM during Stage 2-5 ---
+    if (daySpiralRenderer && daySpiralRenderer.isAnimatingDualMode && daySpiralRenderer.animationStage >= 2 && daySpiralRenderer.animationStage <= 5) {
+      if (localeEl) localeEl.style.opacity = '0';
+      if (locDescEl) locDescEl.style.opacity = '0';
+    } else {
+      if (localeEl) localeEl.style.opacity = '';
+      if (locDescEl) locDescEl.style.opacity = '';
+    }
   }
 
   // Update time display
