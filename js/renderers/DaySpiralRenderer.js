@@ -209,8 +209,9 @@ class DaySpiralRenderer extends ClockRenderer {
         this.numbersRadius = radius * 0.893;
 
         // Spiral settings default (Classic)
-        let startRadius = radius * 0.27;
-        let endRadius = radius * 0.70; // Scaled down 5% to prevent dot collision
+        // Spiral settings default (Classic)
+        let startRadius = radius * 0.40;
+        let endRadius = radius * 0.74;
 
         // Check if we're in dual-location mode to set visual weights
         const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
