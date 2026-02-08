@@ -935,7 +935,7 @@ class DaySpiralRenderer extends ClockRenderer {
             if (this.timeFormat === '24') {
                 // 24-hour mode: simple 0-23
                 let displayStr = str(Math.floor(otherHour));
-                let digitSize = this.fontSize * 0.60;
+                let digitSize = this.fontSize * 0.50;
 
                 textSize(digitSize);
                 textAlign(currentTextAlign === LEFT ? LEFT : CENTER, CENTER);
@@ -947,8 +947,8 @@ class DaySpiralRenderer extends ClockRenderer {
                 let ampm = (otherHour < 12) ? 'A' : 'P';
 
                 let hourStr = str(hour12);
-                let digitSize = this.fontSize * 0.60;
-                let ampmSize = this.fontSize * 0.48; // Reduced to be smaller than digitSize (0.60)
+                let digitSize = this.fontSize * 0.50;
+                let ampmSize = this.fontSize * 0.40; // Reduced to match digitSize (0.50)
                 let margin = this.fontSize * 0.04;   // Halved from 0.08
 
                 textSize(digitSize);
