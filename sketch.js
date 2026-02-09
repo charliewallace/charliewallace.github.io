@@ -481,6 +481,8 @@ function oneTimeInit() {
       daySpiralRenderer.resize(width, height);
     }
 
+    updateDualModeUI();
+
     usePreciseLocation(false);
     closeAllModals();
   });
@@ -576,6 +578,9 @@ function oneTimeInit() {
 
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
+
+  // Initial UI state update for Dual Mode features
+  updateDualModeUI();
 
   // --- MOBIUS SPECIFIC CONTROLS ---
   var btnRotate = select('#btn-rotate');
@@ -3874,6 +3879,9 @@ function setOtherLocation(lat, lon, tz, cityName) {
     daySpiralRenderer.resize(window.innerWidth, window.innerHeight);
   }
 
+  // Update UI for dual mode (e.g., legend)
+  updateDualModeUI();
+
   // Update URL hash to include the other location
   updateUrlHash();
 }
@@ -4042,6 +4050,19 @@ function calcRiseSetTimeWithOffset(
   // Set output variables
   OutputHour = int(vv);
   OutputMin = int(xx);
+}
+
+//============================================
+// Update UI elements that depend on Dual Mode state
+function updateDualModeUI() {
+  const legend = select('#awakeness-legend');
+  if (legend) {
+    if (locManager && locManager.hasOtherLocation()) {
+      legend.removeClass('hidden');
+    } else {
+      legend.addClass('hidden');
+    }
+  }
 }
 
 
