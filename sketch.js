@@ -67,7 +67,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.5.5 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.5.6 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -107,6 +107,7 @@ var TimezoneWarningShown = false;  // true if timezone mismatch warning has been
 var IsPreciseLocation = false; // true if using GPS location
 var IsRequestingPrecise = false; // true if a GPS request is currently in flight
 var LocationFetchSerial = 0; // Incrementing ID to track async location requests
+var OtherLocationFetchSerial = 0; // Separate ID for "Other" location requests to prevent race conditions
 var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
@@ -444,9 +445,21 @@ function oneTimeInit() {
   });
 
   // --- MODAL SUBMIT BUTTONS ---
-  // City search button in the Select Location modal
-  var citySrchBtn = select('#btn-city-submit-unified');
-  if (citySrchBtn) citySrchBtn.mousePressed(handleCitySubmitUnified);
+
+  // Note: "Go" button removed. The "OK" button (#btn-select-location-ok) now triggers lookup.
+  var okSelectLocBtn = select('#btn-select-location-ok');
+  if (okSelectLocBtn) {
+    okSelectLocBtn.mousePressed(() => {
+      let val = CityNameInput.value();
+      if (val && val.trim().length > 0) {
+        // Trigger lookup, pass callback to close modal on success
+        handleCitySubmitUnified(() => closeAllModals());
+      } else {
+        // No input, just close (act as Cancel/Close)
+        closeAllModals();
+      }
+    });
+  }
 
   // Manual coords submit button
   var coordsSubmitBtn = select('#btn-coords-submit-modal');
@@ -467,6 +480,8 @@ function oneTimeInit() {
     if (daySpiralRenderer && daySpiralRenderer.active) {
       daySpiralRenderer.resize(width, height);
     }
+
+    updateDualModeUI();
 
     usePreciseLocation(false);
     closeAllModals();
@@ -536,6 +551,15 @@ function oneTimeInit() {
     }
   });
 
+  // DaySpiral Guided Transition Checkbox
+  var transitionCheck = select('#check-dayspiral-guided-transition');
+  if (transitionCheck) transitionCheck.changed(() => {
+    if (daySpiralRenderer) {
+      daySpiralRenderer.dualModeAnimationEnabled = transitionCheck.checked();
+      updateUrlHash();
+    }
+  });
+
 
   // Select Different Location Button
   var selectLocBtn = select('#btn-select-loc');
@@ -554,6 +578,9 @@ function oneTimeInit() {
 
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
+
+  // Initial UI state update for Dual Mode features
+  updateDualModeUI();
 
   // --- MOBIUS SPECIFIC CONTROLS ---
   var btnRotate = select('#btn-rotate');
@@ -888,12 +915,14 @@ function parseUrlHash() {
   var daySpiralStyle = params.get('daySpiralStyle');
   var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
   var daySpiralShowHours = params.get('daySpiralShowHours');
+  var dualAnim = params.get('dualAnim');
 
-  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null) {
+  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null) {
     window._initialDaySpiralState = {
       style: daySpiralStyle || 'Classic',
       timeFormat: daySpiralTimeFormat || '12',
-      showHours: daySpiralShowHours === '1' // Default false
+      showHours: daySpiralShowHours === '1', // Default false
+      dualAnim: dualAnim !== '0' // Default true
     };
   }
 
@@ -976,21 +1005,56 @@ function parseUrlHash() {
     primaryFound = true;
   }
 
-  // Parse Alternate Location if present
+  // Parse Alternate Location attributes
   var otherLat = params.get('otherLat');
   var otherLon = params.get('otherLon');
-  var otherTz = params.get('otherTz');
+  var otherTz = params.get('otherTz'); // might be null
   var otherCity = params.get('otherCity');
 
-  if (isValidCoord(otherLat) && isValidCoord(otherLon)) {
-    console.log("Parsed alternate URL location:", { otherLat, otherLon, otherTz, otherCity });
-    window._initialOtherLocation = {
-      lat: parseFloat(otherLat),
-      lon: parseFloat(otherLon),
-      tz: parseFloat(otherTz || 0),
-      city: otherCity ? decodeURIComponent(otherCity) : "URL Location"
-    };
-    otherFound = true;
+  // Check validity of coordinates
+  var hasOtherCoords = isValidCoord(otherLat) && isValidCoord(otherLon);
+  var hasOtherTz = isValidCoord(otherTz);
+
+  if (hasOtherCoords) {
+    // SCENARIO 1: We have coordinates
+    if (hasOtherTz) {
+      // 1A: Full data (Lat/Lon + TZ) -> Immediate apply
+      console.log("Parsed alternate URL location:", { otherLat, otherLon, otherTz, otherCity });
+      window._initialOtherLocation = {
+        lat: parseFloat(otherLat),
+        lon: parseFloat(otherLon),
+        tz: parseFloat(otherTz),
+        city: otherCity ? decodeURIComponent(otherCity) : "URL Location"
+      };
+      otherFound = true;
+
+      // If city is missing (but we have coords+TZ), trigger reverse geocode to get a better name
+      // Also trigger if the city is the generic fallback "URL Location"
+      if (!otherCity || decodeURIComponent(otherCity) === "URL Location") {
+        console.log("Parsed alternate URL coords but missing/generic City Name. Fetching name...");
+        fetchReverseGeocodeWithFailover(parseFloat(otherLat), parseFloat(otherLon), 0, true, true);
+      }
+    } else {
+      // 1B: Missing Timezone -> Async Fetch
+      console.log("Parsed alternate URL coords but missing TZ. Fetching...", { otherLat, otherLon });
+      // Trigger async TZ lookup.
+      setLoadingState();
+      getTzUsingLatLong(parseFloat(otherLat), parseFloat(otherLon), 0,
+        otherCity ? decodeURIComponent(otherCity) : "URL Location", true, true);
+
+      // If city is ALSO missing, trigger reverse geocode as well
+      if (!otherCity || decodeURIComponent(otherCity) === "URL Location") {
+        console.log("Parsed alternate URL coords also missing/generic City Name. Fetching name...");
+        fetchReverseGeocodeWithFailover(parseFloat(otherLat), parseFloat(otherLon), 0, true, true);
+      }
+    }
+  } else if (otherCity) {
+    // SCENARIO 2: No coordinates, but we have a City Name -> Async Lookup
+    console.log("Parsed alternate URL city only. Looking up:", otherCity);
+    setLoadingState();
+    // Trigger async City lookup. 
+    // isOther=true
+    getLocationUsingCityName(decodeURIComponent(otherCity), 0, true);
   }
 
   return { primaryFound, otherFound };
@@ -1055,6 +1119,12 @@ function applyInitialState() {
         if (state.showHours) btnHours.addClass('toggled-on');
         else btnHours.removeClass('toggled-on');
       }
+    }
+
+    if (state.dualAnim !== undefined) {
+      daySpiralRenderer.dualModeAnimationEnabled = state.dualAnim;
+      const chk = select('#check-dayspiral-guided-transition');
+      if (chk) chk.checked(state.dualAnim);
     }
 
     delete window._initialDaySpiralState; // Clean up
@@ -1131,7 +1201,7 @@ function applyInitialState() {
 
     // Apply Dali mode
     if (state.dali !== undefined) {
-      mobiusRenderer.setDaliMode(state.dali);
+      mobiusRenderer.setDaliMode(state.dali, true);
       const btnDali = select('#btn-dali');
       if (btnDali) {
         if (state.dali) btnDali.addClass('toggled-on');
@@ -1258,6 +1328,11 @@ function updateUrlHash() {
     // Add DaySpiral hour visibility (non-default: shown)
     if (daySpiralRenderer.hoursVisible === true) {
       params.set('daySpiralShowHours', '1');
+    }
+
+    // Add dualAnim setting (non-default: disabled)
+    if (daySpiralRenderer.dualModeAnimationEnabled === false) {
+      params.set('dualAnim', '0');
     }
   }
 
@@ -1483,6 +1558,35 @@ function updateUIElements() {
         locDescEl.textContent = LocaleTitle;
       }
     }
+
+    // --- ANIMATION: Location Visibility & Blink (Dual Mode Transition) ---
+    if (daySpiralRenderer && daySpiralRenderer.isAnimatingDualMode) {
+      const stage = daySpiralRenderer.animationStage;
+      if (stage === 1) {
+        // Stage 1: Triple Blink Yellow (50% duty cycle square wave, 3 cycles)
+        const progress = daySpiralRenderer.getAnimationProgress();
+        const isVisible = (progress * 3 % 1.0) < 0.5;
+        const colorStr = '#ffffaa';
+        const opVal = isVisible ? '1' : '0';
+
+        if (localeEl) { localeEl.style.color = colorStr; localeEl.style.opacity = opVal; }
+        if (locDescEl) { locDescEl.style.color = colorStr; locDescEl.style.opacity = opVal; }
+      } else if (stage >= 2 && stage <= 6) {
+        // Stage 2-6: Completely hide DOM (migrated to canvas)
+        if (localeEl) { localeEl.style.opacity = '0'; }
+        if (locDescEl) { locDescEl.style.opacity = '0'; }
+      }
+    } else {
+      // Reset color & opacity when not animating
+      if (localeEl) {
+        if (localeEl.style.color !== '') localeEl.style.color = '';
+        if (localeEl.style.opacity !== '') localeEl.style.opacity = '';
+      }
+      if (locDescEl) {
+        if (locDescEl.style.color !== '') locDescEl.style.color = '';
+        if (locDescEl.style.opacity !== '') locDescEl.style.opacity = '';
+      }
+    }
   }
 
   // Update time display
@@ -1659,6 +1763,14 @@ function openModal(modalId) {
   document.getElementById('modal-overlay').classList.remove('hidden');
   document.querySelectorAll('.modal-content').forEach(el => el.classList.add('hidden'));
   document.getElementById(modalId).classList.remove('hidden');
+
+  // Clear inputs if opening select location modal
+  if (modalId === 'modal-select-location') {
+    let input = select('#city-search-input');
+    if (input) input.value('');
+    let err = select('#city-error-msg');
+    if (err) err.html('');
+  }
 }
 
 function closeAllModals() {
@@ -1861,9 +1973,18 @@ function gotCityLocationDataModal(data, requestId) {
 
     getTzUsingLatLong(Latitude, Longitude, requestId); // This updates TZ and closes loop
     closeAllModals();
+    // If we have a success callback (from the OK button), call it now
+    if (successCallback) {
+      successCallback();
+    }
+    // Also clear input on success
+    if (CityNameInput) CityNameInput.value('');
+
   } else {
     clearLoadingState();
-    errEl.html("City not found. Please try 'City, Country'.");
+    let errEl = select('#city-error-msg');
+    if (errEl) errEl.html("City not found. Please try 'City, Country'.");
+    // DO NOT call successCallback here, so modal stays open for user to fix input
   }
 }
 
@@ -2880,25 +3001,55 @@ function processLongInputEvent() {
 // handler for the Submit button that enters a city name
 // The entered city name may contain additional fields such as state/province and 
 // country, comma separated.
-function handleCitySubmitUnified() {
-  const requestId = ++LocationFetchSerial;
-  console.log(`[${requestId}] handleCitySubmitUnified()`);
-  var input = select('#city-search-input');
-  var city = input.value();
-  if (city && city.length > 1) {
-    // In DaySpiral mode, searches now target the alternate location
-    if (daySpiralRenderer && daySpiralRenderer.active) {
-      IsSearchingForOtherLocation = true;
-      console.log("  🔍 Searching for alternate location");
-    } else {
-      IsSearchingForOtherLocation = false;
+//========================================================
+// Handle City Search Submit (Unified for both Primary and Other)
+// Now accepts an optional successCallback (used by OK button to close modal)
+function handleCitySubmitUnified(successCallback = null) {
+  // Determine context first
+  var isOther = false;
+  if (daySpiralRenderer && daySpiralRenderer.active) {
+    // If DaySpiral is active, we check if we are setting the "Other" location
+    // But wait, the modal is global. IsSearchingForOtherLocation should be set when opening.
+    if (typeof IsSearchingForOtherLocation !== 'undefined') {
+      isOther = IsSearchingForOtherLocation;
     }
-    getLocationUsingCityName(city, requestId);
-    closeAllModals();
   } else {
-    var errEl = select('#city-error-msg');
-    if (errEl) errEl.html("Please enter a valid city name.");
+    // Mobius etc
+    isOther = false;
   }
+
+  // Also check explicit global flag which overrides renderer check
+  if (typeof IsSearchingForOtherLocation !== 'undefined' && IsSearchingForOtherLocation) {
+    isOther = true;
+  }
+
+  const requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
+  console.log(`[${requestId}] handleCitySubmitUnified(isOther=${isOther})`);
+
+  // Clear previous errors
+  let errEl = select('#city-error-msg');
+  if (errEl) errEl.html("");
+
+  // Get input
+  if (!CityNameInput) return;
+  var rawInput = CityNameInput.value();
+
+  if (!rawInput || rawInput.trim().length === 0) {
+    // Should handle empty input? 
+    // If called from OK button logic, this block might be unreachable if checked there,
+    // but good for safety.
+    return;
+  }
+
+  CityName = rawInput.trim(); // Global CityName updated
+
+  // Use the full string entered by the user
+  // Pass the callback down the chain
+  getLocationUsingCityName(CityName, requestId, isOther, successCallback);
+
+  // Clear the input field? Maybe wait until success?
+  // If we clear now, and it fails, user has to retype. 
+  // Better to clear only on success.
 }
 
 function handleCoordsSubmitUnified() {
@@ -2920,6 +3071,11 @@ function handleCoordsSubmitUnified() {
   if (daySpiralRenderer && daySpiralRenderer.active) {
     console.log("  📍 Setting manual alternate location");
     setOtherLocation(lat, lng, isNaN(tz) ? 0 : tz, "Manual Location");
+
+    // Trigger reverse geocoding to find the city name
+    // Signature: fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto, isOther)
+    fetchReverseGeocodeWithFailover(lat, lng, 0, false, true);
+
     closeAllModals();
     return;
   }
@@ -2940,6 +3096,10 @@ function handleCoordsSubmitUnified() {
   IsUserInitiatedLocation = true;
   IsLoadingLocation = false; // Ensure not loading
   LocaleTitle = "Manual Location";
+
+  // Trigger reverse geocoding to find the city name
+  // Signature: fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto, isOther)
+  fetchReverseGeocodeWithFailover(lat, lng, 0, false, false);
 
   updateTimeThisDay();
   updateUrlHash();
@@ -2991,8 +3151,11 @@ function handleCitySubmit() {
 
 // ==============
 // Alternate way to set location, timezone, and IsDst using passed city name.
-function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSearchingForOtherLocation) {
-  if (requestId === 0) requestId = ++LocationFetchSerial;
+// Alternate way to set location, timezone, and IsDst using passed city name.
+function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSearchingForOtherLocation, successCallback = null) {
+  if (requestId === 0) {
+    requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
+  }
   console.log(`[${requestId}] getLocationUsingCityName(${passedCityName}, isOther=${isOther})`);
 
   if (!isOther) PrevLocaleTitle = LocaleTitle; // Only capture for primary location reversion
@@ -3001,7 +3164,8 @@ function getLocationUsingCityName(passedCityName, requestId = 0, isOther = IsSea
 
   let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(CityName)}`;
   setLoadingState();
-  loadJSON(apiUrl, (data) => gotCityLocationDataOpenStMap(data, requestId, isOther), handleNetworkError);
+  // Pass callback to the completion handler
+  loadJSON(apiUrl, (data) => gotCityLocationDataOpenStMap(data, requestId, isOther, successCallback), handleNetworkError);
 }
 
 
@@ -3045,9 +3209,10 @@ function gotCityLocationDataGeoNames(data)
 
 
 // using Nominatim OpenStreetMap API
-// The response to the API call for the city name has arrived.
-function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForOtherLocation) {
-  if (requestId && requestId !== LocationFetchSerial) {
+// The response to the API call for the city name has// Callback
+function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForOtherLocation, successCallback = null) {
+  const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+  if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotCityLocationDataOpenStMap: Ignoring stale callback.`);
     return;
   }
@@ -3107,7 +3272,8 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
         })
         .then(data => {
           // City search is NOT auto, it's user-initiated
-          gotCityTzData(data, requestId, lat, lon, extractedCity, isOther, false);
+          // Pass successCallback down to gotCityTzData
+          gotCityTzData(data, requestId, lat, lon, extractedCity, isOther, false, successCallback);
         })
         .catch(error => {
           clearTimeout(timeoutId);
@@ -3133,8 +3299,9 @@ function gotCityLocationDataOpenStMap(data, requestId, isOther = IsSearchingForO
 /**
  * Timezone callback from GeoNames or failover
  */
-function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchingForOtherLocation, isAuto = false) {
-  if (requestId && requestId !== LocationFetchSerial) {
+function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchingForOtherLocation, isAuto = false, successCallback = null) {
+  const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+  if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotCityTzData: Ignoring stale callback.`);
     return;
   }
@@ -3151,6 +3318,9 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
       // Reset flags
       IsSearchingForOtherLocation = false;
       clearLoadingState();
+
+      // Call success callback (closes modal)
+      if (successCallback) successCallback();
       return;
     }
 
@@ -3205,6 +3375,9 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
 
     updateUrlHash();
     clearLoadingState();
+
+    // Call success callback (closes modal) if provided
+    if (successCallback) successCallback();
   }
   else {
     console.log(`No timezone results returned from GeoNames.`);
@@ -3217,8 +3390,10 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
 }
 
 // Helper for reverse geocoding results from Nominatim
-function gotReverseGeocodeData(data, requestId, isAuto = false) {
-  if (requestId && requestId !== LocationFetchSerial) {
+function gotReverseGeocodeData(data, requestId, isOther = IsSearchingForOtherLocation, isAuto = false) {
+  // Reverse geocode is currently only used for primary location (GPS/IP)
+  const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+  if (requestId && requestId !== currentSerial) {
     console.log(`[${requestId}] gotReverseGeocodeData: Ignoring stale callback.`);
     return;
   }
@@ -3230,6 +3405,12 @@ function gotReverseGeocodeData(data, requestId, isAuto = false) {
 
     // Order of local importance: hamlet, village, town, city, county, state, country
     let hierarchy = ['hamlet', 'village', 'town', 'city', 'county', 'state', 'country'];
+
+    // Additional logic: if we find a county, ensure "County" is appended
+    // (User specific request)
+    if (addr.county && !addr.county.toLowerCase().endsWith(' county')) {
+      addr.county = addr.county + " County";
+    }
 
     // Gather all parts first
     let activeParts = {};
@@ -3243,6 +3424,13 @@ function gotReverseGeocodeData(data, requestId, isAuto = false) {
       }
     }
 
+    // User Request: If a city/town/village/hamlet is provided, omit the county to save space
+    if (activeParts['city'] || activeParts['town'] || activeParts['village'] || activeParts['hamlet']) {
+      if (activeParts['county']) {
+        delete activeParts['county'];
+      }
+    }
+
     // Function to construct LocaleTitle from activeParts
     const constructTitle = (partsObj) => {
       let tempParts = [];
@@ -3252,33 +3440,47 @@ function gotReverseGeocodeData(data, requestId, isAuto = false) {
       return tempParts.join(", ");
     };
 
-    LocaleTitle = constructTitle(activeParts);
+    let foundName = constructTitle(activeParts);
 
     // If too long, remove parts by priority: hamlet, village, town, county, country
     let removalPriority = ['hamlet', 'village', 'town', 'county', 'country'];
     for (let key of removalPriority) {
-      if (LocaleTitle.length <= 35) break;
+      if (foundName.length <= 35) break;
       if (activeParts[key]) {
         delete activeParts[key];
-        LocaleTitle = constructTitle(activeParts);
+        foundName = constructTitle(activeParts);
       }
     }
 
     // Fallback if still too long or no parts found
-    if (LocaleTitle.length === 0 && data.display_name) {
-      LocaleTitle = data.display_name.split(',')[0];
+    if (foundName.length === 0 && data.display_name) {
+      foundName = data.display_name.split(',')[0];
     }
 
     // Prefix with "Near " if this was an automatic GPS/IP check and we don't have precise coords yet
-    if (isAuto && IsDisplayingUserLocation && !IsPreciseLocation && !LocaleTitle.startsWith("Near ")) {
-      LocaleTitle = "Near " + LocaleTitle;
+    // Only applies to PRIMARY location
+    if (!isOther && isAuto && IsDisplayingUserLocation && !IsPreciseLocation && !foundName.startsWith("Near ")) {
+      foundName = "Near " + foundName;
     }
 
-    console.log("Updated LocaleTitle from reverse geocode:", LocaleTitle);
-    if (IsUserInitiatedLocation || IsPreciseLocation) {
+    console.log("Updated location name from reverse geocode:", foundName);
+
+    if (isOther) {
+      // Update Other Location Name
+      if (locManager && locManager.otherLocation) {
+        // Correctly target the nested property
+        locManager.otherLocation.cityName = foundName;
+        console.log(`Updated Other Location Name to: ${foundName}`);
+      }
       updateUrlHash();
+    } else {
+      // Primary Location
+      LocaleTitle = foundName;
+      if (IsUserInitiatedLocation || IsPreciseLocation) {
+        updateUrlHash();
+      }
+      updateUIElements();
     }
-    updateUIElements();
   }
 }
 
@@ -3292,8 +3494,12 @@ function getTzUsingLatLong(lat, lon, requestId, cityName, isOther = IsSearchingF
 /**
  * Multi-service reverse geocoding with failover
  */
-function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
-  console.log(`[${requestId}] Starting reverse geocode lookup for ${lat}, ${lon}...`);
+function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto, isOther = false) {
+  // if requestId is 0, auto-assign
+  if (requestId === 0) {
+    requestId = isOther ? ++OtherLocationFetchSerial : ++LocationFetchSerial;
+  }
+  console.log(`[${requestId}] Starting reverse geocode lookup for ${lat}, ${lon} (isOther=${isOther})...`);
 
   const providers = [
     {
@@ -3315,7 +3521,10 @@ function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
           address: {
             city: city,
             state: d.principalSubdivision,
-            country: d.countryName
+            country: d.countryName,
+            county: d.localityInfo && d.localityInfo.administrative ?
+              d.localityInfo.administrative.find(x => x.order == 6 || x.name && x.name.includes("County"))?.name
+              : null
           },
           display_name: city
         };
@@ -3326,7 +3535,8 @@ function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
   let currentIdx = 0;
 
   const tryNext = () => {
-    if (requestId !== LocationFetchSerial) return;
+    const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+    if (requestId !== currentSerial) return;
     if (currentIdx >= providers.length) {
       console.warn(`[${requestId}] All reverse geocode providers failed.`);
       return;
@@ -3348,7 +3558,7 @@ function fetchReverseGeocodeWithFailover(lat, lon, requestId, isAuto) {
         const result = provider.parse(data);
         if (!result) throw new Error("No data found");
         console.log(`[${requestId}] Reverse geocode success via ${provider.name}`);
-        gotReverseGeocodeData(result, requestId, isAuto);
+        gotReverseGeocodeData(result, requestId, isOther, isAuto);
       })
       .catch(err => {
         clearTimeout(timeoutId);
@@ -3394,7 +3604,8 @@ function fetchTimezoneWithFailover(lat, lon, requestId, cityName, isOther, isAut
   let currentIdx = 0;
 
   const tryNext = () => {
-    if (requestId !== LocationFetchSerial) return;
+    const currentSerial = isOther ? OtherLocationFetchSerial : LocationFetchSerial;
+    if (requestId !== currentSerial) return;
 
     if (currentIdx >= providers.length) {
       console.warn(`[${requestId}] All timezone APIs failed. Using mathematical estimate.`);
@@ -3644,6 +3855,9 @@ function setDaySpiralStyle(styleName) {
 function setOtherLocation(lat, lon, tz, cityName) {
   console.log(`🌍 Setting other location: ${cityName}`);
 
+  // Check if we're transitioning from single to dual mode (for animation trigger)
+  const wasInSingleMode = !locManager.hasOtherLocation();
+
   // Set in LocationManager
   locManager.setOtherLocation(lat, lon, tz, cityName);
 
@@ -3656,10 +3870,17 @@ function setOtherLocation(lat, lon, tz, cityName) {
     mobiusRenderer.refreshDayNight();
   }
 
-  // Trigger spiral regeneration
+  // Trigger spiral regeneration and animation
   if (daySpiralRenderer && daySpiralRenderer.active) {
+    // Start animation if transitioning from single to dual mode
+    if (wasInSingleMode) {
+      daySpiralRenderer.startDualModeAnimation();
+    }
     daySpiralRenderer.resize(window.innerWidth, window.innerHeight);
   }
+
+  // Update UI for dual mode (e.g., legend)
+  updateDualModeUI();
 
   // Update URL hash to include the other location
   updateUrlHash();
@@ -3829,6 +4050,19 @@ function calcRiseSetTimeWithOffset(
   // Set output variables
   OutputHour = int(vv);
   OutputMin = int(xx);
+}
+
+//============================================
+// Update UI elements that depend on Dual Mode state
+function updateDualModeUI() {
+  const legend = select('#awakeness-legend');
+  if (legend) {
+    if (locManager && locManager.hasOtherLocation()) {
+      legend.removeClass('hidden');
+    } else {
+      legend.addClass('hidden');
+    }
+  }
 }
 
 

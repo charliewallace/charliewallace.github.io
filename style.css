@@ -218,6 +218,34 @@ body {
   pointer-events: auto;
 }
 
+#awakeness-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+#awakeness-legend.hidden {
+  display: none;
+}
+
+.awakeness-line-sample {
+  display: inline-block;
+  width: 15px;
+  height: 3px;
+  background-color: #0f0;
+  /* Semantic Green matches renderer */
+  border-radius: 2px;
+}
+
+.legend-text {
+  font-size: 0.75rem;
+  color: #ccc;
+  font-weight: 500;
+}
+
 #app-title {
   font-size: 1.1rem;
   font-weight: 600;

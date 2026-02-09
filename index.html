@@ -16,8 +16,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CoolweirdClocks</title>
-  <link rel="stylesheet" href="style.css?v=0.5.5">
-  <link rel="stylesheet" href="modal-fixes.css?v=0.5.5">
+  <link rel="stylesheet" href="style.css?v=0.5.6">
+  <link rel="stylesheet" href="modal-fixes.css?v=0.5.6">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
   <!-- Google tag (gtag.js) -->
@@ -108,6 +108,10 @@
               </div>
             </div>
             <div class="horizontal-row">
+              <div id="awakeness-legend" class="hidden">
+                <span class="awakeness-line-sample"></span>
+                <span class="legend-text">= Both Awake</span>
+              </div>
               <button id="btn-dayspiral-hours" class="ui-btn">Hours</button>
               <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
             </div>
@@ -161,7 +165,7 @@
             <h3>City Lookup</h3>
             <div class="input-row">
               <input type="text" id="city-search-input" placeholder="City Name" class="modal-input">
-              <button id="btn-city-submit-unified" class="ui-btn">Go</button>
+              <!-- Go button removed as per request; OK button now triggers action -->
             </div>
             <div id="city-error-msg" class="error-msg"></div>
           </div>
@@ -172,7 +176,7 @@
           </div>
         </div>
         <div class="modal-actions">
-          <button class="ui-btn btn-close-modal">Close</button>
+          <button id="btn-select-location-ok" class="ui-btn">OK</button>
         </div>
       </div>
 
@@ -228,6 +232,13 @@
               <option value="12" selected>12-hour (AM/PM)</option>
               <option value="24">24-hour (0-23)</option>
             </select>
+          </div>
+          <hr class="separator">
+          <div class="settings-section">
+            <div class="form-row">
+              <label for="check-dayspiral-guided-transition">Guided Transition to Local+Other:</label>
+              <input type="checkbox" id="check-dayspiral-guided-transition" checked>
+            </div>
           </div>
         </div>
         <div class="modal-actions">
@@ -321,14 +332,14 @@
   <!-- THREE.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <script src="sketch.js?v=0.5.5"></script>
+  <script src="sketch.js?v=0.5.6"></script>
 
   <!-- App Modules -->
-  <script src="js/TimeKeeper.js?v=0.5.5"></script>
-  <script src="js/LocationManager.js?v=0.5.5"></script>
-  <script src="js/ClockRenderer.js?v=0.5.5"></script>
-  <script src="js/renderers/DaySpiralRenderer.js?v=0.5.5"></script>
-  <script src="js/renderers/MobiusRenderer.js?v=0.5.5"></script>
+  <script src="js/TimeKeeper.js?v=0.5.6"></script>
+  <script src="js/LocationManager.js?v=0.5.6"></script>
+  <script src="js/ClockRenderer.js?v=0.5.6"></script>
+  <script src="js/renderers/DaySpiralRenderer.js?v=0.5.6"></script>
+  <script src="js/renderers/MobiusRenderer.js?v=0.5.6"></script>
 </body>
 
 </html>

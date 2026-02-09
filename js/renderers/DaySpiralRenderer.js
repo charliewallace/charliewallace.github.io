@@ -43,6 +43,27 @@ class DaySpiralRenderer extends ClockRenderer {
         this.isDualLocationMode = false;
         this.hoursVisible = false;
 
+        // Stroke weights for animation transitions
+        this.singleModeStrokeWeight = 2;
+        this.dualModeStrokeWeight = 1;
+        this.innerStrokeWeight = 1;
+
+        // Dual Mode Transition Animation State
+        this.dualModeAnimationEnabled = true; // Enable/disable animation feature (future: settings + URL hash)
+        this.isAnimatingDualMode = false; // Currently animating flag
+        this.animationStartTime = 0; // Timestamp when animation started (millis)
+        this.animationStage = 0; // Current stage (0 = not animating, 1-5 = stages)
+        this.animationElapsed = 0; // Elapsed time since animation start (ms)
+
+        // Animation Stage Durations (milliseconds)
+        this.STAGE_1_DURATION = 1800; // Triple blink (600ms per blink cycle)
+        this.STAGE_2_DURATION = 700;  // City migration
+        this.STAGE_3_DURATION = 500;  // Pause before drawing
+        this.STAGE_4_DURATION = 1400; // Inner spiral drawing (50% slower)
+        this.STAGE_5_DURATION = 400;  // Inner spiral styling
+        this.STAGE_6_DURATION = 200;  // Finalization
+        this.TOTAL_ANIMATION_DURATION = 5000; // Total duration
+
         this.initialized = false;
     }
 
@@ -74,6 +95,107 @@ class DaySpiralRenderer extends ClockRenderer {
         this.hoursVisible = visible;
     }
 
+    /**
+     * Start the dual mode transition animation
+     * Called when entering dual mode from single mode
+     */
+    startDualModeAnimation() {
+        // Check if animation is enabled
+        if (!this.dualModeAnimationEnabled) {
+            console.log('Dual mode animation disabled, skipping transition');
+            return;
+        }
+
+        console.log('🎬 Starting dual mode transition animation');
+        this.isAnimatingDualMode = true;
+        this.animationStartTime = millis();
+        this.animationStage = 1;
+        this.animationElapsed = 0;
+    }
+
+    /**
+     * Update animation state based on elapsed time
+     * Called from update() when isAnimatingDualMode is true
+     */
+    updateAnimationState() {
+        this.animationElapsed = millis() - this.animationStartTime;
+
+        // Determine current stage based on elapsed time (6 stages)
+        if (this.animationElapsed < this.STAGE_1_DURATION) {
+            this.animationStage = 1;
+        } else if (this.animationElapsed < this.STAGE_1_DURATION + this.STAGE_2_DURATION) {
+            this.animationStage = 2;
+        } else if (this.animationElapsed < this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION) {
+            this.animationStage = 3;
+        } else if (this.animationElapsed < this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION + this.STAGE_4_DURATION) {
+            this.animationStage = 4;
+        } else if (this.animationElapsed < this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION + this.STAGE_4_DURATION + this.STAGE_5_DURATION) {
+            this.animationStage = 5;
+        } else if (this.animationElapsed < this.TOTAL_ANIMATION_DURATION) {
+            this.animationStage = 6;
+        } else {
+            // Animation complete
+            console.log('✅ Dual mode animation complete');
+            this.isAnimatingDualMode = false;
+            this.animationStage = 0;
+            this.animationElapsed = 0;
+        }
+
+        // Log stage transitions
+        if (this.animationStage > 0) {
+            const progress = this.getAnimationProgress();
+            console.log(`Stage ${this.animationStage} - Elapsed: ${this.animationElapsed}ms - Progress: ${(progress * 100).toFixed(1)}%`);
+        }
+    }
+
+    /**
+     * Get animation progress within current stage (0.0 to 1.0)
+     * Uses ease-in-out for smooth transitions
+     */
+    getAnimationProgress() {
+        if (this.animationStage === 0) return 0;
+
+        // Calculate stage start time
+        let stageStart = 0;
+        let stageDuration = 0;
+
+        switch (this.animationStage) {
+            case 1:
+                stageStart = 0;
+                stageDuration = this.STAGE_1_DURATION;
+                break;
+            case 2:
+                stageStart = this.STAGE_1_DURATION;
+                stageDuration = this.STAGE_2_DURATION;
+                break;
+            case 3:
+                stageStart = this.STAGE_1_DURATION + this.STAGE_2_DURATION;
+                stageDuration = this.STAGE_3_DURATION;
+                break;
+            case 4:
+                stageStart = this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION;
+                stageDuration = this.STAGE_4_DURATION;
+                break;
+            case 5:
+                stageStart = this.STAGE_1_DURATION + this.STAGE_2_DURATION + this.STAGE_3_DURATION + this.STAGE_4_DURATION;
+                stageDuration = this.STAGE_5_DURATION;
+                break;
+        }
+
+        // Calculate linear progress within stage
+        const stageElapsed = this.animationElapsed - stageStart;
+        let progress = stageElapsed / stageDuration;
+        progress = Math.max(0, Math.min(1, progress)); // Clamp to [0, 1]
+
+        // Apply ease-in-out easing
+        // Formula: t < 0.5 ? 2*t^2 : 1 - 2*(1-t)^2
+        if (progress < 0.5) {
+            return 2 * progress * progress;
+        } else {
+            return 1 - 2 * (1 - progress) * (1 - progress);
+        }
+    }
+
     resize(w, h) {
         this.centerX = w / 2;
         this.centerY = h / 2;
@@ -87,8 +209,9 @@ class DaySpiralRenderer extends ClockRenderer {
         this.numbersRadius = radius * 0.893;
 
         // Spiral settings default (Classic)
-        let startRadius = radius * 0.27;
-        let endRadius = radius * 0.70; // Scaled down 5% to prevent dot collision
+        // Spiral settings default (Classic)
+        let startRadius = radius * 0.40;
+        let endRadius = radius * 0.74;
 
         // Check if we're in dual-location mode to set visual weights
         const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
@@ -103,27 +226,21 @@ class DaySpiralRenderer extends ClockRenderer {
             startRadius = radius * 0.39;
             endRadius = radius * 0.935; // Increased overall size further
 
-            if (this.isDualLocationMode) {
-                this.outerStrokeWeight = radius * 0.14;
-                this.innerStrokeWeight = this.outerStrokeWeight * 0.3;
-                this.spiralStrokeWeight = this.outerStrokeWeight;
-            } else {
-                this.spiralStrokeWeight = radius * 0.18; // Original
-            }
+            this.singleModeStrokeWeight = radius * 0.18;
+            this.dualModeStrokeWeight = radius * 0.14;
+            this.innerStrokeWeight = this.dualModeStrokeWeight * 0.3;
         } else {
             // Classic
             let nTurns = 2;
             let deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
 
-            if (this.isDualLocationMode) {
-                this.outerStrokeWeight = deltaRadiusPerTurn * 0.42;
-                this.innerStrokeWeight = deltaRadiusPerTurn * 0.35;
-                this.spiralStrokeWeight = this.outerStrokeWeight;
-            } else {
-                // Single mode uses 66% of space per turn
-                this.spiralStrokeWeight = deltaRadiusPerTurn * 0.66;
-            }
+            this.singleModeStrokeWeight = deltaRadiusPerTurn * 0.66;
+            this.dualModeStrokeWeight = deltaRadiusPerTurn * 0.462;
+            this.innerStrokeWeight = deltaRadiusPerTurn * 0.308;
         }
+
+        // Default to whichever is appropriate for current mode
+        this.spiralStrokeWeight = this.isDualLocationMode ? this.dualModeStrokeWeight : this.singleModeStrokeWeight;
 
         this.secondaryStrokeWeight = this.spiralStrokeWeight * 0.33;
 
@@ -136,6 +253,11 @@ class DaySpiralRenderer extends ClockRenderer {
 
     update(timeKeeper, locManager) {
         if (!this.active) return;
+
+        // Update animation state if animating
+        if (this.isAnimatingDualMode) {
+            this.updateAnimationState();
+        }
 
         // p5.js drawing calls
         clear(); // Transparent background to let CSS show through
@@ -201,8 +323,8 @@ class DaySpiralRenderer extends ClockRenderer {
             // Always draw outer spiral hours (local time)
             this.drawOuterSpiralHours(locManager);
 
-            // Draw inner spiral hours only in dual mode
-            if (this.isDualLocationMode) {
+            // Draw inner spiral hours only in dual mode after migration and drawing
+            if (this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
                 this.drawInnerSpiralHours(locManager);
             }
         }
@@ -212,8 +334,8 @@ class DaySpiralRenderer extends ClockRenderer {
             // Draw outer spiral hours
             this.drawSpiralHours(this.xSpiral, this.ySpiral, this.radiusSpiral, false, locManager);
 
-            // Draw inner spiral hours if in dual mode
-            if (this.isDualLocationMode) {
+            // Draw inner spiral hours if in dual mode and after migration and drawing
+            if (this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
                 this.drawSpiralHours(this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, locManager);
             }
         }
@@ -228,12 +350,16 @@ class DaySpiralRenderer extends ClockRenderer {
             this.drawGMT(locManager);
         }
 
-        // Draw awakeness line in dual mode
-        if (this.isDualLocationMode) {
+        // Draw awakeness line in dual mode after both spirals are established
+        if (this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
             this.drawAwakenessArc(locManager);
         }
 
-        this.drawHands(timeKeeper);
+        // Draw hands - hide during dual mode transition (Stage 2 to 5)
+        const shouldHideHands = this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5;
+        if (!shouldHideHands) {
+            this.drawHands(timeKeeper);
+        }
     }
 
     /**
@@ -329,12 +455,23 @@ class DaySpiralRenderer extends ClockRenderer {
         let nightColor = color(20, 80, 100); // Dark blue for night
         let baseColor = color(90); // Dark Gray for the track
 
-        strokeWeight(this.spiralStrokeWeight);
+        let sw = this.singleModeStrokeWeight;
+        const isDrawingDual = this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 4);
+
+        if (this.isAnimatingDualMode && this.animationStage === 2) {
+            sw = lerp(this.singleModeStrokeWeight, this.dualModeStrokeWeight, this.getAnimationProgress());
+        } else if (isDrawingDual) {
+            sw = this.dualModeStrokeWeight;
+        }
+
+        const isInEarlyTransition = this.isAnimatingDualMode && this.animationStage <= 2;
+
+        strokeWeight(sw);
         strokeCap(SQUARE);
         noFill();
 
-        if (!this.isDualLocationMode) {
-            // SINGLE-LOCATION MODE: Draw one spiral as before
+        if (!this.isDualLocationMode || isInEarlyTransition) {
+            // SINGLE-LOCATION MODE: Draw one spiral as before (or during early animation)
             // 1. Draw Base Track (Gray)
             stroke(baseColor);
             this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
@@ -398,7 +535,9 @@ class DaySpiralRenderer extends ClockRenderer {
                     endShape();
                 }
             }
-        } else {
+        }
+
+        if (isDrawingDual) {
             // DUAL-LOCATION MODE: Draw outer and inner spirals
 
             // Draw outer spiral (user location)
@@ -407,8 +546,27 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Draw inner spiral (other location) with rotation offset
             const tzDiffHours = locManager.getTimezoneOffsetDifference();
-            this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
-                dayColor, nightColor, baseColor, true, tzDiffHours, this.innerStrokeWeight);
+
+            if (this.isAnimatingDualMode && this.animationStage === 4) {
+                // Stage 4: Progressive Yellow Drawing
+                const progress = this.getAnimationProgress();
+                const yellow = color(255, 255, 170);
+                this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
+                    yellow, yellow, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, yellow);
+            } else if (this.isAnimatingDualMode && this.animationStage === 5) {
+                // Stage 5: Color Cross-fade from Yellow
+                const progress = this.getAnimationProgress();
+                const yellow = color(255, 255, 170);
+                const curDay = lerpColor(yellow, dayColor, progress);
+                const curNight = lerpColor(yellow, nightColor, progress);
+                const curBase = lerpColor(yellow, baseColor, progress);
+                this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
+                    curDay, curNight, curBase, true, tzDiffHours, this.innerStrokeWeight);
+            } else {
+                // Stage 6 or non-animating
+                this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
+                    dayColor, nightColor, baseColor, true, tzDiffHours, this.innerStrokeWeight);
+            }
         }
         this._resetShadow();
     }
@@ -425,15 +583,16 @@ class DaySpiralRenderer extends ClockRenderer {
      * @param {boolean} hasValidLocation - Whether location data is valid
      * @param {number} tzOffsetHours - Timezone offset in hours (for rotation adjustment)
      */
-    _drawSpiralTrack(xArray, yArray, sunriseTime, sunsetTime, dayColor, nightColor, baseColor, hasValidLocation, tzOffsetHours, weight = null) {
+    _drawSpiralTrack(xArray, yArray, sunriseTime, sunsetTime, dayColor, nightColor, baseColor, hasValidLocation, tzOffsetHours, weight = null, limitProgress = 1.0, tintColor = null) {
         // 1. Draw Base Track (Gray)
         if (weight !== null) strokeWeight(weight);
         else strokeWeight(this.spiralStrokeWeight);
 
-        stroke(baseColor);
+        stroke(tintColor || baseColor);
         this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
         beginShape();
-        for (let i = 0; i < xArray.length; i++) {
+        let currentLen = Math.floor(xArray.length * limitProgress);
+        for (let i = 0; i < currentLen; i++) {
             vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
         }
         endShape();
@@ -457,8 +616,6 @@ class DaySpiralRenderer extends ClockRenderer {
                 if (riseSeconds >= 86400) riseSeconds -= 86400;
                 if (setSeconds < 0) setSeconds += 86400;
                 if (setSeconds >= 86400) setSeconds -= 86400;
-
-                // Log removed to avoid console spam in draw loop
             }
         }
 
@@ -477,29 +634,29 @@ class DaySpiralRenderer extends ClockRenderer {
             if (idxRise < idxSet) {
                 // NORMAL CASE: Sunrise occurs before Sunset in the 24-hour spiral
                 // 2. Draw Night (Midnight -> Sunrise)
-                stroke(nightColor);
+                stroke(tintColor || nightColor);
                 if (idxRise > 0) {
                     beginShape();
                     for (let i = 0; i <= idxRise; i++) {
-                        if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                     }
                     endShape();
                 }
 
                 // 3. Draw Day (Sunrise -> Sunset)
-                stroke(dayColor);
+                stroke(tintColor || dayColor);
                 beginShape();
                 for (let i = idxRise; i <= idxSet; i++) {
-                    if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
 
                 // 4. Draw Night (Sunset -> Midnight)
-                stroke(nightColor);
+                stroke(tintColor || nightColor);
                 if (idxSet < len - 1) {
                     beginShape();
                     for (let i = idxSet; i < len; i++) {
-                        vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                     }
                     endShape();
                 }
@@ -508,38 +665,38 @@ class DaySpiralRenderer extends ClockRenderer {
                 // (This happens when the other location's daylight period crosses our local midnight)
 
                 // 2. Draw Day (Midnight -> Sunset)
-                stroke(dayColor);
+                stroke(tintColor || dayColor);
                 if (idxSet > 0) {
                     beginShape();
                     for (let i = 0; i <= idxSet; i++) {
-                        if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                     }
                     endShape();
                 }
 
                 // 3. Draw Night (Sunset -> Sunrise)
-                stroke(nightColor);
+                stroke(tintColor || nightColor);
                 beginShape();
                 for (let i = idxSet; i <= idxRise; i++) {
-                    if (i < len) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
 
                 // 4. Draw Day (Sunrise -> Midnight)
-                stroke(dayColor);
+                stroke(tintColor || dayColor);
                 if (idxRise < len - 1) {
                     beginShape();
                     for (let i = idxRise; i < len; i++) {
-                        vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                     }
                     endShape();
                 }
             } else {
                 // SPECIAL CASE: Sun never rises/sets or indices are identical
                 // Default to night for now (matches 0 rise/set indices for "always dark")
-                stroke(nightColor);
+                stroke(tintColor || nightColor);
                 beginShape();
-                for (let i = 0; i < len; i++) {
+                for (let i = 0; i < currentLen; i++) {
                     vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
                 }
                 endShape();
@@ -645,13 +802,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
-                // Logic to shift first hour label rightward in dual mode
+                // Removed rightward shift logic to center on leading edge
                 let shift = 0;
                 let currentTextAlign = CENTER;
-                if (h === 0 && this.isDualLocationMode) {
-                    shift = (this.fontSize * scale) * 0.5;
-                    currentTextAlign = LEFT;
-                }
 
                 // Removed 1.008 tweak for true centering on spiral track
                 let ri2 = r;
@@ -684,13 +837,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Calculate angle
                 let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
 
-                // Logic to shift first hour label rightward in dual mode
+                // Removed rightward shift logic for AM/PM layout
                 let shift = 0;
                 let currentTextAlign = CENTER;
-                if (h === 0 && this.isDualLocationMode) {
-                    shift = (this.fontSize * scale) * 0.1; // Small shift for AM/PM layout
-                    currentTextAlign = LEFT;
-                }
 
                 // Removed 1.008 tweak for true centering
                 let ri2 = r;
@@ -779,18 +928,14 @@ class DaySpiralRenderer extends ClockRenderer {
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
-            // Shift 12 o'clock position (h===0) rightward to avoid spiral label collision
+            // Removed rightward shift logic
             let shift = 0;
             let currentTextAlign = CENTER;
-            if (h === 0 && this.isDualLocationMode) {
-                shift = (this.fontSize * 0.60) * 0.3; // Small shift to be just inside spiral
-                currentTextAlign = LEFT;
-            }
 
             if (this.timeFormat === '24') {
                 // 24-hour mode: simple 0-23
                 let displayStr = str(Math.floor(otherHour));
-                let digitSize = this.fontSize * 0.60;
+                let digitSize = this.fontSize * 0.50;
 
                 textSize(digitSize);
                 textAlign(currentTextAlign === LEFT ? LEFT : CENTER, CENTER);
@@ -802,8 +947,8 @@ class DaySpiralRenderer extends ClockRenderer {
                 let ampm = (otherHour < 12) ? 'A' : 'P';
 
                 let hourStr = str(hour12);
-                let digitSize = this.fontSize * 0.60;
-                let ampmSize = this.fontSize * 0.48; // Reduced to be smaller than digitSize (0.60)
+                let digitSize = this.fontSize * 0.50;
+                let ampmSize = this.fontSize * 0.40; // Reduced to match digitSize (0.50)
                 let margin = this.fontSize * 0.04;   // Halved from 0.08
 
                 textSize(digitSize);
@@ -870,13 +1015,9 @@ class DaySpiralRenderer extends ClockRenderer {
             let x = this.centerX + cos(theta) * ri2;
             let y = this.centerY + sin(theta) * ri2;
 
-            // Shift 12 o'clock position (h===0) rightward in both single and dual modes
+            // Removed rightward shift logic
             let shift = 0;
             let currentTextAlign = CENTER;
-            if (h === 0) {
-                shift = (this.fontSize * 0.63) * 0.3; // Small shift to be just inside spiral
-                currentTextAlign = LEFT;
-            }
 
             if (this.timeFormat === '24') {
                 // 24-hour mode: simple 0-23
@@ -934,6 +1075,9 @@ class DaySpiralRenderer extends ClockRenderer {
         if (!this.xSpiral || this.xSpiral.length === 0) return;
         if (!this.xSpiralInner || this.xSpiralInner.length === 0) return;
 
+        // --- ANIMATION: Hide labels during Stage 1 ---
+        if (this.isAnimatingDualMode && this.animationStage === 1) return;
+
         let labelColor = color(255, 235, 120);
         fill(labelColor);
         noStroke();
@@ -942,7 +1086,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)');
 
-        let margin = this.fontSize * 0.2;
+        let margin = (this.style === 'SpiralHours') ? this.fontSize * 1.1 : this.fontSize * 0.7;
 
         // Determine font sizes based on style (match hour numbers)
         let outerFontSize = this.fontSize * 0.63; // Classic default
@@ -954,21 +1098,57 @@ class DaySpiralRenderer extends ClockRenderer {
         }
 
         // 1. Label for Outer Spiral ("Local")
-        textSize(outerFontSize);
-        let x1 = this.centerX + this.xSpiral[0] - margin;
-        let y1 = this.centerY + this.ySpiral[0];
-        text("Local", x1, y1);
+        // Only show from Stage 5 onwards (after migration and drawing)
+        if (!this.isAnimatingDualMode || this.animationStage >= 5) {
+            textSize(outerFontSize);
+            let x1 = this.centerX + this.xSpiral[0] - margin;
+            let y1 = this.centerY + this.ySpiral[0];
+            text("Local", x1, y1);
+        }
 
-        // 2. Label for Inner Spiral (City Name or "Other") - use light cyan to match inner spiral hours
+        // 2. Label for Inner Spiral (City Name)
         fill(180, 255, 255); // Light Cyan for inner spiral label
         textSize(innerFontSize);
         let cityName = locManager.otherLocation.cityName || "Other";
-        // Extract just the city name if comma-separated
         if (cityName.includes(',')) cityName = cityName.split(',')[0].trim();
 
-        let x2 = this.centerX + this.xSpiralInner[0] - margin;
-        let y2 = this.centerY + this.ySpiralInner[0];
-        text(cityName, x2, y2);
+        let targetX = this.centerX + this.xSpiralInner[0] - margin;
+        let targetY = this.centerY + this.ySpiralInner[0];
+
+        // --- ANIMATION: Highlight and Migration Logic ---
+        if (this.isAnimatingDualMode && (this.animationStage === 2 || this.animationStage === 3 || this.animationStage === 4)) {
+            const progress = this.getAnimationProgress();
+
+            // Starting position for migration (roughly where DOM text used to be)
+            let startX = width - 150;
+            let startY = 75;
+
+            let curX = targetX;
+            let curY = targetY;
+
+            // Only migration position in Stage 2
+            if (this.animationStage === 2) {
+                curX = lerp(startX, targetX, progress);
+                curY = lerp(startY, targetY, progress);
+            }
+
+            // Keep text highlighted Yellow during Stage 2, 3 and 4
+            fill(255, 255, 170);
+            text(cityName, curX, curY);
+
+        } else if (this.isAnimatingDualMode && this.animationStage === 5) {
+            // Stage 5: Color Cross-fade from Yellow to Cyan
+            const progress = this.getAnimationProgress();
+            let yellowColor = color(255, 255, 170);
+            let finalColor = color(180, 255, 255);
+            fill(lerpColor(yellowColor, finalColor, progress));
+            text(cityName, targetX, targetY);
+
+        } else if (!this.isAnimatingDualMode || this.animationStage >= 6) {
+            // Stage 6 or non-animating: Final Cyan
+            fill(180, 255, 255);
+            text(cityName, targetX, targetY);
+        }
 
         this._resetShadow();
         textStyle(NORMAL);
@@ -989,7 +1169,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // (It was at the bottom of the previous file view, assuming it's correct)
 
         // Just redundant check removal for safely rendering:
-        let dayNames = ["su", "m", "tu", "w", "th", "f", "sa"];
+        let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         let todayIdx = tk.dayOfWeek;
         let nextDayIdx = (todayIdx + 1) % 7;
 
@@ -1274,9 +1454,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 innerStrokeWeight = spacePerTurn * 0.2925;
             } else {
                 // Existing percentages for Classic
-                outerStrokeWeight = spacePerTurn * 0.42;
+                outerStrokeWeight = spacePerTurn * 0.462;
                 gapBetweenSpirals = spacePerTurn * 0.02; // increased from 0.01 to prevent touching
-                innerStrokeWeight = spacePerTurn * 0.35;
+                innerStrokeWeight = spacePerTurn * 0.308;
             }
 
             // Sync with member variables (Weight is preferred naming)
