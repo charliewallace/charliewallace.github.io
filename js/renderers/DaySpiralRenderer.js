@@ -1183,11 +1183,12 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)'); // More visible shadow for text
 
-        let xOffset = -5; // Small negative offset to position just outside spiral start
+        let xOffset = -(this.fontSize * 0.55); // Reduced (about 0.5 characters)
+        let yOffset = this.fontSize * 0.12;   // Reduced (about 1/8 character height)
 
         // Start (Outer) - show today's day abbreviation
         let idxStart = 0;
-        text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart] + xOffset, this.centerY + this.ySpiral[idxStart]);
+        text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart] + xOffset, this.centerY + this.ySpiral[idxStart] + yOffset);
 
         // End label removed - was colliding with last hour label and not adding much value
 
