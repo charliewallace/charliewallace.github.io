@@ -296,7 +296,7 @@ function fetchIpLocation() {
 
         if (IsTimezoneMismatch && !TimezoneWarningShown) {
           console.log("⚠️ Timezone mismatch detected");
-          alert("⚠️ Timezone mismatch detected - possible VPN usage. Select 'GPS OK?' for better accuracy.");
+          alert("⚠️ Timezone mismatch detected - possible VPN usage. Open 'Location Details' to approve GPS for better accuracy.");
           IsTimezoneMismatch = false;
           TimezoneWarningShown = true;
         }
@@ -521,14 +521,11 @@ function oneTimeInit() {
 
   select('#btn-zen').mousePressed(toggleZenMode);
 
-  // "GPS OK?" Button(s)
-  var gpsBtns = [select('#btn-gps-ok'), select('#btn-gps-ok-mobile')];
-  gpsBtns.forEach(btn => {
-    if (btn) btn.mousePressed(() => {
-      // If yellow/warning, it means we want to fetch precise. 
-      // If not, maybe just re-fetch?
-      usePreciseLocation(false);
-    });
+  // "GPS OK?" Button (Relocated to modal)
+  var gpsBtnModal = select('#btn-gps-modal');
+  if (gpsBtnModal) gpsBtnModal.mousePressed(() => {
+    usePreciseLocation(false);
+    closeAllModals();
   });
 
   // Setup Button for Day Spiral Clock
@@ -1482,21 +1479,16 @@ function updateUIElements() {
     versionEl.textContent = 'CoolweirdClocks ' + verOnly;
   }
 
-  var locationWarning = (!IsPreciseLocation && IsDisplayingUserLocation) ?
-    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.' : '';
-
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
     if (titleEl) titleEl.textContent = 'Mobius Clock';
     // Show condensed Mobius description for desktop
     var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
       'The hour indicator makes 2 full turns to return to its starting point.';
-    if (locationWarning) mobiusDescText += ' ' + locationWarning;
     if (descEl) descEl.textContent = mobiusDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show night and day you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ';
-    if (locationWarning) descText += locationWarning;
     if (descEl) descEl.textContent = descText;
 
     // Manage 'Hours' button visibility
@@ -1637,33 +1629,19 @@ function updateUIElements() {
     }
   }
 
-  // NEW: Update GPS OK Button(s) State
+  // NEW: Update GPS OK Button State (Now in Modal)
   // We only show the button when we are in user location mode but NOT YET precise.
-  var gpsBtnDesktop = document.getElementById('btn-gps-ok');
-  var gpsBtnMobile = document.getElementById('btn-gps-ok-mobile');
+  var gpsBtnModal = document.getElementById('btn-gps-modal');
+  var gpsAccMsg = document.getElementById('gps-accuracy-msg');
 
-  // Also enforce container visibility if buttons are shown
-  var btnsVisible = false;
-
-  [gpsBtnDesktop, gpsBtnMobile].forEach(btn => {
-    if (btn) {
-      if (IsDisplayingUserLocation && !IsPreciseLocation) {
-        // Show button (yellow) if we are in user mode but don't have GPS yet
-        btn.classList.add('gps-show');
-        btn.classList.add('warning-bg');
-        btnsVisible = true;
-      } else {
-        btn.classList.remove('warning-bg');
-        btn.classList.remove('gps-show');
-      }
+  if (gpsBtnModal) {
+    if (IsDisplayingUserLocation && !IsPreciseLocation) {
+      gpsBtnModal.classList.add('gps-show');
+      if (gpsAccMsg) gpsAccMsg.classList.add('gps-show');
+    } else {
+      gpsBtnModal.classList.remove('gps-show');
+      if (gpsAccMsg) gpsAccMsg.classList.remove('gps-show');
     }
-  });
-
-  // Ensure button group is visible if we want buttons to show
-  var btnGroup = document.querySelector('.button-group');
-  if (btnGroup) {
-    if (btnsVisible) btnGroup.style.display = 'flex';
-    // else? Leave to CSS
   }
 
   // Update date display

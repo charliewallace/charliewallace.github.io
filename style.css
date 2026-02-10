@@ -106,8 +106,24 @@ body {
 }
 
 /* GPS button visibility controlled by JavaScript + CSS */
-#btn-gps-ok:not(.gps-show),
-#btn-gps-ok-mobile:not(.gps-show) {
+#btn-gps-modal:not(.gps-show) {
+  display: none !important;
+}
+
+.modal-gps-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.gps-accuracy-msg {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+#gps-accuracy-msg:not(.gps-show) {
   display: none !important;
 }
 
