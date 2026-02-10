@@ -100,6 +100,7 @@ var NewLatitude, NewLongitude;
 var LastLat, LastLong;
 var LatLocal, LngLocal;
 var TzOffset, TzOffsetLocal;
+var IsPreciseLocal = false; // Tracks if the local cache is precise (GPS) or approx (IP)
 var LastTz;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
@@ -208,6 +209,7 @@ function fetchIpLocation() {
   setLoadingState();
   IsDisplayingUserLocation = true;
   IsPreciseLocation = false;
+  IsPreciseLocal = false; // IP is not precise
   IsUserInitiatedLocation = false;
 
   if (locManager) {
@@ -483,7 +485,33 @@ function oneTimeInit() {
 
     updateDualModeUI();
 
-    usePreciseLocation(false);
+    // RESTORE from local cache instead of triggering GPS prompt
+    if (LatLocal !== 99999 && LngLocal !== 99999) {
+      console.log("📍 Restoring user location from cache (IsPrecise=" + IsPreciseLocal + ")");
+      Latitude = LatLocal;
+      Longitude = LngLocal;
+      TzOffset = TzOffsetLocal;
+      if (LocaleTitleLocal) LocaleTitle = LocaleTitleLocal;
+      IsPreciseLocation = IsPreciseLocal;
+
+      // Update UI fields
+      if (LatInput) LatInput.value(str(Latitude));
+      if (LngInput) LngInput.value(str(Longitude));
+      if (TzInput) {
+        let tzStr = str(TzOffset);
+        if (TzOffset > 0) tzStr = "+" + tzStr;
+        TzInput.value(tzStr);
+      }
+
+      IsSunRiseSetObtained = false;
+      updateTimeThisDay();
+      updateUrlHash();
+    } else {
+      // Fallback: This shouldn't normally happen as IP location is fetched on startup
+      console.log("⚠️ No local cache found, triggering GPS as fallback");
+      usePreciseLocation(false);
+    }
+
     closeAllModals();
   });
 
@@ -760,8 +788,6 @@ function oneTimeInit() {
   NewLongitude = 99999;
   LastLat = 99999;
   LastLong = 99999;
-  LatLocal = 99999;
-  LngLocal = 99999;
 
   IsTimezoneMismatch = false; // will be set to true if VPN/proxy detected
 
@@ -2717,6 +2743,11 @@ function usePreciseLocation(isAuto = false) {
       console.log("Precise latitude: " + Latitude);
       console.log("Precise longitude: " + Longitude);
 
+      // Update Local cache
+      LatLocal = Latitude;
+      LngLocal = Longitude;
+      IsPreciseLocal = true; // GPS is precise
+
       // Update UI fields
       var latString = str(Latitude);
       LatInput.value(latString);
@@ -3336,6 +3367,9 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
     }
 
     if (TzInput) TzInput.value(tzString);
+    if (!isOther) {
+      TzOffsetLocal = timeZoneOffset; // Update local cache
+    }
     if (LatInput) LatInput.value(str(Latitude));
     if (LngInput) LngInput.value(str(Longitude));
 
@@ -3454,6 +3488,7 @@ function gotReverseGeocodeData(data, requestId, isOther = IsSearchingForOtherLoc
     } else {
       // Primary Location
       LocaleTitle = foundName;
+      LocaleTitleLocal = foundName; // Update local cache
       if (IsUserInitiatedLocation || IsPreciseLocation) {
         updateUrlHash();
       }
