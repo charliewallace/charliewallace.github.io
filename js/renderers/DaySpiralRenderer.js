@@ -21,7 +21,7 @@ class DaySpiralRenderer extends ClockRenderer {
         this.fontScale = 1;
 
         this.bkColor = 57; // Reverted to original lighter background as requested
-        this.hourDigitColor = [25, 25, 25];
+        this.hourDigitColor = [255, 255, 255]; // Change to white - was dark gray [25, 25, 25];
 
         // Style: 'Classic' (default) or 'SpiralHours' (Legacy V3)
         this.style = 'Classic';
@@ -277,23 +277,25 @@ class DaySpiralRenderer extends ClockRenderer {
             // This casts shadow OUTSIDE (bottom-right) and INSIDE (top-left of hole)
             this._applyShadow(20, 6, 6, 'rgba(0,0,0,0.5)');
 
-            beginShape();
-            // Outer Ring Circle
-            let outerR = this.clockDiameter / 2;
-            let innerR = this.faceDiameter / 2;
-
-            // Outer boundary (Clockwise)
-            for (let a = 0; a < TWO_PI; a += 0.05) {
-                vertex(this.centerX + cos(a) * outerR, this.centerY + sin(a) * outerR);
-            }
-
-            // Inner boundary (Counter-clockwise for hole)
-            beginContour();
-            for (let a = TWO_PI; a > 0; a -= 0.05) {
-                vertex(this.centerX + cos(a) * innerR, this.centerY + sin(a) * innerR);
-            }
-            endContour();
-            endShape(CLOSE);
+            /*  FORNOW, commenting out the bright white ring "DONUT"
+                        beginShape();
+                        // Outer Ring Circle
+                        let outerR = this.clockDiameter / 2;
+                        let innerR = this.faceDiameter / 2;
+            
+                        // Outer boundary (Clockwise)
+                        for (let a = 0; a < TWO_PI; a += 0.05) {
+                            vertex(this.centerX + cos(a) * outerR, this.centerY + sin(a) * outerR);
+                        }
+            
+                        // Inner boundary (Counter-clockwise for hole)
+                        beginContour();
+                        for (let a = TWO_PI; a > 0; a -= 0.05) {
+                            vertex(this.centerX + cos(a) * innerR, this.centerY + sin(a) * innerR);
+                        }
+                        endContour();
+                        endShape(CLOSE);
+            */
 
             this._resetShadow();
 
@@ -302,7 +304,7 @@ class DaySpiralRenderer extends ClockRenderer {
             noStroke();
             for (let b = 0; b < 360; b += 30) {
                 let angle = radians(b);
-                let dotRadius = (this.faceDiameter / 2) * 0.98;
+                let dotRadius = (this.faceDiameter / 2);// * 0.98; // Move dots outward to sit on edge of face
                 let x = this.centerX + cos(angle) * dotRadius;
                 let y = this.centerY + sin(angle) * dotRadius;
                 let dotSize = this.fontSize * 0.25;
@@ -415,7 +417,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
     drawHourLabels() {
         noStroke();
-        fill(this.hourDigitColor);
+        fill(this.hourDigitColor); // color of hour digits
         textSize(this.fontSize);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
