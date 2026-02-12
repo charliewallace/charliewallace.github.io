@@ -16,8 +16,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CoolweirdClocks</title>
-  <link rel="stylesheet" href="style.css?v=0.5.6">
-  <link rel="stylesheet" href="modal-fixes.css?v=0.5.6">
+  <link rel="stylesheet" href="style.css?v=0.5.7">
+  <link rel="stylesheet" href="modal-fixes.css?v=0.5.7">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
   <!-- Google tag (gtag.js) -->
@@ -51,8 +51,6 @@
         </div>
 
         <div class="button-group">
-          <button id="btn-gps-ok" class="ui-btn desktop-only">GPS OK?</button>
-          <button id="btn-gps-ok-mobile" class="ui-btn mobile-only">GPS OK?</button>
           <button id="btn-about" class="ui-btn">About</button>
         </div>
       </div>
@@ -217,6 +215,10 @@
           <!-- Content injected via JS -->
         </div>
         <div class="modal-actions">
+          <div class="modal-gps-group">
+            <button id="btn-gps-modal" class="ui-btn secondary">GPS OK?</button>
+            <span id="gps-accuracy-msg" class="gps-accuracy-msg">← for better sunrise/set accuracy</span>
+          </div>
           <button class="ui-btn btn-close-modal">OK</button>
         </div>
       </div>
@@ -332,14 +334,14 @@
   <!-- THREE.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <script src="sketch.js?v=0.5.6"></script>
+  <script src="sketch.js?v=0.5.7"></script>
 
   <!-- App Modules -->
-  <script src="js/TimeKeeper.js?v=0.5.6"></script>
-  <script src="js/LocationManager.js?v=0.5.6"></script>
-  <script src="js/ClockRenderer.js?v=0.5.6"></script>
-  <script src="js/renderers/DaySpiralRenderer.js?v=0.5.6"></script>
-  <script src="js/renderers/MobiusRenderer.js?v=0.5.6"></script>
+  <script src="js/TimeKeeper.js?v=0.5.7"></script>
+  <script src="js/LocationManager.js?v=0.5.7"></script>
+  <script src="js/ClockRenderer.js?v=0.5.7"></script>
+  <script src="js/renderers/DaySpiralRenderer.js?v=0.5.7"></script>
+  <script src="js/renderers/MobiusRenderer.js?v=0.5.7"></script>
 </body>
 
 </html>

@@ -67,7 +67,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.5.6 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.5.7 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -100,6 +100,7 @@ var NewLatitude, NewLongitude;
 var LastLat, LastLong;
 var LatLocal, LngLocal;
 var TzOffset, TzOffsetLocal;
+var IsPreciseLocal = false; // Tracks if the local cache is precise (GPS) or approx (IP)
 var LastTz;
 var IsSunRiseSetObtained;
 var IsTimezoneMismatch; // true if browser timezone doesn't match IP location timezone
@@ -208,6 +209,7 @@ function fetchIpLocation() {
   setLoadingState();
   IsDisplayingUserLocation = true;
   IsPreciseLocation = false;
+  IsPreciseLocal = false; // IP is not precise
   IsUserInitiatedLocation = false;
 
   if (locManager) {
@@ -296,7 +298,7 @@ function fetchIpLocation() {
 
         if (IsTimezoneMismatch && !TimezoneWarningShown) {
           console.log("⚠️ Timezone mismatch detected");
-          alert("⚠️ Timezone mismatch detected - possible VPN usage. Select 'GPS OK?' for better accuracy.");
+          alert("⚠️ Timezone mismatch detected - possible VPN usage. Open 'Location Details' to approve GPS for better accuracy.");
           IsTimezoneMismatch = false;
           TimezoneWarningShown = true;
         }
@@ -483,7 +485,33 @@ function oneTimeInit() {
 
     updateDualModeUI();
 
-    usePreciseLocation(false);
+    // RESTORE from local cache instead of triggering GPS prompt
+    if (LatLocal !== 99999 && LngLocal !== 99999) {
+      console.log("📍 Restoring user location from cache (IsPrecise=" + IsPreciseLocal + ")");
+      Latitude = LatLocal;
+      Longitude = LngLocal;
+      TzOffset = TzOffsetLocal;
+      if (LocaleTitleLocal) LocaleTitle = LocaleTitleLocal;
+      IsPreciseLocation = IsPreciseLocal;
+
+      // Update UI fields
+      if (LatInput) LatInput.value(str(Latitude));
+      if (LngInput) LngInput.value(str(Longitude));
+      if (TzInput) {
+        let tzStr = str(TzOffset);
+        if (TzOffset > 0) tzStr = "+" + tzStr;
+        TzInput.value(tzStr);
+      }
+
+      IsSunRiseSetObtained = false;
+      updateTimeThisDay();
+      updateUrlHash();
+    } else {
+      // Fallback: This shouldn't normally happen as IP location is fetched on startup
+      console.log("⚠️ No local cache found, triggering GPS as fallback");
+      usePreciseLocation(false);
+    }
+
     closeAllModals();
   });
 
@@ -521,14 +549,11 @@ function oneTimeInit() {
 
   select('#btn-zen').mousePressed(toggleZenMode);
 
-  // "GPS OK?" Button(s)
-  var gpsBtns = [select('#btn-gps-ok'), select('#btn-gps-ok-mobile')];
-  gpsBtns.forEach(btn => {
-    if (btn) btn.mousePressed(() => {
-      // If yellow/warning, it means we want to fetch precise. 
-      // If not, maybe just re-fetch?
-      usePreciseLocation(false);
-    });
+  // "GPS OK?" Button (Relocated to modal)
+  var gpsBtnModal = select('#btn-gps-modal');
+  if (gpsBtnModal) gpsBtnModal.mousePressed(() => {
+    usePreciseLocation(false);
+    closeAllModals();
   });
 
   // Setup Button for Day Spiral Clock
@@ -763,8 +788,6 @@ function oneTimeInit() {
   NewLongitude = 99999;
   LastLat = 99999;
   LastLong = 99999;
-  LatLocal = 99999;
-  LngLocal = 99999;
 
   IsTimezoneMismatch = false; // will be set to true if VPN/proxy detected
 
@@ -1482,21 +1505,16 @@ function updateUIElements() {
     versionEl.textContent = 'CoolweirdClocks ' + verOnly;
   }
 
-  var locationWarning = (!IsPreciseLocation && IsDisplayingUserLocation) ?
-    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.' : '';
-
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
     if (titleEl) titleEl.textContent = 'Mobius Clock';
     // Show condensed Mobius description for desktop
     var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
       'The hour indicator makes 2 full turns to return to its starting point.';
-    if (locationWarning) mobiusDescText += ' ' + locationWarning;
     if (descEl) descEl.textContent = mobiusDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show night and day you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ';
-    if (locationWarning) descText += locationWarning;
     if (descEl) descEl.textContent = descText;
 
     // Manage 'Hours' button visibility
@@ -1637,33 +1655,19 @@ function updateUIElements() {
     }
   }
 
-  // NEW: Update GPS OK Button(s) State
+  // NEW: Update GPS OK Button State (Now in Modal)
   // We only show the button when we are in user location mode but NOT YET precise.
-  var gpsBtnDesktop = document.getElementById('btn-gps-ok');
-  var gpsBtnMobile = document.getElementById('btn-gps-ok-mobile');
+  var gpsBtnModal = document.getElementById('btn-gps-modal');
+  var gpsAccMsg = document.getElementById('gps-accuracy-msg');
 
-  // Also enforce container visibility if buttons are shown
-  var btnsVisible = false;
-
-  [gpsBtnDesktop, gpsBtnMobile].forEach(btn => {
-    if (btn) {
-      if (IsDisplayingUserLocation && !IsPreciseLocation) {
-        // Show button (yellow) if we are in user mode but don't have GPS yet
-        btn.classList.add('gps-show');
-        btn.classList.add('warning-bg');
-        btnsVisible = true;
-      } else {
-        btn.classList.remove('warning-bg');
-        btn.classList.remove('gps-show');
-      }
+  if (gpsBtnModal) {
+    if (IsDisplayingUserLocation && !IsPreciseLocation) {
+      gpsBtnModal.classList.add('gps-show');
+      if (gpsAccMsg) gpsAccMsg.classList.add('gps-show');
+    } else {
+      gpsBtnModal.classList.remove('gps-show');
+      if (gpsAccMsg) gpsAccMsg.classList.remove('gps-show');
     }
-  });
-
-  // Ensure button group is visible if we want buttons to show
-  var btnGroup = document.querySelector('.button-group');
-  if (btnGroup) {
-    if (btnsVisible) btnGroup.style.display = 'flex';
-    // else? Leave to CSS
   }
 
   // Update date display
@@ -2739,6 +2743,11 @@ function usePreciseLocation(isAuto = false) {
       console.log("Precise latitude: " + Latitude);
       console.log("Precise longitude: " + Longitude);
 
+      // Update Local cache
+      LatLocal = Latitude;
+      LngLocal = Longitude;
+      IsPreciseLocal = true; // GPS is precise
+
       // Update UI fields
       var latString = str(Latitude);
       LatInput.value(latString);
@@ -3358,6 +3367,9 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
     }
 
     if (TzInput) TzInput.value(tzString);
+    if (!isOther) {
+      TzOffsetLocal = timeZoneOffset; // Update local cache
+    }
     if (LatInput) LatInput.value(str(Latitude));
     if (LngInput) LngInput.value(str(Longitude));
 
@@ -3476,6 +3488,7 @@ function gotReverseGeocodeData(data, requestId, isOther = IsSearchingForOtherLoc
     } else {
       // Primary Location
       LocaleTitle = foundName;
+      LocaleTitleLocal = foundName; // Update local cache
       if (IsUserInitiatedLocation || IsPreciseLocation) {
         updateUrlHash();
       }
