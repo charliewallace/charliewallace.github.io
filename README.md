@@ -43,7 +43,7 @@ A unique visualization that shows you your whole day, including day and night, s
 
 ### Mobius Clock
 
-![Mobius Clock](mobiusclock.png)
+![Mobius Clock](MobiusClock.png)
 
 A 12-hour clock face where time moves along a fully three-dimensional Mobius strip (a strip with a single edge and a single surface).  You can even make it rotate in 3D space!
 - **Hour shown on the edge**: The hour indicator moves along the edge of the strip, requiring two full loops to return to the start. Thus you have 24 hours shown on a 12-hour clock face.
