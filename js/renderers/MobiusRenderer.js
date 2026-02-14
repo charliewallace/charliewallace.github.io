@@ -126,7 +126,7 @@ class MobiusRenderer extends ClockRenderer {
         this.hoursVisible = true;
         this.timeStyle = 'ampm';
         this.hoursVisible = true;
-        this.dayNightMode = true; // Default to ON
+        this.dayNightMode = false; // Default to OFF (was true)
 
         this.edgePath = [];
 

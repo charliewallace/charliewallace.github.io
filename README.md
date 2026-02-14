@@ -41,11 +41,13 @@ A unique visualization that shows you your whole day, including day and night, s
 
 **Specific URL Parameters:**
 - `daySpiralStyle=SpiralHours`: Activates the "Hours In Spiral" (HIS) visual style.
-- `daySpiralShowHours=1`: Displays hour labels on the spiral face (non-HIS modes).
 - `daySpiralTimeFormat=24`: Sets the DaySpiral to 24-hour time format.
 
 ### Mobius Clock
-A 12-hour clock face where time moves along a fully three-dimensional Mobius strip (a strip with a single edge and a single surface).  You can even make it rotate in 3D space! 
+
+![Mobius Clock](MobiusClock.png)
+
+A 12-hour clock face where time moves along a fully three-dimensional Mobius strip (a strip with a single edge and a single surface).  You can even make it rotate in 3D space!
 - **Hour shown on the edge**: The hour indicator moves along the edge of the strip, requiring two full loops to return to the start. Thus you have 24 hours shown on a 12-hour clock face.
 - **Minutes and seconds shown in the center**: Seconds and minutes move along the center line of the strip, thus only requiring one loop to complete.
 - **Dali Mode**: A fluid, "melting" clock animation inspired by Salvador Dalí. A standard Mobius strip has a half-twist, but this has one-and-a-half twists. Shows an animation of the strip twisting in 3D space.
@@ -59,7 +61,7 @@ A 12-hour clock face where time moves along a fully three-dimensional Mobius str
 - `demo=1`: Activates fast-motion demo mode.
 - `showHours=0`: Hides the hour number labels.
 - `dali=1`: Activates the "Dali" melting clock animation mode.
-- `dayNight=0`: Disables the day/night color coding.
+- `dayNight=1`: Enables the day/night color coding (off by default).
 
 ---
 
