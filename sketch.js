@@ -1379,8 +1379,8 @@ function updateUrlHash() {
     if (mobiusRenderer.daliMode === true) {
       params.set('dali', '1');
     }
-    if (mobiusRenderer.dayNightMode === false) {
-      params.set('dayNight', '0');
+    if (mobiusRenderer.dayNightMode === true) {
+      params.set('dayNight', '1');
     }
   }
 
