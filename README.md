@@ -51,7 +51,7 @@ A 12-hour clock face where time moves along a fully three-dimensional Mobius str
 - `rotation=1`: Enables the 3D rotation animation.
 - `demo=1`: Activates fast-motion demo mode.
 - `showHours=0`: Hides the hour number labels.
-- `dali=1`: Activates the "Dali" melting clock animation mode.
+- `dali=1`: Activates the "Dali" melting clock 1 1/2 turn mode.
 - `dayNight=1`: Enables the day/night color coding (off by default).
 
 ---
