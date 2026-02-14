@@ -320,15 +320,15 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this.drawSpiral(timeKeeper, locManager);
 
-        this.drawAmPmIndicators();
-        this.drawRiseSetTimes(timeKeeper);
-
         // Draw hands - hide during dual mode transition (Stage 2 to 5)
-        // Moved early so hands appear UNDER numbers and ticks
+        // Moved early so hands appear UNDER numbers, ticks, and Rise/Set times
         const shouldHideHands = this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5;
         if (!shouldHideHands) {
             this.drawHands(timeKeeper);
         }
+
+        this.drawAmPmIndicators();
+        this.drawRiseSetTimes(timeKeeper);
 
         // Draw spiral hours in Classic mode
         if (this.style === 'Classic') {
