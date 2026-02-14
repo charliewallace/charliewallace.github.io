@@ -320,6 +320,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this.drawSpiral(timeKeeper, locManager);
 
+        this.drawAmPmIndicators();
+
         // Draw hands - hide during dual mode transition (Stage 2 to 5)
         // Moved early so hands appear UNDER numbers and ticks
         const shouldHideHands = this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5;
@@ -1185,7 +1187,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)'); // More visible shadow for text
 
-        let xOffset = -(this.fontSize * 0.55); // Reduced (about 0.5 characters)
+        // Shifted further left to avoid crowding "12A" label (was -0.55)
+        let xOffset = -(this.fontSize * 0.9);
         let yOffset = this.fontSize * 0.12;   // Reduced (about 1/8 character height)
 
         // Start (Outer) - show today's day abbreviation
@@ -1611,5 +1614,86 @@ class DaySpiralRenderer extends ClockRenderer {
         drawingContext.shadowBlur = 0;
         drawingContext.shadowOffsetX = 0;
         drawingContext.shadowOffsetY = 0;
+    }
+
+    // Draw AM/PM indicators and separator line for Classic mode when numbers are hidden
+    drawAmPmIndicators() {
+        if (this.style !== 'Classic' || this.hoursVisible || this.isDualLocationMode || this.isAnimatingDualMode) return;
+        if (!this.xSpiral || this.xSpiral.length === 0) return;
+
+        push();
+        // Color: Same as day labels (255, 235, 120) with 50% opacity
+        let c = color(255, 235, 120, 128);
+        fill(c);
+        noStroke();
+
+        // Font size reduced by another 10% from previous step (0.9 * 0.9 = 0.81)
+        // Let's use 0.8 to be safe and clear.
+        let indicatorSize = this.fontSize * 0.8;
+        textSize(indicatorSize);
+        textStyle(BOLD);
+
+        // Center text on the spiral track point
+        textAlign(CENTER, CENTER);
+
+        // Calculate angular offsets into index offsets
+        // 360 degrees = numPointsPerTurn indices
+
+        // AM: 7 degrees offset
+        let amAngleDeg = 7;
+        let amIndexOffset = Math.round((amAngleDeg / 360) * this.numPointsPerTurn);
+
+        // PM: 10 degrees offset
+        let pmAngleDeg = 10;
+        let pmIndexOffset = Math.round((pmAngleDeg / 360) * this.numPointsPerTurn);
+
+        // AM Indicator - Top Outer Ring
+        // Base Index 0 (Top) + offset
+        let amIdx = amIndexOffset;
+        if (amIdx < this.xSpiral.length) {
+            let amX = this.centerX + this.xSpiral[amIdx];
+            let amY = this.centerY + this.ySpiral[amIdx];
+            text("AM", amX, amY);
+        }
+
+        // PM Indicator - Top Inner Ring
+        // Base Index numPointsPerTurn (Top of 2nd turn) + offset
+        let pmIdx = this.numPointsPerTurn + pmIndexOffset;
+        if (pmIdx < this.xSpiral.length) {
+            let pmX = this.centerX + this.xSpiral[pmIdx];
+            let pmY = this.centerY + this.ySpiral[pmIdx];
+            text("PM", pmX, pmY);
+        }
+
+        // Vertical Separator Line
+        // Position: At the top of the "first turn" (Outer/AM turn). 
+        // User clarification: "top of the first turn... dividing line between AM and PM"
+        // This implies the 12:00 PM mark (Index 300), which is the end of the AM turn and start of PM turn.
+        // It should coincide with the second hand at 12 (centerX).
+
+        stroke(c);
+        // Weight: About half of the second hand line weight
+        let lineWeight = Math.max(0.6, this.secondaryStrokeWeight * 0.175);
+        strokeWeight(lineWeight);
+        strokeCap(SQUARE);
+
+        // X Position: Center (matches 12 o'clock second hand)
+        let lineX = this.centerX;
+
+        // Y Position: At 12:00 PM (Index 300)
+        // PM Spiral Index is numPointsPerTurn.
+        let targetIdx = this.numPointsPerTurn;
+
+        if (targetIdx < this.ySpiral.length) {
+            let spiralCenterY = this.centerY + this.ySpiral[targetIdx];
+
+            // Length: Width of the spiral line itself
+            // The spiral track width is store in this.spiralStrokeWeight
+            let halfLen = this.spiralStrokeWeight / 2;
+
+            line(lineX, spiralCenterY - halfLen, lineX, spiralCenterY + halfLen);
+        }
+
+        pop();
     }
 }
