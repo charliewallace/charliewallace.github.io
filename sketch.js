@@ -1840,8 +1840,8 @@ function openDetailsModal() {
   var content = document.getElementById('details-content');
 
   if (content) {
-    // Check if we are in dual-location mode
-    const isDual = locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer;
+    // Check if we are in dual-location mode (or Mobius substitution mode)
+    const isDual = locManager && locManager.hasOtherLocation();
 
     let targetLat, targetLon, targetTz, targetCity, targetSunriseHour, targetSunriseMin, targetSunsetHour, targetSunsetMin, targetTzStr, targetDstStr;
 
@@ -3064,8 +3064,8 @@ function handleCoordsSubmitUnified() {
 
   console.log("Submit Manual Coords: Lat=" + lat + " Lng=" + lng + " Tz=" + tz);
 
-  // In DaySpiral mode, manual coordinates now target the alternate location
-  if (daySpiralRenderer && daySpiralRenderer.active) {
+  // If searching for "Other Location", set it regardless of active renderer
+  if (IsSearchingForOtherLocation) {
     console.log("  📍 Setting manual alternate location");
     setOtherLocation(lat, lng, isNaN(tz) ? 0 : tz, "Manual Location");
 
@@ -3307,9 +3307,9 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
   if (data.length != 0) {
     let timeZoneOffset = data.gmtOffset;
 
-    // DUAL MODE (DaySpiral Only)
-    if (isOther && daySpiralRenderer && daySpiralRenderer.active) {
-      console.log(`  🌎 Dual mode: Setting other location to ${cityName}`);
+    // UNIFIED 'OTHER' MODE (DaySpiral Dual or Mobius Substitution)
+    if (isOther) {
+      console.log(`  🌎 Other Location mode: Setting other location to ${cityName}`);
       setOtherLocation(lat, lon, timeZoneOffset, cityName);
 
       // Reset flags
@@ -3319,16 +3319,6 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
       // Call success callback (closes modal)
       if (successCallback) successCallback();
       return;
-    }
-
-    // SUBSTITUTION MODE (Mobius or other)
-    // If isOther is true but we aren't in DaySpiral, we treat this as a replacement 
-    // of the primary location. We just let it fall through to the standard logic below.
-    if (isOther) {
-      console.log(`  🔄 Substitution mode: Replacing primary location with ${cityName}`);
-      IsSearchingForOtherLocation = false; // Clear flag so it sticks as primary
-      // We also need to ensure the UI updates the title to this new city
-      // The logic below uses 'cityName' or 'CityName' global.
     }
 
     TzOffset = timeZoneOffset;
