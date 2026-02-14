@@ -1135,14 +1135,7 @@ function applyInitialState() {
       if (selTimeFormat) selTimeFormat.value(state.timeFormat);
     }
 
-    if (state.showHours !== undefined) {
-      daySpiralRenderer.setHoursVisible(state.showHours);
-      const btnHours = select('#btn-dayspiral-hours');
-      if (btnHours) {
-        if (state.showHours) btnHours.addClass('toggled-on');
-        else btnHours.removeClass('toggled-on');
-      }
-    }
+    // REMOVED: state.showHours support dropped.
 
     if (state.dualAnim !== undefined) {
       daySpiralRenderer.dualModeAnimationEnabled = state.dualAnim;
@@ -1348,10 +1341,8 @@ function updateUrlHash() {
       params.set('daySpiralTimeFormat', daySpiralRenderer.timeFormat);
     }
 
-    // Add DaySpiral hour visibility (non-default: shown)
-    if (daySpiralRenderer.hoursVisible === true) {
-      params.set('daySpiralShowHours', '1');
-    }
+    // REMOVED: daySpiralShowHours is no longer persisted as the button is removed.
+    // Numbers are implicitly managed (Hidden in Classic, Used in Dual Mode).
 
     // Add dualAnim setting (non-default: disabled)
     if (daySpiralRenderer.dualModeAnimationEnabled === false) {
@@ -1518,14 +1509,11 @@ function updateUIElements() {
     if (descEl) descEl.textContent = descText;
 
     // Manage 'Hours' button visibility
+    // REMOVED PER USER REQUEST: The "Hours" button is no longer needed in Classic/Single mode.
+    // It is always hidden now.
     const btnHours = select('#btn-dayspiral-hours');
     if (btnHours) {
-      const isDualMode = (locManager && locManager.hasOtherLocation());
-      if (daySpiralRenderer.style === 'Classic' && !isDualMode) {
-        btnHours.show();
-      } else {
-        btnHours.hide();
-      }
+      btnHours.hide();
     }
   }
 
