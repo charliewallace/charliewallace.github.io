@@ -1623,14 +1623,14 @@ class DaySpiralRenderer extends ClockRenderer {
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
         push();
-        // Color: Same as day labels (255, 235, 120) with 50% opacity
-        let c = color(255, 235, 120, 128);
+        // Color: Same as day labels (255, 235, 120) with 75% opacity
+        let c = color(255, 235, 120, 192);
         fill(c);
         noStroke();
 
         // Font size reduced by another 10% from previous step (0.9 * 0.9 = 0.81)
-        // Let's use 0.8 to be safe and clear.
-        let indicatorSize = this.fontSize * 0.8;
+        // Let's use 0.8 to be safe and clear. CW: reduce further to 0.75.
+        let indicatorSize = this.fontSize * 0.75;
         textSize(indicatorSize);
         textStyle(BOLD);
 

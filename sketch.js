@@ -1487,8 +1487,8 @@ function updateUIElements() {
     if (descEl) descEl.textContent = mobiusDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
-    var descText = 'To show night and day you need a 24-hour clock; ' +
-      'using a spiral is a way to squeeze 24 hours into a 12-hour clock face. ';
+    var descText = 'To show your night and day together in one view, you need a 24-hour clock; ' +
+      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ';
     if (descEl) descEl.textContent = descText;
 
     // Manage 'Hours' button visibility
@@ -1532,7 +1532,7 @@ function updateUIElements() {
   var locDescEl = document.getElementById('location-description');
   if (locDescEl) {
     if (IsLoadingLocation) {
-      locDescEl.textContent = "Finding you...";
+      locDescEl.textContent = "Finding city...";
     } else {
       // Prioritize showing the "Other" city name
       if (locManager && locManager.hasOtherLocation()) {
@@ -3740,11 +3740,12 @@ function updateAboutModalContent() {
     'The app currently features the Day Spiral and Mobius clocks, with more to come.';
 
   var locationWarning = (!IsPreciseLocation && IsDisplayingUserLocation) ?
-    'Approx location is used to estimate sunrise/set times; approve GPS for more accuracy.' : '';
+    'Approx location is used to estimate sunrise/set times; approve GPS (in the Location Details dialog) ' +
+    'for more accuracy.' : '';
 
   if (activeRenderer === daySpiralRenderer) {
     title = "About Day Spiral Clock";
-    descText = 'To show night and day you need a 24-hour clock; ' +
+    descText = 'To show both night and day in one view, you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
       'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
       'The darker part of the spiral indicates night. ' +
