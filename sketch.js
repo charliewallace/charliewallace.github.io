@@ -14,46 +14,26 @@
  * MobiusClock: A 12-hour clock face showing the current time using a Mobius strip, with the
  * hour indicator moving along the edge of the strip, so it requires 2 turns to 
  * complete a full day. The minute and second indicators move along the center
- * of the strip. 
+ * of the strip so complete a cycle in only one turn. 
  *   
  * By Charlie Wallace coolweird.net
  * 
 
 TODO Fix Bugs -----------------------
-  * Replace lots of bare numeric color values with variables centrally set, used in fill()
-  *   and stroke() calls.  Similar needed for other bare constants like podition offsets.
   * Fix to recalc the IsDst state on new day
   * Bug: spiral incorrect at exreme latitude where sunset&rise are on the same side of noon,
   *   usually due to daylight savings
-  * Bug: On the first day of the year Jan 1st, the calc of rise/set was
-    inaccurate. sunset was about 10-15min late, sunrise similar amt early.
   * Bug: Some combos of manually entered loc and tz cause all-night result. 
      Happens when sunset time is shifted back so far back (earlier) that is passes 
      midnight.  Shows flaw in logic - FIX 
 
 Future Enhancement Ideas ------------
-  * Replace SetDaySpiral() that uses a toggling button with a set of buttons 
-  *  for each clock type,  programmed to work as radio buttons.  
-  *  Will set ClockMode to indicate type.
-  * Idea: add mode where the current time is always in the middle of the spiral, so
-  *  both past and future are equally shown
-  * Idea: an option to show a diff location's time in the spiral (like GMT) while  
-  *  the hands show the local time. So both are viewable in one display
-  *  ALT: add a second hour hand for the non-local time.
   * Consider using GeoNames for both location and timezone, thus eliminating
   *  need for nominatim.openstreetmap.org call; or could use it as fallback
-  * Implement 24 hour mode
  
 ==== IMPL / FEATURE NOTES  =====
 * The logic depends on the GMT offset that it fetches to be auto-adjusted 
    for daylight savings time. This appears to be the case.
-* FEATURE: input field validation via delay - when I immediately remove invalid numbers,
-   this doesn't allow temporarily wrong content, like a minus sign with nothing else. 
-   FIX: allow invalid content to sit for a 2 seconds before overwriting, so the 
-   user has time to fix typos etc. Otherwise would need a submit button.
-   NOTE, this is not used for the city field since I rely on the web service return
-   to determine if the field is valid.  Instead the submit button is used.
-* Added fields allowing manual entry of lat/long/GMT, with button to reset to local.
 * Added support for finding lat/long/tz from city name:
    OpenStreetmap (Nominitim) appears to work except it doesn't supply a time zone. 
    Example of the url used:
@@ -61,7 +41,6 @@ Future Enhancement Ideas ------------
    It's also possible to get lat/long using geoNames, FWIW
    To get the time zone, used GeoNames; Example of url:
   `https://secure.geonames.org/timezoneJSON?lat=${lat}&lng=${lon}&username=charliewallace`
-* Added support for window resizing - see reInit and windowResized()
 ============================================================== */
 
 
@@ -1499,8 +1478,12 @@ function updateUIElements() {
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined' && activeRenderer === mobiusRenderer) {
     if (titleEl) titleEl.textContent = 'Mobius Clock';
     // Show condensed Mobius description for desktop
-    var mobiusDescText = 'A Mobius strip shows 24-hour time on a 12-hour face. ' +
-      'The hour indicator makes 2 full turns to return to its starting point.';
+    var mobiusDescText = 'A Mobius strip can display 24-hour time on a 12-hour face ' +
+      'by placing the hour indicator on the edge; it ' +
+      'must complete two full turns to return to its starting point. ' +
+      'The minute and second indicators move along the centerline of the strip, ' +
+      'completing a cycle in only one turn.';
+
     if (descEl) descEl.textContent = mobiusDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
