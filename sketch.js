@@ -147,7 +147,7 @@ var IsDesktop;
 
 
 
-var IsGmtShown;
+var IsGmtShown;  // obsolete - this feature is not used
 var ClockMode;
 
 
@@ -2488,41 +2488,6 @@ function updateTimeThisDay() {
 
 //========================================================
 //============ Button click handlers =====================
-
-//=== TODO: replace this toggling button with a set of buttons for each clock type, 
-// programmed to work as radio buttons.  Will set ClockMode to indicate type.
-
-
-
-
-
-
-//-----------------------------------------------------------------
-// Handler for the toggling SetGmtDisplay button
-function setGmtDisplay()  // Toggling mode button
-{
-  if (IsGmtShown) {
-    IsGmtShown = false;
-    GmtDisplayButtonLabel = "Show GMT";
-  }
-  else {
-    IsGmtShown = true;
-    GmtDisplayButtonLabel = "Hide GMT";
-  }
-
-  // update button label
-  GmtDisplayButton.html(GmtDisplayButtonLabel); // Change the button's HTML content
-
-  // Toggle the active class
-  if (IsGmtShown) {
-    GmtDisplayButton.addClass('toggled-on');
-  } else {
-    GmtDisplayButton.removeClass('toggled-on');
-  }
-
-  // Update URL hash to reflect GMT state
-  updateUrlHash();
-}
 
 
 //-----------------------------------------------------------------
