@@ -1460,6 +1460,17 @@ function onFullScreenChange(e) {
       fsBtn.classList.remove('toggled-on');
     }
   }
+
+  // Toggle the pinch-to-zoom tip visibility
+  var pzTip = document.getElementById('pinch-zoom-tip');
+  if (pzTip) {
+    if (fs) {
+      pzTip.classList.add('hidden');
+    } else {
+      pzTip.classList.remove('hidden');
+    }
+  }
+
   WasFullScreenLastCheck = fs; // save state for next check
 }
 
