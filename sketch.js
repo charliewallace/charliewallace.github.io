@@ -1559,20 +1559,11 @@ function updateUIElements() {
       }
     }
 
-    // --- ANIMATION: Location Visibility & Blink (Dual Mode Transition) ---
+    // --- ANIMATION: Location Visibility (Dual Mode Transition) ---
     if (daySpiralRenderer && daySpiralRenderer.isAnimatingDualMode) {
       const stage = daySpiralRenderer.animationStage;
-      if (stage === 1) {
-        // Stage 1: Triple Blink Yellow (50% duty cycle square wave, 3 cycles)
-        const progress = daySpiralRenderer.getAnimationProgress();
-        const isVisible = (progress * 3 % 1.0) < 0.5;
-        const colorStr = '#ffffaa';
-        const opVal = isVisible ? '1' : '0';
-
-        if (localeEl) { localeEl.style.color = colorStr; localeEl.style.opacity = opVal; }
-        if (locDescEl) { locDescEl.style.color = colorStr; locDescEl.style.opacity = opVal; }
-      } else if (stage >= 2 && stage <= 6) {
-        // Stage 2-6: Completely hide DOM (migrated to canvas)
+      if (stage >= 1 && stage <= 6) {
+        // Stage 1-6: Completely hide DOM (migrated to canvas for animation)
         if (localeEl) { localeEl.style.opacity = '0'; }
         if (locDescEl) { locDescEl.style.opacity = '0'; }
       }

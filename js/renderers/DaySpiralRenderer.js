@@ -56,13 +56,13 @@ class DaySpiralRenderer extends ClockRenderer {
         this.animationElapsed = 0; // Elapsed time since animation start (ms)
 
         // Animation Stage Durations (milliseconds)
-        this.STAGE_1_DURATION = 1800; // Triple blink (600ms per blink cycle)
+        this.STAGE_1_DURATION = 1000; // Horizontal shake (3 cycles)
         this.STAGE_2_DURATION = 700;  // City migration
         this.STAGE_3_DURATION = 500;  // Pause before drawing
         this.STAGE_4_DURATION = 1400; // Inner spiral drawing (50% slower)
         this.STAGE_5_DURATION = 400;  // Inner spiral styling
         this.STAGE_6_DURATION = 200;  // Finalization
-        this.TOTAL_ANIMATION_DURATION = 5000; // Total duration
+        this.TOTAL_ANIMATION_DURATION = 4200; // Total duration (sum of stages)
 
         this.initialized = false;
     }
@@ -1086,8 +1086,7 @@ class DaySpiralRenderer extends ClockRenderer {
         if (!this.xSpiral || this.xSpiral.length === 0) return;
         if (!this.xSpiralInner || this.xSpiralInner.length === 0) return;
 
-        // --- ANIMATION: Hide labels during Stage 1 ---
-        if (this.isAnimatingDualMode && this.animationStage === 1) return;
+        // Animation logic for city label handled below in highlight/migration block
 
         let labelColor = color(255, 235, 120);
         fill(labelColor);
@@ -1126,8 +1125,8 @@ class DaySpiralRenderer extends ClockRenderer {
         let targetX = this.centerX + this.xSpiralInner[0] - margin;
         let targetY = this.centerY + this.ySpiralInner[0];
 
-        // --- ANIMATION: Highlight and Migration Logic ---
-        if (this.isAnimatingDualMode && (this.animationStage === 2 || this.animationStage === 3 || this.animationStage === 4)) {
+        // --- ANIMATION: Highlight, Shake, and Migration Logic ---
+        if (this.isAnimatingDualMode && (this.animationStage === 1 || this.animationStage === 2 || this.animationStage === 3 || this.animationStage === 4)) {
             const progress = this.getAnimationProgress();
 
             // Starting position for migration (roughly where DOM text used to be)
@@ -1137,8 +1136,15 @@ class DaySpiralRenderer extends ClockRenderer {
             let curX = targetX;
             let curY = targetY;
 
-            // Only migration position in Stage 2
-            if (this.animationStage === 2) {
+            if (this.animationStage === 1) {
+                // Stage 1: Horizontal Shake
+                // Shake distance approx 3 character widths
+                let shakeDist = innerFontSize * 1.5;
+                let shakeOffset = sin(progress * TWO_PI * 3) * shakeDist;
+                curX = startX + shakeOffset;
+                curY = startY;
+            } else if (this.animationStage === 2) {
+                // Stage 2: Migration position
                 curX = lerp(startX, targetX, progress);
                 curY = lerp(startY, targetY, progress);
             }
