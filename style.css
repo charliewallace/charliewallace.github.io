@@ -162,6 +162,10 @@ body {
   min-width: auto;
 }
 
+.selector-box.hidden {
+  display: none !important;
+}
+
 .selector-title {
   font-size: 0.6rem;
   color: var(--text-dim);
@@ -372,6 +376,13 @@ body {
   /* Reduced from 8px for tighter layout */
   align-items: flex-end;
 }
+
+#controls-dayspiral {
+  flex-direction: row;
+  gap: 15px;
+  align-items: flex-end;
+}
+
 
 .controls-group.hidden {
   display: none !important;

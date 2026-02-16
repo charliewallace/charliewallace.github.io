@@ -91,6 +91,7 @@ var OtherLocationFetchSerial = 0; // Separate ID for "Other" location requests t
 var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
+var DaySpiralShowMode = 'dual'; // 'other', 'dual', 'local'
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset = 64800, BaseMsSunset;
@@ -583,6 +584,11 @@ function oneTimeInit() {
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
 
+  // DaySpiral Show Mode Buttons
+  select('#opt-show-other').mousePressed(() => setDaySpiralShowMode('other'));
+  select('#opt-show-dual').mousePressed(() => setDaySpiralShowMode('dual'));
+  select('#opt-show-local').mousePressed(() => setDaySpiralShowMode('local'));
+
   // Initial UI state update for Dual Mode features
   updateDualModeUI();
 
@@ -917,14 +923,16 @@ function parseUrlHash() {
   var daySpiralStyle = params.get('daySpiralStyle');
   var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
   var daySpiralShowHours = params.get('daySpiralShowHours');
+  var daySpiralShowMode = params.get('daySpiralShowMode');
   var dualAnim = params.get('dualAnim');
 
-  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null) {
+  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null || daySpiralShowMode) {
     window._initialDaySpiralState = {
       style: daySpiralStyle || 'Dial',
       timeFormat: daySpiralTimeFormat || '12',
       showHours: daySpiralShowHours === '1', // Default false
-      dualAnim: dualAnim !== '0' // Default true
+      dualAnim: dualAnim !== '0', // Default true
+      showMode: daySpiralShowMode || 'dual'
     };
   }
 
@@ -1122,6 +1130,10 @@ function applyInitialState() {
       if (chk) chk.checked(state.dualAnim);
     }
 
+    if (state.showMode) {
+      setDaySpiralShowMode(state.showMode);
+    }
+
     delete window._initialDaySpiralState; // Clean up
   }
 
@@ -1240,7 +1252,7 @@ function updateUrlHash() {
   // Clear managed parameters to re-add them based on current state
   const managedKeys = [
     'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
-    'daySpiralStyle', 'daySpiralTimeFormat',
+    'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
     'otherLat', 'otherLon', 'otherTz', 'otherCity'
@@ -1326,6 +1338,11 @@ function updateUrlHash() {
     // Add dualAnim setting (non-default: disabled)
     if (daySpiralRenderer.dualModeAnimationEnabled === false) {
       params.set('dualAnim', '0');
+    }
+
+    // Add DaySpiral show mode (only if dual is not active or non-dual is chosen)
+    if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode !== 'dual') {
+      params.set('daySpiralShowMode', DaySpiralShowMode);
     }
   }
 
@@ -1604,16 +1621,17 @@ function updateUIElements() {
       const isDualTimeMode = locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer;
 
       if (isDualTimeMode) {
-        // User requested the "other" time be in the location description (handled above).
-        // So here we should show the LOCAL time (User's time) as the main clock.
-        // OR: "Other Time | Local: User Time" ? 
-        // User said: "I want to clarify that the whole 'dual mode' concept doesn't extend to the mobius clock"
-        // and "I'd like the 'other' time to show up to the right of the location description."
-        // This suggests cleaning up the header.
-        // Let's show just Local Time here, since Other Time is now next to the Location Name.
-        timeLargeEl.textContent = userTimeStr;
-        if (timeEl) timeEl.textContent = userTimeStr; // Sync mobile
-
+        // DaySpiral Dual Mode: Respect DaySpiralShowMode
+        if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'other') {
+          // "Other Only" mode: Show the Other location's time
+          const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, true);
+          timeLargeEl.textContent = otherTimeStr;
+          if (timeEl) timeEl.textContent = otherTimeStr;
+        } else {
+          // Default or "Other+Local" mode: Show LOCAL time (User's time) as the primary
+          timeLargeEl.textContent = userTimeStr;
+          if (timeEl) timeEl.textContent = userTimeStr;
+        }
       } else if (locManager && locManager.hasOtherLocation() && activeRenderer === mobiusRenderer) {
         // Mobius Mode with an Other Location set (e.g. switched from DaySpiral):
         // Display the Other Location's time (Substitution behavior).
@@ -2327,8 +2345,13 @@ function calcSunRiseSet() {
 // ========================================================
 // Update time-related vars.
 function updateTimeThisDay() {
+  let targetTz = TzOffset;
+  if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'other' && locManager && locManager.hasOtherLocation()) {
+    targetTz = locManager.otherLocation.tzOffset;
+  }
+
   // Sync TimeKeeper
-  if (timeKeeper) timeKeeper.update(TzOffset);
+  if (timeKeeper) timeKeeper.update(targetTz);
 
   // Sync LocationManager (Always ensure it matches globals)
   if (locManager && Latitude !== 99999) {
@@ -3661,7 +3684,7 @@ function draw() {
   // This ensures DaySpiralRenderer works with the existing calc logic in sketch.js
 
   // Update Active Renderer
-  activeRenderer.update(timeKeeper, locManager);
+  activeRenderer.update(timeKeeper, locManager, DaySpiralShowMode);
 }
 
 function setClockMode(mode) {
@@ -3994,6 +4017,33 @@ function calcRiseSetTimeWithOffset(
   OutputMin = int(xx);
 }
 
+// Set the show mode for DaySpiral (Other Only, Dual, Local Only)
+function setDaySpiralShowMode(mode) {
+  if (DaySpiralShowMode === mode) return;
+
+  console.log(`👁️ Setting DaySpiral Show Mode to: ${mode}`);
+  DaySpiralShowMode = mode;
+
+  if (mode === 'local') {
+    // Keep location, just set mode. User can clear location via other UI if needed.
+    // This ensures the "TO SHOW" group stays visible as requested.
+  }
+
+  // Trigger Mobius refresh (though Mobius substitution logic usually handles this, 
+  // we want to ensure any dual-mode-specific digital updates are applied)
+  if (typeof mobiusRenderer !== 'undefined') {
+    mobiusRenderer.refreshDayNight();
+  }
+
+  // Update URL hash
+  updateUrlHash();
+
+  // Update UI Highlighting
+  updateDualModeUI();
+
+  // If we are in DaySpiral mode, the renderer update loop will pick up the change
+}
+
 //============================================
 // Update UI elements that depend on Dual Mode state
 function updateDualModeUI() {
@@ -4004,6 +4054,34 @@ function updateDualModeUI() {
     } else {
       legend.addClass('hidden');
     }
+  }
+
+  // Handle TO SHOW selector visibility
+  const toShowSelector = select('#toshow-selector');
+  if (toShowSelector) {
+    if (locManager && locManager.hasOtherLocation()) {
+      toShowSelector.removeClass('hidden');
+    } else {
+      toShowSelector.addClass('hidden');
+    }
+  }
+
+  // Update active state for TO SHOW options
+  const optOther = select('#opt-show-other');
+  const optDual = select('#opt-show-dual');
+  const optLocal = select('#opt-show-local');
+
+  if (optOther) {
+    if (DaySpiralShowMode === 'other') optOther.addClass('active');
+    else optOther.removeClass('active');
+  }
+  if (optDual) {
+    if (DaySpiralShowMode === 'dual') optDual.addClass('active');
+    else optDual.removeClass('active');
+  }
+  if (optLocal) {
+    if (DaySpiralShowMode === 'local') optLocal.addClass('active');
+    else optLocal.removeClass('active');
   }
 }
 
