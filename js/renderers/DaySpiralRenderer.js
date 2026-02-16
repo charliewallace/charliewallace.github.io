@@ -352,6 +352,16 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         }
 
+        // Draw awakeness line in dual mode BEFORE rise/set times (so times are on top)
+        if (this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
+            this.drawAwakenessArc(locManager);
+        }
+
+        // Draw rise/set times for Ribbon style
+        if (this.style === 'SpiralHours') {
+            this.drawRibbonRiseSetTimes(timeKeeper, locManager);
+        }
+
         if (this.isDualLocationMode) {
             this.drawSpiralLabels(locManager);
         }
@@ -360,11 +370,6 @@ class DaySpiralRenderer extends ClockRenderer {
 
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) {
             this.drawGMT(locManager);
-        }
-
-        // Draw awakeness line in dual mode after both spirals are established
-        if (this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
-            this.drawAwakenessArc(locManager);
         }
     }
 
@@ -1776,6 +1781,120 @@ class DaySpiralRenderer extends ClockRenderer {
         textAlign(CENTER, TOP);
         text(timeStr, 0, 2); // Time below line
 
+
+        pop();
+    }
+
+    // Draw Rise/Set times on the spiral for Ribbon (SpiralHours) mode
+    drawRibbonRiseSetTimes(tk, locManager) {
+        if (this.style !== 'SpiralHours') return;
+
+        // Hide during dual mode animation (stages 2-5)
+        if (this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5) return;
+
+        // Draw outer spiral rise/set times
+        if (tk.sunriseTime && typeof tk.sunriseTime.totalSeconds === 'number') {
+            this._drawRibbonTime(tk.sunriseTime, this.xSpiral, this.ySpiral, this.radiusSpiral,
+                false, this.spiralStrokeWeight);
+        }
+        if (tk.sunsetTime && typeof tk.sunsetTime.totalSeconds === 'number') {
+            this._drawRibbonTime(tk.sunsetTime, this.xSpiral, this.ySpiral, this.radiusSpiral,
+                false, this.spiralStrokeWeight);
+        }
+
+        // Draw inner spiral rise/set times in dual mode
+        if (this.isDualLocationMode && tk.otherSunriseTime && tk.otherSunsetTime) {
+            const tzDiffHours = locManager.getTimezoneOffsetDifference();
+
+            if (typeof tk.otherSunriseTime.totalSeconds === 'number') {
+                this._drawRibbonTime(tk.otherSunriseTime, this.xSpiralInner, this.ySpiralInner,
+                    this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours);
+            }
+            if (typeof tk.otherSunsetTime.totalSeconds === 'number') {
+                this._drawRibbonTime(tk.otherSunsetTime, this.xSpiralInner, this.ySpiralInner,
+                    this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours);
+            }
+        }
+    }
+
+    // Helper to draw a single rise/set time on the Ribbon spiral
+    _drawRibbonTime(timeObj, xArray, yArray, rArray, isInner, strokeWeight, tzOffsetHours = 0) {
+        if (!xArray || xArray.length === 0) return;
+
+        // Calculate index in spiral based on time
+        let totalDailyPts = this.numPointsPerTurn * 2;
+        let timeSeconds = timeObj.totalSeconds;
+
+        // Apply timezone offset for inner spiral
+        if (tzOffsetHours !== 0) {
+            const offsetSeconds = tzOffsetHours * 3600;
+            timeSeconds -= offsetSeconds;
+
+            // Wrap to 0-86400 range (24 hours)
+            if (timeSeconds < 0) timeSeconds += 86400;
+            if (timeSeconds >= 86400) timeSeconds -= 86400;
+        }
+
+        let idx = Math.floor((timeSeconds / 86400) * totalDailyPts);
+
+        // Clamp to valid range
+        if (idx < 0 || idx >= rArray.length) return;
+
+        // Get position on inner edge of spiral track
+        let r = rArray[idx] - (strokeWeight / 2);
+
+        // Calculate angle for rotation
+        let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
+
+        // Calculate tangent angle for text rotation
+        let idxPrev = Math.max(0, idx - 2);
+        let idxNext = Math.min(xArray.length - 1, idx + 2);
+        let dx = xArray[idxNext] - xArray[idxPrev];
+        let dy = yArray[idxNext] - yArray[idxPrev];
+        let tangentAngle = Math.atan2(dy, dx);
+
+        // Format time string (time only, no label)
+        let h = timeObj.hour;
+        let m = timeObj.minute;
+        let ampm = (h >= 12) ? "P" : "A";
+        let h12 = (h % 12);
+        if (h12 === 0) h12 = 12;
+        let mStr = (m < 10) ? "0" + m : "" + m;
+        let timeStr = `${h12}:${mStr}${ampm}`;
+
+        push();
+
+        // Set color to match spiral hour numbers
+        if (isInner) {
+            fill(180, 255, 255); // Light Cyan for inner spiral
+        } else {
+            fill(255, 235, 120); // Yellow for outer spiral
+        }
+        noStroke();
+
+        // Match Ribbon hour number styling
+        // Font size matches hour numbers: smaller for inner spiral
+        let fontScale = isInner ? 0.32 : 0.55; // Inner: 0.58 * 0.55 ≈ 0.32
+        textSize(this.fontSize * fontScale);
+        textStyle(BOLD);
+        textAlign(CENTER, CENTER);
+        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)'); // Same shadow as hour numbers
+
+        // Position at inner edge
+        let x = this.centerX + cos(theta) * r;
+        let y = this.centerY + sin(theta) * r;
+
+        translate(x, y);
+        rotate(tangentAngle);
+
+        // Flip text if it would be upside down
+        if (Math.abs(tangentAngle) > HALF_PI) {
+            rotate(PI);
+        }
+
+        text(timeStr, 0, 0);
+
+        this._resetShadow();
         pop();
     }
 }
