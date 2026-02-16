@@ -23,8 +23,8 @@ class DaySpiralRenderer extends ClockRenderer {
         this.bkColor = 57; // Reverted to original lighter background as requested
         this.hourDigitColor = [255, 255, 255]; // Change to white - was dark gray [25, 25, 25];
 
-        // Style: 'Classic' (default) or 'SpiralHours' (Legacy V3)
-        this.style = 'Classic';
+        // Style: 'Dial' (default) or 'SpiralHours' (Legacy V3)
+        this.style = 'Dial';
 
         // Time Format: '12' (AM/PM) or '24' (0-23)
         this.timeFormat = '12';
@@ -208,8 +208,8 @@ class DaySpiralRenderer extends ClockRenderer {
         this.faceDiameter = radius * 1.66;
         this.numbersRadius = radius * 0.893;
 
-        // Spiral settings default (Classic)
-        // Spiral settings default (Classic)
+        // Spiral settings default (Dial)
+        // Spiral settings default (Dial)
         let startRadius = radius * 0.40;
         let endRadius = radius * 0.74;
 
@@ -230,7 +230,7 @@ class DaySpiralRenderer extends ClockRenderer {
             this.dualModeStrokeWeight = radius * 0.14;
             this.innerStrokeWeight = this.dualModeStrokeWeight * 0.3;
         } else {
-            // Classic
+            // Dial
             let nTurns = 2;
             let deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
 
@@ -262,8 +262,8 @@ class DaySpiralRenderer extends ClockRenderer {
         // p5.js drawing calls
         clear(); // Transparent background to let CSS show through
 
-        // Draw Face Components - Only for Classic
-        if (this.style === 'Classic') {
+        // Draw Face Components - Only for Dial
+        if (this.style === 'Dial') {
             noStroke();
 
             // 1. Draw Inner Face Background (Dark Gray) FIRST 
@@ -314,7 +314,7 @@ class DaySpiralRenderer extends ClockRenderer {
             // SpiralHours Mode Background...
         }
 
-        if (this.style === 'Classic') {
+        if (this.style === 'Dial') {
             this.drawHourLabels();
         }
 
@@ -330,8 +330,8 @@ class DaySpiralRenderer extends ClockRenderer {
         this.drawAmPmIndicators();
         this.drawRiseSetTimes(timeKeeper);
 
-        // Draw spiral hours in Classic mode
-        if (this.style === 'Classic') {
+        // Draw spiral hours in Dial mode
+        if (this.style === 'Dial') {
             // Always draw outer spiral hours (local time)
             this.drawOuterSpiralHours(locManager);
 
@@ -427,7 +427,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         let radius = this.numbersRadius;
 
-        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.6)'); // Shadow for Classic hour numbers
+        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.6)'); // Shadow for Dial hour numbers
 
         // 12 is at -90 deg (top)
         this._drawLabel("12", -90, radius);
@@ -987,7 +987,7 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     /**
-     * Draw hour labels on the outer spiral for Classic mode
+     * Draw hour labels on the outer spiral for Dial mode
      * Shows the local/user location's time (works in both single and dual modes)
      */
     drawOuterSpiralHours(locManager) {
@@ -1095,12 +1095,12 @@ class DaySpiralRenderer extends ClockRenderer {
         let margin = (this.style === 'SpiralHours') ? this.fontSize * 1.1 : this.fontSize * 0.7;
 
         // Determine font sizes based on style (match hour numbers)
-        let outerFontSize = this.fontSize * 0.63; // Classic default
-        let innerFontSize = this.fontSize * 0.50; // Classic inner default
+        let outerFontSize = this.fontSize * 0.63; // Dial default
+        let innerFontSize = this.fontSize * 0.50; // Dial inner default
 
         if (this.style === 'SpiralHours') {
-            outerFontSize = this.fontSize * 1.02; // Reduced further to match new HIS hours
-            innerFontSize = this.fontSize * 0.58; // matching HIS inner digitSize
+            outerFontSize = this.fontSize * 1.02; // Reduced further to match new Ribbon hours
+            innerFontSize = this.fontSize * 0.58; // matching Ribbon inner digitSize
         }
 
         // 1. Label for Outer Spiral ("Local")
@@ -1162,8 +1162,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
 
     drawDayLabels(tk, locManager) {
-        // Only show day labels in Classic mode
-        if (this.style !== 'Classic') return;
+        // Only show day labels in Dial mode
+        if (this.style !== 'Dial') return;
 
         // Hide DOW abbreviations in dual mode as requested
         if (this.isDualLocationMode) return;
@@ -1259,23 +1259,23 @@ class DaySpiralRenderer extends ClockRenderer {
         if (this.style === 'SpiralHours') {
             this.drawHandsLegacySpiral(tk);
         } else {
-            this.drawHandsClassic(tk);
+            this.drawHandsDial(tk);
         }
     }
 
-    drawHandsClassic(tk) {
+    drawHandsDial(tk) {
         push();
         let handColor = color(255);
         stroke(handColor);
         strokeCap(ROUND);
         this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
 
-        // Classic logic (Time on the outer ring mostly, but Hour hand follows spiral? 
+        // Dial logic (Time on the outer ring mostly, but Hour hand follows spiral? 
         // Actually DaySpiral description says "Hour hand tip follows the day spiral")
-        // So Classic should ALSO follow the spiral for the hour hand?
+        // So Dial should ALSO follow the spiral for the hour hand?
         // "Hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM."
 
-        // Yes, even in Classic mode, the hour hand tracks the spiral.
+        // Yes, even in Dial mode, the hour hand tracks the spiral.
         // The difference is mainly the face/ticks style.
 
         // Let's use the unified logic but cleaner.
@@ -1285,7 +1285,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // Hour angle (0-24 mapped to 0-4PI)
         let hourAngle = map(tk.hours + tk.minutes / 60, 0, 24, 0, TWO_PI * 2) - HALF_PI;
 
-        // Radii for Classic:
+        // Radii for Dial:
         let faceRadius = this.faceDiameter / 2;
         let rSec = faceRadius * 0.96;
         let rMin = rSec * 0.90;
@@ -1461,7 +1461,7 @@ class DaySpiralRenderer extends ClockRenderer {
                 gapBetweenSpirals = spacePerTurn * 0.01;
                 innerStrokeWeight = spacePerTurn * 0.2925;
             } else {
-                // Existing percentages for Classic
+                // Existing percentages for Dial
                 outerStrokeWeight = spacePerTurn * 0.462;
                 gapBetweenSpirals = spacePerTurn * 0.02; // increased from 0.01 to prevent touching
                 innerStrokeWeight = spacePerTurn * 0.308;
@@ -1617,9 +1617,9 @@ class DaySpiralRenderer extends ClockRenderer {
         drawingContext.shadowOffsetY = 0;
     }
 
-    // Draw AM/PM indicators and separator line for Classic mode when numbers are hidden
+    // Draw AM/PM indicators and separator line for Dial mode when numbers are hidden
     drawAmPmIndicators() {
-        if (this.style !== 'Classic' || this.hoursVisible || this.isDualLocationMode || this.isAnimatingDualMode) return;
+        if (this.style !== 'Dial' || this.hoursVisible || this.isDualLocationMode || this.isAnimatingDualMode) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
         push();
@@ -1696,9 +1696,9 @@ class DaySpiralRenderer extends ClockRenderer {
         pop();
     }
 
-    // Draw Rise/Set times on the spiral for Classic mode when numbers are hidden
+    // Draw Rise/Set times on the spiral for Dial mode when numbers are hidden
     drawRiseSetTimes(tk) {
-        if (this.style !== 'Classic' || this.hoursVisible || this.isDualLocationMode || this.isAnimatingDualMode) return;
+        if (this.style !== 'Dial' || this.hoursVisible || this.isDualLocationMode || this.isAnimatingDualMode) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
         // Use standard Yellow text color (255, 235, 120) at 90% opacity

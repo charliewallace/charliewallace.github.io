@@ -24,12 +24,12 @@ CoolweirdClocks provides a robust set of features common to all its clock design
 A unique visualization that shows you your whole day, including day and night, sunrise and sunset. To show night and day you need a 24-hour clock; using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. See screenshot above.
 - **Sunset/Sunrise**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun at your location; times of sunrise and sunset are displayed within the spiral.
 - **Spiral Geometry**: The hour hand follows the spiral path, making two full turns to complete a day: one for AM and one for PM.
-- **Hours-In-Spiral Style**: An alternative style that embeds hour tick marks and numbers directly along the spiral track and eliminates the clock face for a simpler presentation.
+- **Ribbon Style**: An alternative style that embeds hour tick marks and numbers directly along the spiral track and eliminates the clock face for a simpler presentation.
 - **Dual Location Mode**: Display the day and night of a second location on an inner spiral to compare time and sunlight across the world. Great for coordinating with a partner or family member who lives in a different time zone.
 - **Both-Awake Line**: A green arc appears in dual mode to indicate when both locations are simultaneously in their "awake" hours (9 AM - 8 PM), making it easy to see when interaction is feasible.
 
 **Specific URL Parameters:**
-- `daySpiralStyle=SpiralHours`: Activates the "Hours In Spiral" (HIS) visual style.
+- `daySpiralStyle=SpiralHours`: Activates the "Ribbon" visual style.
 - `daySpiralTimeFormat=24`: Sets the DaySpiral to 24-hour time format.
 
 ### Mobius Clock

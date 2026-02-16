@@ -542,7 +542,7 @@ function oneTimeInit() {
   });
 
   // DaySpiral Style Buttons
-  select('#opt-style-classic').mousePressed(() => setDaySpiralStyle('Classic'));
+  select('#opt-style-dial').mousePressed(() => setDaySpiralStyle('Dial'));
   select('#opt-style-spiral').mousePressed(() => setDaySpiralStyle('SpiralHours'));
 
   // DaySpiral Time Format Dropdown
@@ -921,7 +921,7 @@ function parseUrlHash() {
 
   if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null) {
     window._initialDaySpiralState = {
-      style: daySpiralStyle || 'Classic',
+      style: daySpiralStyle || 'Dial',
       timeFormat: daySpiralTimeFormat || '12',
       showHours: daySpiralShowHours === '1', // Default false
       dualAnim: dualAnim !== '0' // Default true
@@ -1100,7 +1100,7 @@ function applyInitialState() {
       // UI Feedback (active class) is handled globally in updateUIElements()
 
       const btnGmt = select('#btn-gmt');
-      if (state.style === 'Classic') {
+      if (state.style === 'Dial') {
         if (btnGmt) btnGmt.show();
       } else {
         // Hide GMT button in SpiralHours mode
@@ -1311,7 +1311,7 @@ function updateUrlHash() {
     }
 
     // Add DaySpiral style
-    if (daySpiralRenderer.style && daySpiralRenderer.style !== 'Classic') {
+    if (daySpiralRenderer.style && daySpiralRenderer.style !== 'Dial') {
       params.set('daySpiralStyle', daySpiralRenderer.style);
     }
 
@@ -1321,7 +1321,7 @@ function updateUrlHash() {
     }
 
     // REMOVED: daySpiralShowHours is no longer persisted as the button is removed.
-    // Numbers are implicitly managed (Hidden in Classic, Used in Dual Mode).
+    // Numbers are implicitly managed (Hidden in Dial, Used in Dual Mode).
 
     // Add dualAnim setting (non-default: disabled)
     if (daySpiralRenderer.dualModeAnimationEnabled === false) {
@@ -1492,7 +1492,7 @@ function updateUIElements() {
     if (descEl) descEl.textContent = descText;
 
     // Manage 'Hours' button visibility
-    // REMOVED PER USER REQUEST: The "Hours" button is no longer needed in Classic/Single mode.
+    // REMOVED PER USER REQUEST: The "Hours" button is no longer needed in Dial/Single mode.
     // It is always hidden now.
     const btnHours = select('#btn-dayspiral-hours');
     if (btnHours) {
@@ -1707,13 +1707,13 @@ function updateUIElements() {
   }
 
   // Update DaySpiral Style Selector Highlighting
-  var optClassic = select('#opt-style-classic');
+  var optDial = select('#opt-style-dial');
   var optSpiralHours = select('#opt-style-spiral');
-  if (daySpiralRenderer && daySpiralRenderer.style === 'Classic') {
-    if (optClassic) optClassic.addClass('active');
+  if (daySpiralRenderer && daySpiralRenderer.style === 'Dial') {
+    if (optDial) optDial.addClass('active');
     if (optSpiralHours) optSpiralHours.removeClass('active');
   } else {
-    if (optClassic) optClassic.removeClass('active');
+    if (optDial) optDial.removeClass('active');
     if (optSpiralHours) optSpiralHours.addClass('active');
   }
 }
@@ -3760,8 +3760,8 @@ function setDaySpiralStyle(styleName) {
 
     // Manage GMT button visibility based on style
     let btnGmt = select('#btn-gmt');
-    if (styleName === 'Classic') {
-      // Show GMT button in Classic mode
+    if (styleName === 'Dial') {
+      // Show GMT button in Dial mode
       if (btnGmt) btnGmt.show();
     } else {
       // SpiralHours mode - Hide GMT button (no room for GMT display)
