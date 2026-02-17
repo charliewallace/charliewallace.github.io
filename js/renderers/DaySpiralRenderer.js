@@ -259,6 +259,33 @@ class DaySpiralRenderer extends ClockRenderer {
             this.updateAnimationState();
         }
 
+        // --- PRE-PROCESSING FOR SHOW MODE ---
+        let activeTk = timeKeeper;
+        const isOtherOnly = (showMode === 'other');
+        const isLocalOnly = (showMode === 'local');
+        const isDual = (showMode === 'dual');
+
+        // Create a proxy TimeKeeper for "Other Only" mode to point hands to other time
+        if (isOtherOnly && locManager.hasOtherLocation()) {
+            const tzDiff = locManager.getTimezoneOffsetDifference();
+
+            // Create a lightweight proxy object that has the fields the hands/spiral need
+            activeTk = {
+                ...timeKeeper,
+                // Offset hours by the difference to show the "Other" local time
+                hours: (timeKeeper.hours + Math.floor(tzDiff) + 24) % 24,
+                minutes: (timeKeeper.minutes + Math.round((tzDiff % 1) * 60) + 60) % 60,
+                // totalSecondsToday needs to be updated for the spiral/hands math
+                totalSecondsToday: (timeKeeper.totalSecondsToday + (tzDiff * 3600) + 86400) % 86400,
+                // Swap solar times to be the "primary" for this frame
+                sunriseTime: timeKeeper.otherSunriseTime,
+                sunsetTime: timeKeeper.otherSunsetTime,
+                // Keep references to others for dual calculation if needed
+                otherSunriseTime: timeKeeper.otherSunriseTime,
+                otherSunsetTime: timeKeeper.otherSunsetTime
+            };
+        }
+
         // p5.js drawing calls
         clear(); // Transparent background to let CSS show through
 
@@ -267,80 +294,47 @@ class DaySpiralRenderer extends ClockRenderer {
             noStroke();
 
             // 1. Draw Inner Face Background (Dark Gray) FIRST 
-            // This is so the "inner" shadow of the ring above it will bleed onto this surface.
             fill(100);
             ellipse(this.centerX, this.centerY, this.faceDiameter, this.faceDiameter);
 
-            // 2. Draw Outer Face Background (White Ring) as a DONUT with shadow
-            fill(255);
-            // Light from top-left: shadow offsets to bottom-right
-            // This casts shadow OUTSIDE (bottom-right) and INSIDE (top-left of hole)
+            // 2. Draw Ticks on the face (with shadow)
             this._applyShadow(20, 6, 6, 'rgba(0,0,0,0.5)');
-
-            /*  FORNOW, commenting out the bright white ring "DONUT"
-                        beginShape();
-                        // Outer Ring Circle
-                        let outerR = this.clockDiameter / 2;
-                        let innerR = this.faceDiameter / 2;
-            
-                        // Outer boundary (Clockwise)
-                        for (let a = 0; a < TWO_PI; a += 0.05) {
-                            vertex(this.centerX + cos(a) * outerR, this.centerY + sin(a) * outerR);
-                        }
-            
-                        // Inner boundary (Counter-clockwise for hole)
-                        beginContour();
-                        for (let a = TWO_PI; a > 0; a -= 0.05) {
-                            vertex(this.centerX + cos(a) * innerR, this.centerY + sin(a) * innerR);
-                        }
-                        endContour();
-                        endShape(CLOSE);
-            */
-
-            this._resetShadow();
-
-            // 3. Draw Ticks on the face
             fill(255);
             noStroke();
             for (let b = 0; b < 360; b += 30) {
                 let angle = radians(b);
-                let dotRadius = (this.faceDiameter / 2);// * 0.98; // Move dots outward to sit on edge of face
+                let dotRadius = (this.faceDiameter / 2);
                 let x = this.centerX + cos(angle) * dotRadius;
                 let y = this.centerY + sin(angle) * dotRadius;
                 let dotSize = this.fontSize * 0.25;
                 ellipse(x, y, dotSize, dotSize);
             }
-        } else {
-            // SpiralHours Mode Background...
+            this._resetShadow();
         }
 
-        // Show large hour labels (Dial style) only when NOT in dual mode (where spiral markers replace them)
-        // This includes "Local Only" and "Other Only" which behave like single-location views.
+        // Show large hour labels (Dial style) only when NOT in dual mode
         if (this.style === 'Dial' && (showMode !== 'dual' || !this.isDualLocationMode)) {
             this.drawHourLabels();
         }
 
-        this.drawSpiral(timeKeeper, locManager, showMode);
+        this.drawSpiral(activeTk, locManager, showMode);
 
-        // Draw hands - hide during dual mode transition (Stage 2 to 5)
-        // Moved early so hands appear UNDER numbers, ticks, and Rise/Set times
+        // Draw hands - hide during dual mode transition
         const shouldHideHands = this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5;
         if (!shouldHideHands) {
-            this.drawHands(timeKeeper);
+            this.drawHands(activeTk);
         }
 
         this.drawAmPmIndicators(showMode);
-        this.drawRiseSetTimes(timeKeeper, showMode);
+        this.drawRiseSetTimes(activeTk, showMode);
 
         // Draw spiral hours in Dial mode
         if (this.style === 'Dial') {
-            // Always draw outer spiral hours (local time) if mode is dual or local
-            if (showMode === 'dual' || showMode === 'local') {
+            if (isDual || isLocalOnly) {
                 this.drawOuterSpiralHours(locManager, showMode);
             }
 
-            // Draw inner spiral hours only in dual mode after migration and drawing, OR in 'other' mode
-            const showInnerHours = (showMode === 'other') || (showMode === 'dual' && (!this.isAnimatingDualMode || this.animationStage >= 5));
+            const showInnerHours = isOtherOnly || (isDual && (!this.isAnimatingDualMode || this.animationStage >= 5));
             if (this.isDualLocationMode && showInnerHours) {
                 this.drawInnerSpiralHours(locManager, showMode);
             }
@@ -348,16 +342,13 @@ class DaySpiralRenderer extends ClockRenderer {
 
         if (this.style === 'SpiralHours') {
             this.drawSpiralTicks();
-            // Draw outer spiral hours
-            if (showMode === 'dual' || showMode === 'local') {
+            if (isDual || isLocalOnly) {
                 this.drawSpiralHours(this.xSpiral, this.ySpiral, this.radiusSpiral, false, locManager, showMode);
             }
 
-            // Draw inner spiral hours if in dual mode OR other mode
-            const showInnerHoursSpiral = (showMode === 'other') || (showMode === 'dual' && (!this.isAnimatingDualMode || this.animationStage >= 5));
+            const showInnerHoursSpiral = isOtherOnly || (isDual && (!this.isAnimatingDualMode || this.animationStage >= 5));
             if (this.isDualLocationMode && showInnerHoursSpiral) {
-                // If in 'other' mode, draw on the main track
-                if (showMode === 'other') {
+                if (isOtherOnly) {
                     this.drawSpiralHours(this.xSpiral, this.ySpiral, this.radiusSpiral, true, locManager, showMode);
                 } else {
                     this.drawSpiralHours(this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, locManager, showMode);
@@ -366,20 +357,20 @@ class DaySpiralRenderer extends ClockRenderer {
         }
 
         // Draw awakeness line only in DUAL mode
-        if (showMode === 'dual' && this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
+        if (isDual && this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
             this.drawAwakenessArc(locManager);
         }
 
         // Draw rise/set times for Ribbon style
         if (this.style === 'SpiralHours') {
-            this.drawRibbonRiseSetTimes(timeKeeper, locManager, showMode);
+            this.drawRibbonRiseSetTimes(activeTk, locManager, showMode);
         }
 
         if (this.isDualLocationMode) {
             this.drawSpiralLabels(locManager, showMode);
         }
 
-        this.drawDayLabels(timeKeeper, locManager);
+        this.drawDayLabels(activeTk, locManager);
 
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) {
             this.drawGMT(locManager);
@@ -473,55 +464,48 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawSpiral(tk, loc, showMode = 'dual') {
-        // Color scheme
-        // Even closer to legacy blue for better contrast
-        let dayColor = color(92, 171, 226); // Halfway between current and legacy darker blue
-        let nightColor = color(20, 80, 100); // Dark blue for night
-        let baseColor = color(90); // Dark Gray for the track
+        let dayColor = color(92, 171, 226);
+        let nightColor = color(20, 80, 100);
+        let baseColor = color(90);
 
+        const isOtherOnly = (showMode === 'other');
+        const isLocalOnly = (showMode === 'local');
+        const isDual = (showMode === 'dual');
+
+        // Choose Stroke Weight
         let sw = this.singleModeStrokeWeight;
-        const isDrawingDual = this.isDualLocationMode && (showMode === 'dual') && (!this.isAnimatingDualMode || this.animationStage >= 4);
-        const isDrawingLocal = (showMode === 'dual' || showMode === 'local' || showMode === 'other');
-
-        if (this.isAnimatingDualMode && this.animationStage === 2) {
-            sw = lerp(this.singleModeStrokeWeight, this.dualModeStrokeWeight, this.getAnimationProgress());
-        } else if (isDrawingDual || (this.isDualLocationMode && isDrawingLocal)) {
-            // Only use dual stroke weight if we are actually DRAWING dual or in dual mode WITHOUT filtering
-            sw = (showMode === 'dual') ? this.dualModeStrokeWeight : this.singleModeStrokeWeight;
+        if (isDual && this.isDualLocationMode) {
+            if (this.isAnimatingDualMode && this.animationStage === 2) {
+                sw = lerp(this.singleModeStrokeWeight, this.dualModeStrokeWeight, this.getAnimationProgress());
+            } else if (!this.isAnimatingDualMode || this.animationStage >= 4) {
+                sw = this.dualModeStrokeWeight;
+            }
         }
-
-        const isInEarlyTransition = this.isAnimatingDualMode && this.animationStage <= 2;
 
         strokeWeight(sw);
         strokeCap(SQUARE);
         noFill();
 
-        if (isDrawingLocal && (!this.isDualLocationMode || isInEarlyTransition || showMode === 'local' || showMode === 'other')) {
-            // SINGLE-LOCATION MODE (or filtered): Draw one spiral on the main (outer) track
-            const activeSunrise = (showMode === 'other') ? tk.otherSunriseTime : tk.sunriseTime;
-            const activeSunset = (showMode === 'other') ? tk.otherSunsetTime : tk.sunsetTime;
-            const activeTzDiff = (showMode === 'other') ? locManager.getTimezoneOffsetDifference() : 0;
-            this._drawSpiralTrack(this.xSpiral, this.ySpiral, activeSunrise, activeSunset,
-                dayColor, nightColor, baseColor, true, activeTzDiff, sw);
+        // 1. Draw Main (Outer) Spiral
+        const shouldDrawMain = isLocalOnly || isOtherOnly || isDual;
+        if (shouldDrawMain) {
+            // In "Other Only" mode, we treat it as a true local clock for the other city.
+            // This means 0 rotation offset because the "0" of the spiral is now that city's midnight.
+            // Note: tk already contains the otherCity's sunTimes if isOtherOnly (via proxy update)
+            this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
+                dayColor, nightColor, baseColor, true, 0, sw);
         }
 
-        if (showMode === 'dual' && isDrawingDual) {
-            // DUAL-LOCATION MODE: Draw outer and inner spirals
-            // Draw outer spiral (local location) with 0 offset
-            this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
-                dayColor, nightColor, baseColor, true, 0, this.outerStrokeWeight);
-
-            // Draw inner spiral (other location) with rotation offset
+        // 2. Draw Inner Spiral (Dual Mode ONLY)
+        if (isDual && this.isDualLocationMode && (!this.isAnimatingDualMode || this.animationStage >= 4)) {
             const tzDiffHours = locManager.getTimezoneOffsetDifference();
 
             if (this.isAnimatingDualMode && this.animationStage === 4) {
-                // Stage 4: Progressive Yellow Drawing
                 const progress = this.getAnimationProgress();
                 const yellow = color(255, 255, 170);
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
                     yellow, yellow, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, yellow);
             } else if (this.isAnimatingDualMode && this.animationStage === 5) {
-                // Stage 5: Color Cross-fade from Yellow
                 const progress = this.getAnimationProgress();
                 const yellow = color(255, 255, 170);
                 const curDay = lerpColor(yellow, dayColor, progress);
@@ -530,7 +514,6 @@ class DaySpiralRenderer extends ClockRenderer {
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
                     curDay, curNight, curBase, true, tzDiffHours, this.innerStrokeWeight);
             } else {
-                // Stage 6 or non-animating
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
                     dayColor, nightColor, baseColor, true, tzDiffHours, this.innerStrokeWeight);
             }
@@ -890,12 +873,13 @@ class DaySpiralRenderer extends ClockRenderer {
         this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.7)'); // Shadow for inner spiral numbers
 
         // Calculate timezone difference
-        const tzDiffHours = locManager.getTimezoneOffsetDifference();
+        // If in "Other Only" mode, treat as local (tzDiff = 0)
+        const tzDiffHours = (showMode === 'other') ? 0 : locManager.getTimezoneOffsetDifference();
 
         // For 24-hour mode or 12-hour mode
         for (let h = 0; h <= 24; h++) {
-            // Calculate what hour this position represents at the "other" location
-            let otherHour = (h + tzDiffHours + 24) % 24;
+            // Calculate what hour this position represents
+            let hourLabelValue = (h + tzDiffHours + 24) % 24;
 
             // Calculate position on inner spiral
             let idx = Math.floor((h / 24.0) * (this.numPointsPerTurn * 2));
@@ -914,7 +898,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
             if (this.timeFormat === '24') {
                 // 24-hour mode: simple 0-23
-                let displayStr = str(Math.floor(otherHour));
+                let displayStr = str(Math.floor(hourLabelValue));
                 let digitSize = this.fontSize * 0.50;
 
                 textSize(digitSize);
@@ -922,9 +906,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 text(displayStr, x + shift, y);
             } else {
                 // 12-hour mode: display with AM/PM
-                let hour12 = otherHour % 12;
+                let hour12 = hourLabelValue % 12;
                 if (hour12 === 0) hour12 = 12;
-                let ampm = (otherHour < 12) ? 'A' : 'P';
+                let ampm = (hourLabelValue < 12) ? 'A' : 'P';
 
                 let hourStr = str(hour12);
                 let digitSize = this.fontSize * (isSingleRendering ? 0.63 : 0.50);
@@ -1606,11 +1590,15 @@ class DaySpiralRenderer extends ClockRenderer {
 
     // Draw AM/PM indicators and separator line for Dial mode when numbers are hidden
     drawAmPmIndicators(showMode = 'dual') {
-        // Only show if: style is Dial, hours are hidden, AND we are NOT in Dual mode (where it's too cluttered)
-        // User requested hidden in "Other" mode for now as well.
+        // Only show if: style is Dial, hours are hidden
         if (this.style !== 'Dial' || this.hoursVisible) return;
+
+        // Hide in DUAL mode and OTHER mode (to avoid timezone complexity for now)
+        // User requested restoration for "Local Only" mode.
         if (showMode === 'dual' && this.isDualLocationMode) return;
         if (showMode === 'other') return;
+
+        // Don't show during transition
         if (this.isAnimatingDualMode) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
@@ -1688,7 +1676,6 @@ class DaySpiralRenderer extends ClockRenderer {
         pop();
     }
 
-    // Draw Rise/Set times on the spiral for Dial mode when numbers are hidden
     drawRiseSetTimes(tk, showMode = 'dual') {
         // Skip in dual mode unless a single-location showMode is active
         if (this.style !== 'Dial' || this.hoursVisible) return;
@@ -1710,31 +1697,22 @@ class DaySpiralRenderer extends ClockRenderer {
         // Indices - totalDailyPts is 2 * numPointsPerTurn (24 hours)
         let totalDailyPts = this.numPointsPerTurn * 2;
 
-        // Rise
-        const sunRise = (showMode === 'other') ? tk.otherSunriseTime : tk.sunriseTime;
-        const sunSet = (showMode === 'other') ? tk.otherSunsetTime : tk.sunsetTime;
-        const currentX = (showMode === 'other' || (showMode === 'dual' && !this.isDualLocationMode)) ? this.xSpiral : this.xSpiral; // Standard outer
-        const currentY = (showMode === 'other' || (showMode === 'dual' && !this.isDualLocationMode)) ? this.ySpiral : this.ySpiral;
+        // Rise/Set
+        const sunRise = tk.sunriseTime;
+        const sunSet = tk.sunsetTime;
+        const currentX = this.xSpiral;
+        const currentY = this.ySpiral;
 
-        // TZ Offset for index calculation
-        const activeTzDiff = (showMode === 'other') ? locManager.getTimezoneOffsetDifference() : 0;
+        // In the proxy tk, sunriseTime/sunsetTime are already swapped if showMode === 'other'.
+        // And tzRotation is now 0 (true local clock).
 
         if (sunRise && typeof sunRise.totalSeconds === 'number') {
-            let riseSecs = sunRise.totalSeconds;
-            if (activeTzDiff !== 0) {
-                riseSecs = (riseSecs - activeTzDiff * 3600 + 86400) % 86400;
-            }
-            let idxRise = Math.floor((riseSecs / 86400) * totalDailyPts);
+            let idxRise = Math.floor((sunRise.totalSeconds / 86400) * totalDailyPts);
             this._drawSpiralTime(idxRise, "Rise", sunRise, currentX, currentY);
         }
 
-        // Set
         if (sunSet && typeof sunSet.totalSeconds === 'number') {
-            let setSecs = sunSet.totalSeconds;
-            if (activeTzDiff !== 0) {
-                setSecs = (setSecs - activeTzDiff * 3600 + 86400) % 86400;
-            }
-            let idxSet = Math.floor((setSecs / 86400) * totalDailyPts);
+            let idxSet = Math.floor((sunSet.totalSeconds / 86400) * totalDailyPts);
             this._drawSpiralTime(idxSet, "Set", sunSet, currentX, currentY);
         }
 
