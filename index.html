@@ -99,29 +99,29 @@
 
           <!-- DaySpiral Specific Controls -->
           <div id="controls-dayspiral" class="controls-group">
-            <div id="style-selector" class="selector-box">
-              <div class="selector-title">Select Style</div>
-              <div class="selector-options">
-                <span id="opt-style-dial" class="selector-opt active">Dial</span>
-                <span id="opt-style-spiral" class="selector-opt">Ribbon</span>
+            <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
+            <div id="awakeness-legend" class="hidden">
+              <span class="awakeness-line-sample"></span>
+              <span class="legend-text">= Both Awake</span>
+            </div>
+            <div class="selectors-row">
+              <div id="style-selector" class="selector-box">
+                <div class="selector-title">Select Style</div>
+                <div class="selector-options">
+                  <span id="opt-style-dial" class="selector-opt active">Dial</span>
+                  <span id="opt-style-spiral" class="selector-opt">Ribbon</span>
+                </div>
+              </div>
+              <div id="toshow-selector" class="selector-box hidden">
+                <div class="selector-title">To Show</div>
+                <div class="selector-options">
+                  <span id="opt-show-other" class="selector-opt">Other Only</span>
+                  <span id="opt-show-dual" class="selector-opt active">Other+Local</span>
+                  <span id="opt-show-local" class="selector-opt">Local Only</span>
+                </div>
               </div>
             </div>
-            <div id="toshow-selector" class="selector-box hidden">
-              <div class="selector-title">To Show</div>
-              <div class="selector-options">
-                <span id="opt-show-other" class="selector-opt">Other Only</span>
-                <span id="opt-show-dual" class="selector-opt active">Other+Local</span>
-                <span id="opt-show-local" class="selector-opt">Local Only</span>
-              </div>
-            </div>
-            <div class="horizontal-row">
-              <div id="awakeness-legend" class="hidden">
-                <span class="awakeness-line-sample"></span>
-                <span class="legend-text">= Both Awake</span>
-              </div>
-              <button id="btn-dayspiral-hours" class="ui-btn">Hours</button>
-              <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
-            </div>
+            <button id="btn-dayspiral-hours" class="ui-btn" style="display:none;">Hours</button>
           </div>
 
           <!-- Mobius Specific Controls (Hidden by default) -->

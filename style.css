@@ -378,9 +378,28 @@ body {
 }
 
 #controls-dayspiral {
-  flex-direction: row;
-  gap: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* Tight vertical gap */
   align-items: flex-end;
+}
+
+.selectors-row {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  /* Desktop gap between selectors */
+  align-items: flex-end;
+}
+
+#awakeness-legend {
+  margin-bottom: 2px;
+}
+
+/* Hide hours button explicitly */
+#btn-dayspiral-hours {
+  display: none !important;
 }
 
 
@@ -932,6 +951,21 @@ screen and (max-height: 600px) {
     align-items: flex-end;
     pointer-events: auto;
   }
+
+  #controls-dayspiral .selectors-row {
+    gap: 2px;
+    /* Super tight gap on mobile to prevent overlap */
+  }
+
+  /* Target the selectors inside the dock to carve out horizontal space */
+  #controls-dayspiral .selector-box {
+    padding: 4px 6px;
+  }
+
+  #controls-dayspiral .selector-opt {
+    padding: 4px 6px;
+  }
+
 
   .ui-btn {
     font-size: 0.85rem;
