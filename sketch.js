@@ -1567,8 +1567,16 @@ function updateUIElements() {
         let desc = locManager.otherLocation.cityName || LocaleTitle;
         // DaySpiral Dual Mode: User wants time next to location name
         if (activeRenderer === daySpiralRenderer) {
-          const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false); // No seconds
-          desc += " " + otherTimeStr;
+          if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'local') {
+            desc = LocaleTitle; // Local-Only
+          } else {
+            const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false); // No seconds
+            if (DaySpiralShowMode === 'other') {
+              desc = desc; // "other location description below but not including the time" for Other-Only
+            } else {
+              desc += " " + otherTimeStr; // Other+Local
+            }
+          }
         }
         locDescEl.textContent = desc;
       } else {
@@ -1599,20 +1607,25 @@ function updateUIElements() {
 
   // Update time display
   var timeEl = document.getElementById('time-display');
-  if (timeEl) {
-    if (IsLoadingLocation) {
-      // keep empty or show dots?
-    } else if (TimeString) {
-      // For mobile 'time-display', stick to main time
-      timeEl.textContent = TimeString;
-    }
-  }
 
   // NEW: Large Time Display
   var timeLargeEl = document.getElementById('time-display-large');
+
+  // Setup CSS class toggling for 30% smaller font
+  const setDualTimeClass = (isDual) => {
+    if (isDual) {
+      if (timeLargeEl) timeLargeEl.classList.add('dual-time-upper');
+      if (timeEl) timeEl.classList.add('dual-time-upper');
+    } else {
+      if (timeLargeEl) timeLargeEl.classList.remove('dual-time-upper');
+      if (timeEl) timeEl.classList.remove('dual-time-upper');
+    }
+  };
+
   if (timeLargeEl) {
     if (IsLoadingLocation) {
       timeLargeEl.textContent = "..."; // Blank out or show placeholder during loading
+      setDualTimeClass(false);
     } else {
       // Get primary (user) time
       const userTimeStr = TimeKeeper.getFormattedTimeForOffset(TzOffset, true);
@@ -1627,10 +1640,20 @@ function updateUIElements() {
           const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, true);
           timeLargeEl.textContent = otherTimeStr;
           if (timeEl) timeEl.textContent = otherTimeStr;
-        } else {
-          // Default or "Other+Local" mode: Show LOCAL time (User's time) as the primary
+          setDualTimeClass(false);
+        } else if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'local') {
+          // "Local Only" mode
           timeLargeEl.textContent = userTimeStr;
           if (timeEl) timeEl.textContent = userTimeStr;
+          setDualTimeClass(false);
+        } else {
+          // "Other+Local" mode: Show LOCAL time (User's time) as the primary with "Local " prefix
+          const combinedStr = "Local " + userTimeStr;
+
+          timeLargeEl.textContent = combinedStr;
+          if (timeEl) timeEl.textContent = combinedStr;
+          // Apply smaller font for dual time
+          setDualTimeClass(true);
         }
       } else if (locManager && locManager.hasOtherLocation() && activeRenderer === mobiusRenderer) {
         // Mobius Mode with an Other Location set (e.g. switched from DaySpiral):
@@ -1638,11 +1661,22 @@ function updateUIElements() {
         const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, true);
         timeLargeEl.textContent = otherTimeStr;
         if (timeEl) timeEl.textContent = otherTimeStr;
+        setDualTimeClass(false);
       } else {
         // standard single local time
         timeLargeEl.textContent = userTimeStr;
         if (timeEl) timeEl.textContent = userTimeStr;
+        setDualTimeClass(false);
       }
+    }
+  }
+
+  // Handle mobile standard time element if timeLarge is missing but it is available.
+  if (timeEl && !timeLargeEl) {
+    if (IsLoadingLocation) {
+    } else if (TimeString) {
+      // Fallback for simple mode
+      timeEl.textContent = TimeString;
     }
   }
 

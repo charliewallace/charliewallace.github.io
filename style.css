@@ -1009,6 +1009,11 @@ screen and (max-height: 600px) {
     color: var(--text-color);
   }
 
+  #time-display.dual-time-upper {
+    font-size: 0.91rem;
+    /* 30% reduction from 1.3rem */
+  }
+
 
   @media (orientation: portrait) {}
 
@@ -1254,6 +1259,11 @@ screen and (max-height: 600px) {
     color: #fff;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+  }
+
+  #time-display-large.dual-time-upper {
+    font-size: 1.54rem;
+    /* 30% reduction from 2.2rem */
   }
 
   #btn-gps-ok {
