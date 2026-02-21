@@ -335,18 +335,23 @@ class DaySpiralRenderer extends ClockRenderer {
         }
 
         if (this.style === 'SpiralHours') {
-            this.drawSpiralTicks();
-            if (isDual || isLocalOnly) {
+            let spiralSw = this.singleModeStrokeWeight;
+            if (isDual && this.isDualLocationMode) {
+                if (this.isAnimatingDualMode && this.animationStage === 2) {
+                    spiralSw = lerp(this.singleModeStrokeWeight, this.dualModeStrokeWeight, this.getAnimationProgress());
+                } else if (!this.isAnimatingDualMode || this.animationStage >= 4) {
+                    spiralSw = this.dualModeStrokeWeight;
+                }
+            }
+            this.drawSpiralTicks(spiralSw);
+
+            if (isDual || isLocalOnly || isOtherOnly) {
                 this.drawSpiralHours(this.xSpiral, this.ySpiral, this.radiusSpiral, false, locManager, showMode);
             }
 
-            const showInnerHoursSpiral = isOtherOnly || (isDual && (!this.isAnimatingDualMode || this.animationStage >= 5));
+            const showInnerHoursSpiral = (isDual && (!this.isAnimatingDualMode || this.animationStage >= 5));
             if (this.isDualLocationMode && showInnerHoursSpiral) {
-                if (isOtherOnly) {
-                    this.drawSpiralHours(this.xSpiral, this.ySpiral, this.radiusSpiral, true, locManager, showMode);
-                } else {
-                    this.drawSpiralHours(this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, locManager, showMode);
-                }
+                this.drawSpiralHours(this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, locManager, showMode);
             }
         }
 
@@ -650,11 +655,11 @@ class DaySpiralRenderer extends ClockRenderer {
 
     // Draw tick marks along the spiral for 'SpiralHours' style
     // Based on legacy implementation: circles for hours, line segments for minutes
-    drawSpiralTicks() {
+    drawSpiralTicks(activeStrokeWeight = this.spiralStrokeWeight) {
         if (!this.xSpiral || this.xSpiral.length === 0) return;
         push();
         let localScale = this.fontSize / 40.0;
-        let ww = this.spiralStrokeWeight;
+        let ww = activeStrokeWeight;
 
         // Draw minute ticks (line segments) - 60 per turn
         // With 300 points per turn, that's every 5 points (300/60=5)
