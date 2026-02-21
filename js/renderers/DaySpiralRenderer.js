@@ -306,8 +306,8 @@ class DaySpiralRenderer extends ClockRenderer {
             this._resetShadow();
         }
 
-        // Show large hour labels (Dial style) only when NOT in dual mode
-        if (this.style === 'Dial' && (showMode !== 'dual' || !this.isDualLocationMode)) {
+        // Show large hour labels (Dial style)
+        if (this.style === 'Dial') {
             this.drawHourLabels();
         }
 
