@@ -711,8 +711,7 @@ class DaySpiralRenderer extends ClockRenderer {
         if (!xArray || xArray.length === 0) return;
 
         // For SpiralHours style, we almost ALWAYS want hours because it's the primary dial.
-        // But let's allow the toggle to work.
-        if (!this.hoursVisible && showMode !== 'dual') return;
+        // We removed the hoursVisible toggle check here so the numbers always show in Ribbon mode.
 
         // Color differentiation: cyan for inner spiral, yellow for outer
         if (isInner) {
