@@ -1772,8 +1772,9 @@ class DaySpiralRenderer extends ClockRenderer {
         const isLocalOnly = (showMode === 'local');
         const isDual = (showMode === 'dual');
 
-        // Draw local times on main track if in dual or local mode
-        if (isDual || isLocalOnly || (isDual && !this.isDualLocationMode)) {
+        // Draw local times on main track if in dual or local or other-only mode
+        const shouldDrawMain = isLocalOnly || isOtherOnly || isDual;
+        if (shouldDrawMain) {
             if (tk.sunriseTime && typeof tk.sunriseTime.totalSeconds === 'number') {
                 this._drawRibbonTime(tk.sunriseTime, this.xSpiral, this.ySpiral, this.radiusSpiral,
                     false, this.spiralStrokeWeight);
@@ -1784,20 +1785,15 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         }
 
-        // Draw other times in dual or other mode
-        if (this.isDualLocationMode && (isDual || isOtherOnly)) {
+        // Draw other times on inner track ONLY in dual mode
+        if (this.isDualLocationMode && isDual) {
             const tzDiffHours = locManager.getTimezoneOffsetDifference();
-            const useOuterTrack = isOtherOnly;
-            const xArr = useOuterTrack ? this.xSpiral : this.xSpiralInner;
-            const yArr = useOuterTrack ? this.ySpiral : this.ySpiralInner;
-            const rArr = useOuterTrack ? this.radiusSpiral : this.radiusSpiralInner;
-            const sw = useOuterTrack ? this.singleModeStrokeWeight : this.innerStrokeWeight;
 
             if (tk.otherSunriseTime && typeof tk.otherSunriseTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.otherSunriseTime, xArr, yArr, rArr, true, sw, tzDiffHours);
+                this._drawRibbonTime(tk.otherSunriseTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours);
             }
             if (tk.otherSunsetTime && typeof tk.otherSunsetTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.otherSunsetTime, xArr, yArr, rArr, true, sw, tzDiffHours);
+                this._drawRibbonTime(tk.otherSunsetTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours);
             }
         }
     }
