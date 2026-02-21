@@ -1877,73 +1877,98 @@ function openDetailsModal() {
   var content = document.getElementById('details-content');
 
   if (content) {
-    // Check if we are in dual-location mode (or Mobius substitution mode)
     const isDual = locManager && locManager.hasOtherLocation();
+    let now = new Date();
+    let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
 
-    let targetLat, targetLon, targetTz, targetCity, targetSunriseHour, targetSunriseMin, targetSunsetHour, targetSunsetMin, targetTzStr, targetDstStr;
-
-    if (isDual) {
-      const other = locManager.otherLocation;
-      targetLat = other.latitude;
-      targetLon = other.longitude;
-      targetTz = other.tzOffset;
-      targetCity = other.cityName || "Other Location";
-      // We use sunrise/sunset for 'other' location from TimeKeeper
-      targetSunriseHour = timeKeeper.otherSunriseTime.hour;
-      targetSunriseMin = timeKeeper.otherSunriseTime.minute;
-      targetSunsetHour = timeKeeper.otherSunsetTime.hour;
-      targetSunsetMin = timeKeeper.otherSunsetTime.minute;
-      targetTzStr = (targetTz >= 0 ? "+" : "") + targetTz;
-      targetDstStr = ""; // We don't track DST for 'other' location specifically in the same way
-    } else {
-      targetLat = Latitude;
-      targetLon = Longitude;
-      targetTz = TzOffset;
-      targetCity = LocaleTitle;
-      targetSunriseHour = SunriseHour;
-      targetSunriseMin = SunriseMin;
-      targetSunsetHour = SunsetHour;
-      targetSunsetMin = SunsetMin;
-      targetTzStr = (targetTz >= 0 ? "+" : "") + targetTz;
-      targetDstStr = (typeof IsDst !== 'undefined') ? (IsDst ? "Active" : "Standard Time") : "Unknown";
+    // Helper to compute a time string for a given TZ offset
+    function timeStrForTz(tz) {
+      let diff = tz - localTz;
+      let t = new Date(now.getTime() + diff * 3600000);
+      let th = t.getHours(), tm = t.getMinutes();
+      let ampm = th >= 12 ? 'PM' : 'AM';
+      let h12 = th % 12 || 12;
+      return `${h12}:${nf(tm, 2, 0)} ${ampm}`;
     }
 
-    // Calculate time for the target location
-    let now = new Date();
-    // BrowserTzOffset is negative minutes from UTC (e.g. PST is +480)
-    // localTz here is GMT offset in hours (e.g. PST is -8)
-    let localTz = (typeof BrowserTzOffset !== 'undefined') ? BrowserTzOffset : TzOffsetLocal;
-    let offsetDiffHours = targetTz - localTz;
-    let targetTime = new Date(now.getTime() + (offsetDiffHours * 3600000));
+    // Helper to compute a date string for a given TZ offset
+    function dateStrForTz(tz) {
+      let diff = tz - localTz;
+      let t = new Date(now.getTime() + diff * 3600000);
+      return t.toLocaleDateString('en-us', { year: "numeric", month: "short", day: "numeric" });
+    }
 
-    let th = targetTime.getHours();
-    let tm = targetTime.getMinutes();
-    let tampm = th >= 12 ? 'PM' : 'AM';
-    let th12 = th % 12 || 12;
-    let targetTimeString = `${th12}:${nf(tm, 2, 0)} ${tampm}`;
-    let targetDateString = targetTime.toLocaleDateString('en-us', { year: "numeric", month: "short", day: "numeric" });
+    // Build a details-grid HTML block for one location
+    function buildGrid(city, tz, lat, lon, sunriseH, sunriseM, sunsetH, sunsetM, dstStr) {
+      let tzStr = (tz >= 0 ? "+" : "") + tz;
+      return `
+        <div class="details-grid">
+          <div class="details-column">
+            <p><span class="label">City</span> <span class="value">${city}</span></p>
+            <p><span class="label">Time</span> <span class="value">${timeStrForTz(tz)}</span></p>
+            <p><span class="label">Date</span> <span class="value">${dateStrForTz(tz)}</span></p>
+          </div>
+          <div class="details-column">
+            <p><span class="label">Lat / Lng</span> <span class="value">${nfc(lat, 2)}, ${nfc(lon, 2)}</span></p>
+            <p><span class="label">Time Zone</span> <span class="value">GMT ${tzStr}</span></p>
+            <p><span class="label">Sunrise</span> <span class="value">${getFormattedTime(sunriseH, sunriseM)}</span></p>
+            <p><span class="label">Sunset</span>  <span class="value">${getFormattedTime(sunsetH, sunsetM)}</span></p>
+            ${dstStr ? `<p><span class="label">DST</span> <span class="value">${dstStr}</span></p>` : ''}
+          </div>
+        </div>`;
+    }
 
-    let htmlContent = `
-      <div class="details-grid">
-        <div class="details-column">
-          <p><span class="label">City</span> <span class="value">${targetCity}</span></p>
-          <p><span class="label">Time</span> <span class="value">${targetTimeString}</span></p>
-          <p><span class="label">Date</span> <span class="value">${targetDateString}</span></p>
-        </div>
-        <div class="details-column">
-          <p><span class="label">Lat / Lng</span> <span class="value">${nfc(targetLat, 2)}, ${nfc(targetLon, 2)}</span></p>
-          <p><span class="label">Time Zone</span> <span class="value">GMT ${targetTzStr}</span></p>
-          <p><span class="label">Sunrise</span> <span class="value">${getFormattedTime(targetSunriseHour, targetSunriseMin)}</span></p>
-          <p><span class="label">Sunset</span> <span class="value">${getFormattedTime(targetSunsetHour, targetSunsetMin)}</span></p>
-          ${targetDstStr ? `<p><span class="label">DST</span> <span class="value">${targetDstStr}</span></p>` : ''}
-        </div>
-      </div>
-    `;
+    let htmlContent;
+
+    if (isDual) {
+      // --- Local section ---
+      const localDst = (typeof IsDst !== 'undefined') ? (IsDst ? "Active" : "Standard Time") : "";
+      const localGrid = buildGrid(
+        LocaleTitle, TzOffset,
+        Latitude, Longitude,
+        SunriseHour, SunriseMin, SunsetHour, SunsetMin,
+        localDst
+      );
+
+      // --- Other section ---
+      const other = locManager.otherLocation;
+      const otherGrid = buildGrid(
+        other.cityName || "Other Location",
+        other.tzOffset,
+        other.latitude, other.longitude,
+        timeKeeper.otherSunriseTime.hour, timeKeeper.otherSunriseTime.minute,
+        timeKeeper.otherSunsetTime.hour, timeKeeper.otherSunsetTime.minute,
+        "" // No DST tracking for other location
+      );
+
+      htmlContent = `
+        <div class="details-dual-wrapper">
+          <div class="details-section">
+            <h3 class="details-section-heading">Local</h3>
+            ${localGrid}
+          </div>
+          <hr class="details-divider">
+          <div class="details-section">
+            <h3 class="details-section-heading">Other</h3>
+            ${otherGrid}
+          </div>
+        </div>`;
+    } else {
+      // Single-location mode: unchanged layout
+      const dstStr = (typeof IsDst !== 'undefined') ? (IsDst ? "Active" : "Standard Time") : "Unknown";
+      htmlContent = buildGrid(
+        LocaleTitle, TzOffset,
+        Latitude, Longitude,
+        SunriseHour, SunriseMin, SunsetHour, SunsetMin,
+        dstStr
+      );
+    }
 
     content.innerHTML = htmlContent;
   }
   openModal('modal-details');
 }
+
 
 
 // Helper to format HH:MM for sunrise/sunset display

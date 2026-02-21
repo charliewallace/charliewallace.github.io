@@ -1505,6 +1505,177 @@ body.zen-mode #btn-zen-desktop:hover {
   }
 }
 
+/* ---- Dual-section Location Details ---- */
+
+/* Modal body: scrollable, capped so it stays on screen */
+#modal-details .modal-body {
+  overflow-y: auto;
+  max-height: 65vh;
+}
+
+/* ---- DESKTOP: sections side-by-side, divider hidden ---- */
+.details-dual-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.details-section {
+  flex: 1;
+  padding: 4px 0 8px;
+}
+
+/* Section heading ("Local" / "Other") */
+.details-section-heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #aaa;
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #444;
+}
+
+/* Horizontal divider hidden on desktop (sections are side-by-side) */
+.details-divider {
+  display: none;
+}
+
+/* ---- MOBILE PORTRAIT: sections stacked, 2-col grid enforced ---- */
+@media screen and (max-width: 950px) and (orientation: portrait) {
+
+  /* Widen the modal to use more of the available screen width */
+  #modal-details.modal-content {
+    width: 96% !important;
+    max-width: 600px !important;
+  }
+
+  .details-dual-wrapper {
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+
+  .details-section {
+    flex: none;
+  }
+
+  /* Show divider between stacked sections */
+  .details-divider {
+    display: block;
+    border: none;
+    border-top: 1px solid #333;
+    margin: 2px 0 6px;
+  }
+
+  /* Enforce 2-col grid even on narrow screens */
+  #modal-details .details-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  /* Tighten vertical density to reduce overall height */
+  #modal-details .details-section {
+    padding: 2px 0 4px;
+  }
+
+  #modal-details .details-section-heading {
+    font-size: 0.72rem;
+    margin: 0 0 5px 0;
+    padding-bottom: 3px;
+  }
+
+  #modal-details .details-column {
+    gap: 6px;
+  }
+
+  #modal-details .details-column p {
+    gap: 1px;
+  }
+
+  #modal-details .details-column .label {
+    font-size: 0.62rem;
+  }
+
+  #modal-details .details-column .value {
+    font-size: 0.85rem;
+  }
+
+  #modal-details .modal-body {
+    max-height: 62vh;
+  }
+}
+
+/* ---- MOBILE LANDSCAPE: sections side-by-side, label inline with value ---- */
+@media screen and (max-height: 500px) {
+  #modal-details .modal-body {
+    max-height: 52vh;
+  }
+
+  /* Sections fill the full available width */
+  .details-dual-wrapper {
+    flex-direction: row;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .details-section {
+    flex: 1;
+    min-width: 0;
+    /* prevents flex children from overflowing */
+  }
+
+  .details-divider {
+    display: none;
+  }
+
+  /* Tighter heading — 10% smaller than portrait */
+  .details-section-heading {
+    font-size: 0.63rem;
+    /* 0.7rem × 0.9 */
+    margin-bottom: 3px;
+  }
+
+  /* Collapse grid to 1 col — inline label+value makes each row very short */
+  #modal-details .details-grid {
+    grid-template-columns: 1fr;
+    gap: 1px;
+    margin-top: 3px;
+  }
+
+  #modal-details .details-column {
+    gap: 1px;
+  }
+
+  /* Label and value on the same line */
+  #modal-details .details-column p {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 5px;
+    margin: 0;
+  }
+
+  /* 10% font-size reduction vs previous values */
+  #modal-details .details-column .label {
+    min-width: 49px;
+    /* 54px × 0.9 */
+    font-size: 0.585rem;
+    /* 0.65rem × 0.9 */
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+
+  #modal-details .details-column .value {
+    font-size: 0.72rem;
+    /* 0.8rem × 0.9 */
+  }
+}
+
+
 /* --- iPhone Full Screen Workaround --- */
 .ios-fullscreen-fix {
   height: calc(100vh + 1px) !important;
@@ -1683,9 +1854,5 @@ body.zen-mode #btn-zen-desktop:hover {
   font-weight: 500;
 }
 
-@media screen and (max-width: 600px) {
-  .details-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-}
+/* NOTE: The old max-width:600px 1-col override is replaced by explicit
+   breakpoint rules above (.details-dual-wrapper portrait/landscape blocks). */
