@@ -1010,8 +1010,8 @@ screen and (max-height: 600px) {
   }
 
   #time-display.dual-time-upper {
-    font-size: 0.91rem;
-    /* 30% reduction from 1.3rem */
+    font-size: 1.07rem;
+    /* 0.91 * 1.18 ≈ 1.07rem */
   }
 
 
@@ -1262,8 +1262,8 @@ screen and (max-height: 600px) {
   }
 
   #time-display-large.dual-time-upper {
-    font-size: 1.54rem;
-    /* 30% reduction from 2.2rem */
+    font-size: 1.82rem;
+    /* 1.54 * 1.18 ≈ 1.82rem */
   }
 
   #btn-gps-ok {
