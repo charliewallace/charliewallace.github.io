@@ -1587,10 +1587,9 @@ class DaySpiralRenderer extends ClockRenderer {
         // Only show if: style is Dial, hours are hidden
         if (this.style !== 'Dial' || this.hoursVisible) return;
 
-        // Hide in DUAL mode and OTHER mode (to avoid timezone complexity for now)
+        // Hide in DUAL mode (to avoid timezone complexity for now)
         // User requested restoration for "Local Only" mode.
         if (showMode === 'dual' && this.isDualLocationMode) return;
-        if (showMode === 'other') return;
 
         // Don't show during transition
         if (this.isAnimatingDualMode) return;
