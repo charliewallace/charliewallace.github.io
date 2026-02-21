@@ -265,18 +265,12 @@ class DaySpiralRenderer extends ClockRenderer {
         const isLocalOnly = (showMode === 'local');
         const isDual = (showMode === 'dual');
 
-        // Create a proxy TimeKeeper for "Other Only" mode to point hands to other time
+        // Create a proxy TimeKeeper for "Other Only" mode to swap sun times
         if (isOtherOnly && locManager.hasOtherLocation()) {
-            const tzDiff = locManager.getTimezoneOffsetDifference();
-
-            // Create a lightweight proxy object that has the fields the hands/spiral need
+            // Note: tk already contains the otherCity's time since sketch.js passes targetTz to timeKeeper.update
             activeTk = {
                 ...timeKeeper,
-                // Offset hours by the difference to show the "Other" local time
-                hours: (timeKeeper.hours + Math.floor(tzDiff) + 24) % 24,
-                minutes: (timeKeeper.minutes + Math.round((tzDiff % 1) * 60) + 60) % 60,
-                // totalSecondsToday needs to be updated for the spiral/hands math
-                totalSecondsToday: (timeKeeper.totalSecondsToday + (tzDiff * 3600) + 86400) % 86400,
+                // Time is already shifted, so no need to offset hours/minutes
                 // Swap solar times to be the "primary" for this frame
                 sunriseTime: timeKeeper.otherSunriseTime,
                 sunsetTime: timeKeeper.otherSunsetTime,
