@@ -671,7 +671,8 @@ body {
   /* Added to contain absolute positioned close button */
   padding: 20px;
   width: 90%;
-  max-width: 400px;
+  max-width: 440px;
+  /* Increased 10% from 400px */
   max-height: 90vh;
   /* Constraint height */
   display: flex;
@@ -1505,6 +1506,40 @@ body.zen-mode #btn-zen-desktop:hover {
   }
 }
 
+/* Location Details Modal Styles */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.details-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.details-column p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.details-column .label {
+  font-size: 0.7rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.details-column .value {
+  font-size: 0.95rem;
+  color: #fff;
+  font-weight: 500;
+}
+
 /* ---- Dual-section Location Details ---- */
 
 /* Modal body: scrollable, capped so it stays on screen */
@@ -1547,20 +1582,24 @@ body.zen-mode #btn-zen-desktop:hover {
 /* ---- MOBILE PORTRAIT: sections stacked, 2-col grid enforced ---- */
 @media screen and (max-width: 950px) and (orientation: portrait) {
 
-  /* Widen the modal to use more of the available screen width */
+  /* Widen the modal to use more of the available screen width (Increased 40% as requested) */
   #modal-details.modal-content {
-    width: 96% !important;
-    max-width: 600px !important;
+    width: 98% !important;
+    max-width: 840px !important;
+    /* Increased 40% from 600px */
   }
 
   .details-dual-wrapper {
     flex-direction: column;
     gap: 0;
     width: 100%;
+    margin: 0;
   }
 
   .details-section {
     flex: none;
+    width: 100%;
+    /* Ensure section fills modal width */
   }
 
   /* Show divider between stacked sections */
@@ -1571,10 +1610,12 @@ body.zen-mode #btn-zen-desktop:hover {
     margin: 2px 0 6px;
   }
 
-  /* Enforce 2-col grid even on narrow screens */
+  /* Enforce 2-col grid and widen columns by ~50% */
   #modal-details .details-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px;
+    grid-template-columns: 1.5fr 1.5fr !important;
+    gap: 15px;
+    /* Increased gap */
+    width: 100%;
     margin-top: 4px;
   }
 
@@ -1606,21 +1647,39 @@ body.zen-mode #btn-zen-desktop:hover {
   }
 
   #modal-details .modal-body {
-    max-height: 62vh;
+    max-height: 68vh;
+    /* Increased 10% from 62vh */
+  }
+
+  /* Widen sections to use more space */
+  .details-grid {
+    grid-template-columns: 1.4fr 1.6fr !important;
+    /* Bias second column for longer values/DST */
+    width: 100%;
   }
 }
 
 /* ---- MOBILE LANDSCAPE: sections side-by-side, label inline with value ---- */
 @media screen and (max-height: 500px) {
-  #modal-details .modal-body {
-    max-height: 52vh;
+
+  /* Widen the modal in landscape to use the full screen width */
+  #modal-details.modal-content {
+    width: 98% !important;
+    max-width: 920px !important;
+    /* Wider for landscape to avoid any wrapping */
   }
 
-  /* Sections fill the full available width */
+  /* Increased gap and taller dialog for landscape */
+  #modal-details .modal-body {
+    max-height: 80vh;
+    /* More height in landscape */
+  }
+
   .details-dual-wrapper {
     flex-direction: row;
-    gap: 16px;
+    gap: 40px;
     width: 100%;
+    align-items: flex-start;
   }
 
   .details-section {
@@ -1640,10 +1699,11 @@ body.zen-mode #btn-zen-desktop:hover {
     margin-bottom: 3px;
   }
 
-  /* Collapse grid to 1 col — inline label+value makes each row very short */
+  /* Expand grid to full width and widen the value space */
   #modal-details .details-grid {
-    grid-template-columns: 1fr;
-    gap: 1px;
+    display: block;
+    /* Stack headers/sections */
+    width: 100%;
     margin-top: 3px;
   }
 
@@ -1651,27 +1711,31 @@ body.zen-mode #btn-zen-desktop:hover {
     gap: 1px;
   }
 
-  /* Label and value on the same line */
+  /* Label and value on the same line, spanning full width */
   #modal-details .details-column p {
+    display: flex;
     flex-direction: row;
     align-items: baseline;
-    gap: 5px;
+    gap: 10px;
     margin: 0;
+    width: 100%;
   }
 
-  /* 10% font-size reduction vs previous values */
   #modal-details .details-column .label {
-    min-width: 49px;
-    /* 54px × 0.9 */
+    min-width: 80px;
+    /* Reduced to give more room to values */
+    width: auto;
     font-size: 0.585rem;
-    /* 0.65rem × 0.9 */
     flex-shrink: 0;
     text-transform: uppercase;
   }
 
   #modal-details .details-column .value {
     font-size: 0.72rem;
-    /* 0.8rem × 0.9 */
+    flex-grow: 1;
+    text-align: left;
+    white-space: nowrap;
+    /* Prevent wrapping since we have width now */
   }
 }
 
@@ -1820,39 +1884,6 @@ body.zen-mode #btn-zen-desktop:hover {
   }
 }
 
-/* Location Details Modal Styles */
-.details-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 10px;
-}
-
-.details-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.details-column p {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.details-column .label {
-  font-size: 0.7rem;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.details-column .value {
-  font-size: 0.95rem;
-  color: #fff;
-  font-weight: 500;
-}
 
 /* NOTE: The old max-width:600px 1-col override is replaced by explicit
    breakpoint rules above (.details-dual-wrapper portrait/landscape blocks). */

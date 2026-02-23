@@ -12,12 +12,13 @@ class LocationManager {
         this.tzOffset = 0; // Default to neutral or browser
         this.isPrecise = false;
 
-        // Other location for dual-location mode
+        // For dual-location mode
         this.otherLocation = {
             latitude: 99999,
             longitude: 99999,
-            cityName: null,
-            tzOffset: 0
+            tzOffset: 0,
+            isDst: false,
+            cityName: null
         };
 
         // Callbacks
@@ -47,12 +48,13 @@ class LocationManager {
     /**
      * Set the "other" location for dual-location mode
      */
-    setOtherLocation(lat, lon, tz, city) {
+    setOtherLocation(lat, lon, tz, city, isDst = false) {
         this.otherLocation.latitude = lat;
         this.otherLocation.longitude = lon;
         this.otherLocation.tzOffset = tz;
         this.otherLocation.cityName = city;
-        console.log(`📍 Other location set: ${city} (${lat}, ${lon}, TZ: ${tz})`);
+        this.otherLocation.isDst = isDst;
+        console.log(`📍 Other location set: ${city} (${lat}, ${lon}, TZ: ${tz}, DST: ${isDst})`);
     }
 
     /**

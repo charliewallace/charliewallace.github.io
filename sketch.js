@@ -46,7 +46,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.5.9 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.5.12 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -1311,7 +1311,8 @@ function updateUrlHash() {
     if (activeRenderer === mobiusRenderer) {
       params.set('clock', 'mobius');
     } else {
-      params.set('clock', 'dayspiral');
+      // Don't set clock if it's the default (dayspiral)
+      params.delete('clock');
     }
   }
 
@@ -1932,13 +1933,17 @@ function openDetailsModal() {
 
       // --- Other section ---
       const other = locManager.otherLocation;
+
+      // Use the stored DST status from LocationManager
+      const otherDst = other.isDst ? "Active" : "Standard Time";
+
       const otherGrid = buildGrid(
         other.cityName || "Other Location",
         other.tzOffset,
         other.latitude, other.longitude,
         timeKeeper.otherSunriseTime.hour, timeKeeper.otherSunriseTime.minute,
         timeKeeper.otherSunsetTime.hour, timeKeeper.otherSunsetTime.minute,
-        "" // No DST tracking for other location
+        otherDst
       );
 
       htmlContent = `
@@ -3342,7 +3347,14 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
     // UNIFIED 'OTHER' MODE (DaySpiral Dual or Mobius Substitution)
     if (isOther) {
       console.log(`  🌎 Other Location mode: Setting other location to ${cityName}`);
-      setOtherLocation(lat, lon, timeZoneOffset, cityName);
+
+      let otherIsDst = false;
+      let rawOffset = data.rawOffset;
+      if (rawOffset !== undefined && rawOffset != timeZoneOffset) {
+        otherIsDst = true;
+      }
+
+      setOtherLocation(lat, lon, timeZoneOffset, cityName, otherIsDst);
 
       // Reset flags
       IsSearchingForOtherLocation = false;
@@ -3876,14 +3888,14 @@ function setDaySpiralStyle(styleName) {
 /**
  * Helper function to set the "other" location for dual-location mode
  */
-function setOtherLocation(lat, lon, tz, cityName) {
-  console.log(`🌍 Setting other location: ${cityName}`);
+function setOtherLocation(lat, lon, tz, cityName, isDst = false) {
+  console.log(`🌍 Setting other location: ${cityName}, DST: ${isDst}`);
 
   // Check if we're transitioning from single to dual mode (for animation trigger)
   const wasInSingleMode = !locManager.hasOtherLocation();
 
   // Set in LocationManager
-  locManager.setOtherLocation(lat, lon, tz, cityName);
+  locManager.setOtherLocation(lat, lon, tz, cityName, isDst);
 
   // Calculate sunrise/sunset for other location
   // NOTE: Negate longitude to match the behavior in calculateSunTimes (East positive vs West positive logic)
