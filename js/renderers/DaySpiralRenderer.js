@@ -719,9 +719,9 @@ class DaySpiralRenderer extends ClockRenderer {
         // For SpiralHours style, we almost ALWAYS want hours because it's the primary dial.
         // We removed the hoursVisible toggle check here so the numbers always show in Ribbon mode.
 
-        // Color differentiation: cyan for inner spiral, yellow for outer
-        if (isInner) {
-            fill(180, 255, 255); // Light Cyan for inner spiral
+        // Color differentiation: cyan for inner spiral OR when showing only "other" location
+        if (isInner || showMode === 'other') {
+            fill(180, 255, 255); // Light Cyan
         } else {
             fill(255, 235, 120); // Yellow for outer spiral
         }
@@ -1839,16 +1839,16 @@ class DaySpiralRenderer extends ClockRenderer {
             const tzDiffHours = locManager.getTimezoneOffsetDifference();
 
             if (tk.otherSunriseTime && typeof tk.otherSunriseTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.otherSunriseTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours);
+                this._drawRibbonTime(tk.otherSunriseTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
             }
             if (tk.otherSunsetTime && typeof tk.otherSunsetTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.otherSunsetTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours);
+                this._drawRibbonTime(tk.otherSunsetTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
             }
         }
     }
 
     // Helper to draw a single rise/set time on the Ribbon spiral
-    _drawRibbonTime(timeObj, xArray, yArray, rArray, isInner, strokeWeight, tzOffsetHours = 0) {
+    _drawRibbonTime(timeObj, xArray, yArray, rArray, isInner, strokeWeight, tzOffsetHours = 0, showMode = 'dual') {
         if (!xArray || xArray.length === 0) return;
 
         // Calculate index in spiral based on time
@@ -1895,8 +1895,8 @@ class DaySpiralRenderer extends ClockRenderer {
         push();
 
         // Set color to match spiral hour numbers
-        if (isInner) {
-            fill(180, 255, 255); // Light Cyan for inner spiral
+        if (isInner || showMode === 'other') {
+            fill(180, 255, 255); // Light Cyan
         } else {
             fill(255, 235, 120); // Yellow for outer spiral
         }
