@@ -1085,14 +1085,17 @@ class DaySpiralRenderer extends ClockRenderer {
         let targetY = this.centerY + this.ySpiralInner[0];
 
         // --- ANIMATION: Highlight, Shake, and Migration Logic ---
-        if (this.isAnimatingDualMode && (this.animationStage >= 1 && this.animationStage <= 4)) {
+        if (this.isAnimatingDualMode && (this.animationStage >= 1 && this.animationStage <= 6)) {
             const progress = this.getAnimationProgress();
 
             // Starting position for migration (roughly where DOM text used to be)
+            // FIXED: startY adjusted from 82 to 68 to match final DOM position (no jump)
             let startX = width - 40; // Align with the container's right-aligned text
-            let startY = 82;        // Adjusted slightly for better alignment
+            let startY = 68;
 
             let fullLocation = locManager.otherLocation.cityName || "Other";
+            let otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false);
+
             let cityPart = fullLocation;
             let remainderPart = "";
             let splitIdx = fullLocation.indexOf(',');
@@ -1101,6 +1104,9 @@ class DaySpiralRenderer extends ClockRenderer {
                 cityPart = fullLocation.substring(0, splitIdx).trim();
                 remainderPart = fullLocation.substring(splitIdx + 1); // Skip comma
             }
+
+            // Inclusion of time in the remainder part as requested
+            remainderPart += " " + otherTimeStr;
 
             let curX = targetX;
             let curY = targetY;
@@ -1114,24 +1120,22 @@ class DaySpiralRenderer extends ClockRenderer {
                 let shakeDist = innerFontSize * 1.5;
                 let shakeOffset = sin(progress * TWO_PI * 3) * shakeDist;
 
-                let commaWidth = textWidth(", ");
+                let commaWidth = textWidth(", "); // Comma is being dissolved
                 let remainderWidth = textWidth(remainderPart);
-                // The right edge of the cityPart was at: startX - remainderWidth - commaWidth
                 let cityStartX = startX - remainderWidth - commaWidth;
 
                 // City part shakes around its original position
                 textAlign(RIGHT, CENTER);
                 text(cityPart, cityStartX + shakeOffset, startY);
 
-                // Remainder part stays fixed at the original right edge
+                // Remainder part (including time) stays fixed at the original right edge in Cyan
                 if (remainderPart) {
-                    fill(255);
+                    fill(highlightColor);
                     textAlign(RIGHT, CENTER);
                     text(remainderPart, startX, startY);
                 }
             } else if (this.animationStage === 2) {
                 // Stage 2: Migration position
-                // The city detaches fromIts original relative position 'cityStartX' 
                 let commaWidth = textWidth(", ");
                 let remainderWidth = textWidth(remainderPart);
                 let cityStartX = startX - remainderWidth - commaWidth;
@@ -1141,32 +1145,26 @@ class DaySpiralRenderer extends ClockRenderer {
                 textAlign(RIGHT, CENTER);
                 text(cityPart, curX, curY);
 
-                // Remainder remains at start
+                // Remainder remains at start position in Cyan
                 if (remainderPart) {
-                    fill(255);
+                    fill(highlightColor);
                     textAlign(RIGHT, CENTER);
                     text(remainderPart, startX, startY);
                 }
             } else {
-                // Stage 3 & 4: Arrived at target or paused
+                // Stage 3, 4, 5, 6: Arrived at target or paused
                 textAlign(RIGHT, CENTER);
                 text(cityPart, targetX, targetY);
+
+                // Keep drawing remainder (including time) at the top-right until animation ends
                 if (remainderPart) {
-                    fill(255);
+                    fill(highlightColor);
                     textAlign(RIGHT, CENTER);
                     text(remainderPart, startX, startY);
                 }
             }
-
-        } else if (this.isAnimatingDualMode && this.animationStage === 5) {
-            // Stage 5: Transitioning to final state
-            let fullLocation = locManager.otherLocation.cityName || "Other";
-            let cityPart = fullLocation.split(',')[0].trim();
-            fill(180, 255, 255);
-            text(cityPart, targetX, targetY);
-
-        } else if (!this.isAnimatingDualMode || this.animationStage >= 6) {
-            // Stage 6 or non-animating: Final Cyan
+        } else if (!this.isAnimatingDualMode) {
+            // Non-animating: Final Cyan (Shortened city name only near spiral)
             fill(180, 255, 255);
             text(cityName, targetX, targetY);
         }
