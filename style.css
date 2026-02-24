@@ -231,6 +231,21 @@ body {
   padding: 4px 0;
 }
 
+/* Ensure colored spans within selectors preserve their color even when parent is .active */
+.selector-opt span.color-local,
+.selector-opt span.color-other {
+  transition: all 0.2s ease;
+}
+
+.selector-opt.active span.color-local {
+  color: var(--color-local) !important;
+}
+
+.selector-opt.active span.color-other {
+  color: var(--color-other) !important;
+}
+
+
 .button-row-bottom-left {
   display: flex;
   flex-direction: row;
