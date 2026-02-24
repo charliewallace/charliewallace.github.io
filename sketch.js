@@ -46,7 +46,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.5.12 ©2026 Charlie Wallace";
+const APP_VERSION = "v1.0.0 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -91,7 +91,8 @@ var OtherLocationFetchSerial = 0; // Separate ID for "Other" location requests t
 var IsUserInitiatedLocation = false; // true if location was set by user action (GPS, preset, city lookup, manual)
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
-var DaySpiralShowMode = 'dual'; // 'other', 'dual', 'local'
+var DaySpiralShowMode = 'local'; // 'other', 'dual', 'local' - Default to local on start
+var HasSeenDualModeAnimation = false; // Ensures guided transition only plays once per session
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset = 64800, BaseMsSunset;
@@ -451,12 +452,15 @@ function oneTimeInit() {
   var openManualBtn = select('#btn-open-manual');
   if (openManualBtn) openManualBtn.mousePressed(openManualCoordsModal);
 
-  // Your Location button in modal
+  // Clear Other Location button in modal
   var useGpsBtn = select('#btn-use-gps');
   if (useGpsBtn) useGpsBtn.mousePressed(() => {
     // Clear other location to return to single-location mode
     locManager.clearOtherLocation();
     IsDisplayingUserLocation = true;
+
+    // Explicitly return to local mode
+    DaySpiralShowMode = 'local';
 
     // Trigger spiral regeneration
     if (daySpiralRenderer && daySpiralRenderer.active) {
@@ -464,34 +468,7 @@ function oneTimeInit() {
     }
 
     updateDualModeUI();
-
-    // RESTORE from local cache instead of triggering GPS prompt
-    if (LatLocal !== 99999 && LngLocal !== 99999) {
-      console.log("📍 Restoring user location from cache (IsPrecise=" + IsPreciseLocal + ")");
-      Latitude = LatLocal;
-      Longitude = LngLocal;
-      TzOffset = TzOffsetLocal;
-      if (LocaleTitleLocal) LocaleTitle = LocaleTitleLocal;
-      IsPreciseLocation = IsPreciseLocal;
-
-      // Update UI fields
-      if (LatInput) LatInput.value(str(Latitude));
-      if (LngInput) LngInput.value(str(Longitude));
-      if (TzInput) {
-        let tzStr = str(TzOffset);
-        if (TzOffset > 0) tzStr = "+" + tzStr;
-        TzInput.value(tzStr);
-      }
-
-      IsSunRiseSetObtained = false;
-      updateTimeThisDay();
-      updateUrlHash();
-    } else {
-      // Fallback: This shouldn't normally happen as IP location is fetched on startup
-      console.log("⚠️ No local cache found, triggering GPS as fallback");
-      usePreciseLocation(false);
-    }
-
+    updateUrlHash();
     closeAllModals();
   });
 
@@ -1341,9 +1318,11 @@ function updateUrlHash() {
       params.set('dualAnim', '0');
     }
 
-    // Add DaySpiral show mode (only if dual is not active or non-dual is chosen)
-    if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode !== 'dual') {
+    // Add DaySpiral show mode (only show if not default 'local')
+    if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode !== 'local') {
       params.set('daySpiralShowMode', DaySpiralShowMode);
+    } else {
+      params.delete('daySpiralShowMode');
     }
   }
 
@@ -3908,10 +3887,17 @@ function setOtherLocation(lat, lon, tz, cityName, isDst = false) {
 
   // Trigger spiral regeneration and animation
   if (daySpiralRenderer && daySpiralRenderer.active) {
-    // Start animation if transitioning from single to dual mode
-    if (wasInSingleMode) {
+    // Always switch to Dual mode when setting an other location
+    DaySpiralShowMode = 'dual';
+
+    // Start animation ONLY if transitioning from single to dual mode 
+    // AND the user hasn't seen the animation yet this session
+    if (wasInSingleMode && !HasSeenDualModeAnimation) {
+      console.log("🎬 Playing first-time dual mode animation");
       daySpiralRenderer.startDualModeAnimation();
+      HasSeenDualModeAnimation = true;
     }
+
     daySpiralRenderer.resize(window.innerWidth, window.innerHeight);
   }
 
