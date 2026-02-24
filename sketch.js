@@ -1575,7 +1575,7 @@ function updateUIElements() {
     } else {
       // Reset color & opacity when not animating
       if (localeEl) {
-        if (localeEl.style.opacity !== '') localeEl.style.opacity = '';
+        localeEl.style.opacity = '1';
 
         // Dynamic Color Assignment (Locale Title - Mobile Only)
         localeEl.classList.remove('color-local', 'color-other');
@@ -1588,7 +1588,7 @@ function updateUIElements() {
         }
       }
       if (locDescEl) {
-        if (locDescEl.style.opacity !== '') locDescEl.style.opacity = '';
+        locDescEl.style.opacity = '1';
 
         // Dynamic Color Assignment (Location Description - Desktop)
         locDescEl.classList.remove('color-local', 'color-other');

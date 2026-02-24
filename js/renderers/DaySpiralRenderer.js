@@ -501,15 +501,15 @@ class DaySpiralRenderer extends ClockRenderer {
 
             if (this.isAnimatingDualMode && this.animationStage === 4) {
                 const progress = this.getAnimationProgress();
-                const yellow = color(255, 255, 170);
+                const cyanHighlight = color(180, 255, 255);
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
-                    yellow, yellow, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, yellow);
+                    cyanHighlight, cyanHighlight, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, cyanHighlight);
             } else if (this.isAnimatingDualMode && this.animationStage === 5) {
                 const progress = this.getAnimationProgress();
-                const yellow = color(255, 255, 170);
-                const curDay = lerpColor(yellow, dayColor, progress);
-                const curNight = lerpColor(yellow, nightColor, progress);
-                const curBase = lerpColor(yellow, baseColor, progress);
+                const cyanHighlight = color(180, 255, 255);
+                const curDay = lerpColor(cyanHighlight, dayColor, progress);
+                const curNight = lerpColor(cyanHighlight, nightColor, progress);
+                const curBase = lerpColor(cyanHighlight, baseColor, progress);
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
                     curDay, curNight, curBase, true, tzDiffHours, this.innerStrokeWeight);
             } else {
@@ -537,7 +537,7 @@ class DaySpiralRenderer extends ClockRenderer {
         if (weight !== null) strokeWeight(weight);
         else strokeWeight(this.spiralStrokeWeight);
 
-        stroke(tintColor || baseColor);
+        stroke((tintColor !== null) ? tintColor : baseColor);
         this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
         beginShape();
         let currentLen = Math.floor(xArray.length * limitProgress);
@@ -579,11 +579,12 @@ class DaySpiralRenderer extends ClockRenderer {
         idxSet = Math.max(0, Math.min(idxSet, len - 1));
 
         // Only draw day/night colors if we are NOT waiting for location data
-        if (!window.IsLoadingLocation) {
+        // Explicitly check the global variable (accessible in browser environment)
+        if (typeof IsLoadingLocation === 'undefined' || !IsLoadingLocation) {
             if (idxRise < idxSet) {
                 // NORMAL CASE: Sunrise occurs before Sunset in the 24-hour spiral
                 // 2. Draw Night (Midnight -> Sunrise)
-                stroke(tintColor || nightColor);
+                stroke((tintColor !== null) ? tintColor : nightColor);
                 if (idxRise > 0) {
                     beginShape();
                     for (let i = 0; i <= idxRise; i++) {
@@ -593,7 +594,7 @@ class DaySpiralRenderer extends ClockRenderer {
                 }
 
                 // 3. Draw Day (Sunrise -> Sunset)
-                stroke(tintColor || dayColor);
+                stroke((tintColor !== null) ? tintColor : dayColor);
                 beginShape();
                 for (let i = idxRise; i <= idxSet; i++) {
                     if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
@@ -601,7 +602,7 @@ class DaySpiralRenderer extends ClockRenderer {
                 endShape();
 
                 // 4. Draw Night (Sunset -> Midnight)
-                stroke(tintColor || nightColor);
+                stroke((tintColor !== null) ? tintColor : nightColor);
                 if (idxSet < len - 1) {
                     beginShape();
                     for (let i = idxSet; i < len; i++) {
@@ -643,7 +644,7 @@ class DaySpiralRenderer extends ClockRenderer {
             } else {
                 // SPECIAL CASE: Sun never rises/sets or indices are identical
                 // Default to night for now (matches 0 rise/set indices for "always dark")
-                stroke(tintColor || nightColor);
+                stroke((tintColor !== null) ? tintColor : nightColor);
                 beginShape();
                 for (let i = 0; i < currentLen; i++) {
                     vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
@@ -1084,40 +1085,85 @@ class DaySpiralRenderer extends ClockRenderer {
         let targetY = this.centerY + this.ySpiralInner[0];
 
         // --- ANIMATION: Highlight, Shake, and Migration Logic ---
-        if (this.isAnimatingDualMode && (this.animationStage === 1 || this.animationStage === 2 || this.animationStage === 3 || this.animationStage === 4)) {
+        if (this.isAnimatingDualMode && (this.animationStage >= 1 && this.animationStage <= 4)) {
             const progress = this.getAnimationProgress();
 
             // Starting position for migration (roughly where DOM text used to be)
-            let startX = width - 150;
-            let startY = 75;
+            let startX = width - 40; // Align with the container's right-aligned text
+            let startY = 82;        // Adjusted slightly for better alignment
+
+            let fullLocation = locManager.otherLocation.cityName || "Other";
+            let cityPart = fullLocation;
+            let remainderPart = "";
+            let splitIdx = fullLocation.indexOf(',');
+
+            if (splitIdx !== -1) {
+                cityPart = fullLocation.substring(0, splitIdx).trim();
+                remainderPart = fullLocation.substring(splitIdx + 1); // Skip comma
+            }
 
             let curX = targetX;
             let curY = targetY;
 
+            // Highlight Color: Cyan (rgb(180, 255, 255))
+            let highlightColor = color(180, 255, 255);
+            fill(highlightColor);
+
             if (this.animationStage === 1) {
-                // Stage 1: Horizontal Shake
-                // Shake distance approx 3 character widths
+                // Stage 1: Horizontal Shake & Comma Disappearance
                 let shakeDist = innerFontSize * 1.5;
                 let shakeOffset = sin(progress * TWO_PI * 3) * shakeDist;
-                curX = startX + shakeOffset;
-                curY = startY;
+
+                let commaWidth = textWidth(", ");
+                let remainderWidth = textWidth(remainderPart);
+                // The right edge of the cityPart was at: startX - remainderWidth - commaWidth
+                let cityStartX = startX - remainderWidth - commaWidth;
+
+                // City part shakes around its original position
+                textAlign(RIGHT, CENTER);
+                text(cityPart, cityStartX + shakeOffset, startY);
+
+                // Remainder part stays fixed at the original right edge
+                if (remainderPart) {
+                    fill(255);
+                    textAlign(RIGHT, CENTER);
+                    text(remainderPart, startX, startY);
+                }
             } else if (this.animationStage === 2) {
                 // Stage 2: Migration position
-                curX = lerp(startX, targetX, progress);
+                // The city detaches fromIts original relative position 'cityStartX' 
+                let commaWidth = textWidth(", ");
+                let remainderWidth = textWidth(remainderPart);
+                let cityStartX = startX - remainderWidth - commaWidth;
+
+                curX = lerp(cityStartX, targetX, progress);
                 curY = lerp(startY, targetY, progress);
+                textAlign(RIGHT, CENTER);
+                text(cityPart, curX, curY);
+
+                // Remainder remains at start
+                if (remainderPart) {
+                    fill(255);
+                    textAlign(RIGHT, CENTER);
+                    text(remainderPart, startX, startY);
+                }
+            } else {
+                // Stage 3 & 4: Arrived at target or paused
+                textAlign(RIGHT, CENTER);
+                text(cityPart, targetX, targetY);
+                if (remainderPart) {
+                    fill(255);
+                    textAlign(RIGHT, CENTER);
+                    text(remainderPart, startX, startY);
+                }
             }
 
-            // Keep text highlighted Yellow during Stage 2, 3 and 4
-            fill(255, 255, 170);
-            text(cityName, curX, curY);
-
         } else if (this.isAnimatingDualMode && this.animationStage === 5) {
-            // Stage 5: Color Cross-fade from Yellow to Cyan
-            const progress = this.getAnimationProgress();
-            let yellowColor = color(255, 255, 170);
-            let finalColor = color(180, 255, 255);
-            fill(lerpColor(yellowColor, finalColor, progress));
-            text(cityName, targetX, targetY);
+            // Stage 5: Transitioning to final state
+            let fullLocation = locManager.otherLocation.cityName || "Other";
+            let cityPart = fullLocation.split(',')[0].trim();
+            fill(180, 255, 255);
+            text(cityPart, targetX, targetY);
 
         } else if (!this.isAnimatingDualMode || this.animationStage >= 6) {
             // Stage 6 or non-animating: Final Cyan
