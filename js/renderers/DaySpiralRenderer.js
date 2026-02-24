@@ -463,7 +463,7 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawSpiral(tk, loc, showMode = 'dual') {
-        let dayColor = color(92, 171, 226);
+        let dayColor = color(80, 155, 210);
         let nightColor = color(20, 80, 100);
         let baseColor = color(90);
 
@@ -501,12 +501,12 @@ class DaySpiralRenderer extends ClockRenderer {
 
             if (this.isAnimatingDualMode && this.animationStage === 4) {
                 const progress = this.getAnimationProgress();
-                const cyanHighlight = color(180, 255, 255);
+                const cyanHighlight = color(200, 255, 255);
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
                     cyanHighlight, cyanHighlight, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, cyanHighlight);
             } else if (this.isAnimatingDualMode && this.animationStage === 5) {
                 const progress = this.getAnimationProgress();
-                const cyanHighlight = color(180, 255, 255);
+                const cyanHighlight = color(200, 255, 255);
                 const curDay = lerpColor(cyanHighlight, dayColor, progress);
                 const curNight = lerpColor(cyanHighlight, nightColor, progress);
                 const curBase = lerpColor(cyanHighlight, baseColor, progress);
@@ -721,7 +721,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Color differentiation: cyan for inner spiral OR when showing only "other" location
         if (isInner || showMode === 'other') {
-            fill(180, 255, 255); // Light Cyan
+            fill(200, 255, 255); // Light Cyan
         } else {
             fill(255, 235, 120); // Yellow for outer spiral
         }
@@ -858,7 +858,7 @@ class DaySpiralRenderer extends ClockRenderer {
         const isDualView = (showMode === 'dual');
         if (!isDualView && !this.hoursVisible) return;
 
-        fill(180, 255, 255); // Light Cyan for inner spiral label
+        fill(200, 255, 255); // Light Cyan for inner spiral label
         const isSingleRendering = (showMode !== 'dual');
         textSize(this.fontSize * (isSingleRendering ? 0.63 : 0.45));
         noStroke();
@@ -1076,7 +1076,7 @@ class DaySpiralRenderer extends ClockRenderer {
         if (showMode !== 'dual') return; // Don't show city label in local or other mode
 
         // 2. Label for Inner Spiral (City Name)
-        fill(180, 255, 255); // Light Cyan for inner spiral label
+        fill(200, 255, 255); // Light Cyan for inner spiral label
         textSize(innerFontSize);
         let cityName = locManager.otherLocation.cityName || "Other";
         if (cityName.includes(',')) cityName = cityName.split(',')[0].trim();
@@ -1112,7 +1112,7 @@ class DaySpiralRenderer extends ClockRenderer {
             let curY = targetY;
 
             // Highlight Color: Cyan (rgb(180, 255, 255))
-            let highlightColor = color(180, 255, 255);
+            let highlightColor = color(200, 255, 255);
             fill(highlightColor);
 
             if (this.animationStage === 1) {
@@ -1165,7 +1165,7 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         } else if (!this.isAnimatingDualMode) {
             // Non-animating: Final Cyan (Shortened city name only near spiral)
-            fill(180, 255, 255);
+            fill(200, 255, 255);
             text(cityName, targetX, targetY);
         }
 
@@ -1896,7 +1896,7 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Set color to match spiral hour numbers
         if (isInner || showMode === 'other') {
-            fill(180, 255, 255); // Light Cyan
+            fill(200, 255, 255); // Light Cyan
         } else {
             fill(255, 235, 120); // Yellow for outer spiral
         }
