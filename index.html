@@ -16,8 +16,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CoolweirdClocks</title>
-  <link rel="stylesheet" href="style.css?v=0.5.8">
-  <link rel="stylesheet" href="modal-fixes.css?v=0.5.8">
+  <link rel="stylesheet" href="style.css?v=0.5.12">
+  <link rel="stylesheet" href="modal-fixes.css?v=0.5.12">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
   <!-- Google tag (gtag.js) -->
@@ -52,6 +52,7 @@
 
         <div class="button-group">
           <button id="btn-about" class="ui-btn">About</button>
+          <div id="pinch-zoom-tip" class="mobile-only">Tip: zoom in for details with pinch-to-zoom!</div>
         </div>
       </div>
 
@@ -98,21 +99,30 @@
 
           <!-- DaySpiral Specific Controls -->
           <div id="controls-dayspiral" class="controls-group">
-            <div id="style-selector" class="selector-box">
-              <div class="selector-title">Select Style</div>
-              <div class="selector-options">
-                <span id="opt-style-classic" class="selector-opt active">Classic</span>
-                <span id="opt-style-spiral" class="selector-opt">Hours in Spiral</span>
+            <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
+            <div id="awakeness-legend" class="hidden">
+              <span class="awakeness-line-sample"></span>
+              <span class="legend-text">= Both Awake</span>
+            </div>
+            <div class="selectors-row">
+              <div id="style-selector" class="selector-box">
+                <div class="selector-title">Select Style</div>
+                <div class="selector-options">
+                  <span id="opt-style-dial" class="selector-opt active">Dial</span>
+                  <span id="opt-style-spiral" class="selector-opt">Ribbon</span>
+                </div>
+              </div>
+              <div id="toshow-selector" class="selector-box hidden">
+                <div class="selector-title">To Show</div>
+                <div class="selector-options">
+                  <span id="opt-show-other" class="selector-opt"><span class="color-other">Other Only</span></span>
+                  <span id="opt-show-dual" class="selector-opt active"><span class="color-other">Other</span>+<span
+                      class="color-local">Local</span></span>
+                  <span id="opt-show-local" class="selector-opt"><span class="color-local">Local Only</span></span>
+                </div>
               </div>
             </div>
-            <div class="horizontal-row">
-              <div id="awakeness-legend" class="hidden">
-                <span class="awakeness-line-sample"></span>
-                <span class="legend-text">= Both Awake</span>
-              </div>
-              <button id="btn-dayspiral-hours" class="ui-btn">Hours</button>
-              <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
-            </div>
+            <button id="btn-dayspiral-hours" class="ui-btn" style="display:none;">Hours</button>
           </div>
 
           <!-- Mobius Specific Controls (Hidden by default) -->
@@ -145,7 +155,7 @@
       <!-- Modal: Select Location (Restored to Original) -->
       <div id="modal-select-location" class="modal-content large hidden">
         <button class="modal-close">&times;</button>
-        <h2 style="text-align: center;">Select Location</h2>
+        <h2 style="text-align: center;">Select Other Location</h2>
         <div class="modal-body">
           <div class="location-section">
             <h3>Preset Locations</h3>
@@ -170,7 +180,7 @@
           <hr>
           <div class="button-row-split">
             <button id="btn-open-manual" class="ui-btn wide-btn">Manual Lat/Long</button>
-            <button id="btn-use-gps" class="ui-btn wide-btn">Your Location</button>
+            <button id="btn-use-gps" class="ui-btn wide-btn">Clear Other Location</button>
           </div>
         </div>
         <div class="modal-actions">
@@ -334,14 +344,14 @@
   <!-- THREE.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <script src="sketch.js?v=0.5.7"></script>
+  <script src="sketch.js?v=0.5.12"></script>
 
   <!-- App Modules -->
-  <script src="js/TimeKeeper.js?v=0.5.7"></script>
-  <script src="js/LocationManager.js?v=0.5.7"></script>
-  <script src="js/ClockRenderer.js?v=0.5.7"></script>
-  <script src="js/renderers/DaySpiralRenderer.js?v=0.5.7"></script>
-  <script src="js/renderers/MobiusRenderer.js?v=0.5.7"></script>
+  <script src="js/TimeKeeper.js?v=0.5.12"></script>
+  <script src="js/LocationManager.js?v=0.5.12"></script>
+  <script src="js/ClockRenderer.js?v=0.5.12"></script>
+  <script src="js/renderers/DaySpiralRenderer.js?v=0.5.12"></script>
+  <script src="js/renderers/MobiusRenderer.js?v=0.5.12"></script>
 </body>
 
 </html>
