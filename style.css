@@ -16,9 +16,10 @@
   --input-bg: #222;
   --input-border: #444;
   --link-color: #ADFF2F;
-  --warning-color: #e6cf60;
   --modal-overlay-bg: rgba(0, 0, 0, 0.85);
   --modal-bg: #1a1a1a;
+  --color-local: rgb(255, 235, 120);
+  --color-other: rgb(180, 255, 255);
 }
 
 /* --- Base Reset --- */
@@ -98,6 +99,14 @@ body {
 /* --- Visibility Classes --- */
 .hidden {
   display: none !important;
+}
+
+.color-local {
+  color: var(--color-local) !important;
+}
+
+.color-other {
+  color: var(--color-other) !important;
 }
 
 .mobile-only {

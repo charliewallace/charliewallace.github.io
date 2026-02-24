@@ -46,7 +46,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v1.0.0 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.5.12 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -1575,12 +1575,30 @@ function updateUIElements() {
     } else {
       // Reset color & opacity when not animating
       if (localeEl) {
-        if (localeEl.style.color !== '') localeEl.style.color = '';
         if (localeEl.style.opacity !== '') localeEl.style.opacity = '';
+
+        // Dynamic Color Assignment (Locale Title - Mobile Only)
+        localeEl.classList.remove('color-local', 'color-other');
+        if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
+          if (DaySpiralShowMode === 'other') localeEl.classList.add('color-other');
+          else if (DaySpiralShowMode === 'local') localeEl.classList.add('color-local');
+          // Dual: Mobile title is a combination, we keep it neutral/white or pick primary?
+          // User didn't specify mobile combination, but following the "top line yellow, bottom cyan" logic:
+          // Mobile only has one line for title. Let's keep it neutral if dual.
+        }
       }
       if (locDescEl) {
-        if (locDescEl.style.color !== '') locDescEl.style.color = '';
         if (locDescEl.style.opacity !== '') locDescEl.style.opacity = '';
+
+        // Dynamic Color Assignment (Location Description - Desktop)
+        locDescEl.classList.remove('color-local', 'color-other');
+        if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
+          if (DaySpiralShowMode === 'other' || DaySpiralShowMode === 'dual') {
+            locDescEl.classList.add('color-other'); // Cyan in Other and Dual (Bottom line)
+          } else if (DaySpiralShowMode === 'local') {
+            locDescEl.classList.add('color-local');
+          }
+        }
       }
     }
   }
@@ -1614,6 +1632,10 @@ function updateUIElements() {
       const isDualTimeMode = locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer;
 
       if (isDualTimeMode) {
+        // Reset colors
+        timeLargeEl.classList.remove('color-local', 'color-other');
+        if (timeEl) timeEl.classList.remove('color-local', 'color-other');
+
         // DaySpiral Dual Mode: Respect DaySpiralShowMode
         if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'other') {
           // "Other Only" mode: Show the Other location's time
@@ -1621,11 +1643,19 @@ function updateUIElements() {
           timeLargeEl.textContent = otherTimeStr;
           if (timeEl) timeEl.textContent = otherTimeStr;
           setDualTimeClass(false);
+
+          // Apply Cyan
+          timeLargeEl.classList.add('color-other');
+          if (timeEl) timeEl.classList.add('color-other');
         } else if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'local') {
           // "Local Only" mode
           timeLargeEl.textContent = userTimeStr;
           if (timeEl) timeEl.textContent = userTimeStr;
           setDualTimeClass(false);
+
+          // Apply Yellow
+          timeLargeEl.classList.add('color-local');
+          if (timeEl) timeEl.classList.add('color-local');
         } else {
           // "Other+Local" mode: Show LOCAL time (User's time) as the primary with "Local " prefix
           const combinedStr = "Local " + userTimeStr;
@@ -1634,19 +1664,33 @@ function updateUIElements() {
           if (timeEl) timeEl.textContent = combinedStr;
           // Apply smaller font for dual time
           setDualTimeClass(true);
+
+          // Apply Yellow (Top line)
+          timeLargeEl.classList.add('color-local');
+          if (timeEl) timeEl.classList.add('color-local');
         }
       } else if (locManager && locManager.hasOtherLocation() && activeRenderer === mobiusRenderer) {
-        // Mobius Mode with an Other Location set (e.g. switched from DaySpiral):
-        // Display the Other Location's time (Substitution behavior).
+        // Mobius Mode with an Other Location set: Cyan (Substitution)
         const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, true);
         timeLargeEl.textContent = otherTimeStr;
         if (timeEl) timeEl.textContent = otherTimeStr;
         setDualTimeClass(false);
+
+        timeLargeEl.classList.remove('color-local', 'color-other');
+        timeLargeEl.classList.add('color-other');
+        if (timeEl) {
+          timeEl.classList.remove('color-local', 'color-other');
+          timeEl.classList.add('color-other');
+        }
       } else {
         // standard single local time
         timeLargeEl.textContent = userTimeStr;
         if (timeEl) timeEl.textContent = userTimeStr;
         setDualTimeClass(false);
+
+        // Reset to default white
+        timeLargeEl.classList.remove('color-local', 'color-other');
+        if (timeEl) timeEl.classList.remove('color-local', 'color-other');
       }
     }
   }
