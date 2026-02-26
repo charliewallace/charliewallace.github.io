@@ -1826,11 +1826,11 @@ class DaySpiralRenderer extends ClockRenderer {
         if (shouldDrawMain) {
             if (tk.sunriseTime && typeof tk.sunriseTime.totalSeconds === 'number') {
                 this._drawRibbonTime(tk.sunriseTime, this.xSpiral, this.ySpiral, this.radiusSpiral,
-                    false, this.spiralStrokeWeight);
+                    false, this.spiralStrokeWeight, 0, showMode);
             }
             if (tk.sunsetTime && typeof tk.sunsetTime.totalSeconds === 'number') {
                 this._drawRibbonTime(tk.sunsetTime, this.xSpiral, this.ySpiral, this.radiusSpiral,
-                    false, this.spiralStrokeWeight);
+                    false, this.spiralStrokeWeight, 0, showMode);
             }
         }
 
