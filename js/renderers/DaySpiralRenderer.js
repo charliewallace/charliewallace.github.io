@@ -1330,9 +1330,9 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Pass 2: Clean
             this._resetShadow();
+            this._drawHourHandGeometry(hourAngle, connR, handWeight, true);
             this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'trailing');
             this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'leading-mask');
-            this._drawHourHandGeometry(hourAngle, connR, handWeight, true);
         }
 
         this._resetShadow();
@@ -1402,9 +1402,9 @@ class DaySpiralRenderer extends ClockRenderer {
 
             // Pass 2: Clean
             this._resetShadow();
+            this._drawHourHandGeometry(hourRads, connR, hourWeight, true);
             this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'trailing');
             this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'leading-mask');
-            this._drawHourHandGeometry(hourRads, connR, hourWeight, true);
         }
 
         this._resetShadow();
@@ -1584,13 +1584,13 @@ class DaySpiralRenderer extends ClockRenderer {
             // ONLY redraw a very tiny portion of the leading edge arcs right at the joints (PI and 0).
             // This small segment purely masks the shadow from the trailing edge endpoints.
             // By keeping the `maskAngle` extremely small, it naturally won't reach the curved spiral track.
-            let maskAngle = 0.05; // tiny ~3 degree slice - just enough to cover the shadow's width
+            let maskAngle = 0.65; // ~37 degrees, wide enough to symmetrically cover the thick square endcap of the hour hand stub
 
             // Left joint
-            arc(startX + radius, 0, radius * 2, radius * 2, PI - maskAngle, PI + capOffsetAngle);
+            arc(startX + radius, 0, radius * 2, radius * 2, PI - maskAngle, PI + maskAngle);
 
             // Right joint
-            arc(endX - radius, 0, radius * 2, radius * 2, -capOffsetAngle, maskAngle);
+            arc(endX - radius, 0, radius * 2, radius * 2, -maskAngle, maskAngle);
         } else {
             // Trailing edge (counter-clockwise-side, y < 0, above spiral)
             // Left Arc (from inner-straight-edge PI - offset to top-edge 1.5*PI)
