@@ -316,7 +316,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // Draw hands - hide during dual mode transition
         const shouldHideHands = this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5;
         if (!shouldHideHands) {
-            this.drawHands(activeTk);
+            this.drawHands(activeTk, showMode);
         }
 
         this.drawAmPmIndicators(showMode);
@@ -1268,15 +1268,15 @@ class DaySpiralRenderer extends ClockRenderer {
 
     // ... (GMT, etc)
 
-    drawHands(tk) {
+    drawHands(tk, showMode = 'dual') {
         if (this.style === 'SpiralHours') {
-            this.drawHandsLegacySpiral(tk);
+            this.drawHandsLegacySpiral(tk, showMode);
         } else {
-            this.drawHandsDial(tk);
+            this.drawHandsDial(tk, showMode);
         }
     }
 
-    drawHandsDial(tk) {
+    drawHandsDial(tk, showMode = 'dual') {
         push();
         let handColor = color(255);
         stroke(handColor);
@@ -1316,7 +1316,7 @@ class DaySpiralRenderer extends ClockRenderer {
         let hIdx = Math.floor((tk.hours + tk.minutes / 60) / 24.0 * totalPoints);
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
 
-        let radii = this._getOvalTipRadii(hIdx);
+        let radii = this._getOvalTipRadii(hIdx, showMode);
         let handWeight = Math.max(3, this.secondaryStrokeWeight * 1.2);
 
         // Pass 1: Shadow (and Base Body)
@@ -1333,7 +1333,7 @@ class DaySpiralRenderer extends ClockRenderer {
         pop();
     }
 
-    drawHandsLegacySpiral(tk) {
+    drawHandsLegacySpiral(tk, showMode = 'dual') {
         // Legacy "Hours in Spiral" Hand Logic
         push();
         let handColor = color(255);
@@ -1420,7 +1420,7 @@ class DaySpiralRenderer extends ClockRenderer {
         let hIdx = Math.floor((theHour / 24.0) * totalPointsH);
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
 
-        let radii = this._getOvalTipRadii(hIdx);
+        let radii = this._getOvalTipRadii(hIdx, showMode);
 
         // Pass 1: Shadow
         let connR = this._drawHourHandOvalTip(hourRads, radii.min, radii.max);
@@ -1539,31 +1539,33 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     // Helper to calculate the min/max radii for the oval tip at a given time index
-    _getOvalTipRadii(hIdx) {
+    _getOvalTipRadii(hIdx, showMode = 'dual') {
+        const isDual = (showMode === 'dual');
+
         // Clamp index
         if (hIdx < 0) hIdx = 0;
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
 
-        // Default to Outer/Single Spiral center
-        let rCenter = this.radiusSpiral[hIdx];
         let rMin, rMax;
 
-        if (this.isDualLocationMode && this.radiusSpiralInner && this.radiusSpiralInner[hIdx]) {
+        if (isDual && this.isDualLocationMode && this.radiusSpiralInner && this.radiusSpiralInner[hIdx]) {
+            // DUAL MODE: Span FROM Inner Edge of Inner Spiral TO Outer Edge of Outer Spiral
+            let rOuterCenter = this.radiusSpiral[hIdx];
             let rInnerCenter = this.radiusSpiralInner[hIdx];
 
-            // Bounds: Inner Edge of Inner Spiral -> Outer Edge of Outer Spiral
-            // Sync with generateSpiralPoints weights
-            let innerW = this.innerStrokeWeight || this.spiralStrokeWeight;
-            let outerW = this.outerStrokeWeight || this.spiralStrokeWeight;
+            let innerW = this.innerStrokeWeight || this.secondaryStrokeWeight;
+            let outerW = this.dualModeStrokeWeight;
 
             rMin = rInnerCenter - (innerW / 2);
-            rMax = rCenter + (outerW / 2);
-
+            rMax = rOuterCenter + (outerW / 2);
         } else {
-            // Single Mode
-            let w = this.spiralStrokeWeight;
-            rMin = rCenter - (w / 2);
-            rMax = rCenter + (w / 2);
+            // SINGLE MODE: Span only the active spiral (Local-Only or Other-Only)
+            // In 'Other Only' mode, it uses the outer track (radiusSpiral)
+            let rCenter = this.radiusSpiral[hIdx];
+            let weight = this.singleModeStrokeWeight;
+
+            rMin = rCenter - (weight / 2);
+            rMax = rCenter + (weight / 2);
         }
 
         return { min: rMin, max: rMax };
@@ -1577,19 +1579,19 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
         strokeCap(ROUND);
 
-        let w = this.fontSize * 1.1; // Width of capsule (tangential)
+        let spiralWidth = rMax - rMin;
+        let w = this.fontSize * 1.1; // Restored original width (tangential)
 
         translate(this.centerX, this.centerY);
         rotate(hourAngle);
 
         rectMode(CORNERS);
-        let padding = 4;
-        // Reduced extra padding further as requested (0.48 -> 0.32)
-        let extra = (this.fontSize * 0.32) + padding;
+        let halfW = w / 2;
+        // User confirmed 15% padding on each side is correct for length
+        let extra = spiralWidth * 0.15;
 
         let startX = rMin - extra;
         let endX = rMax + extra;
-        let halfW = w / 2;
 
         rect(startX, -halfW, endX, halfW, halfW);
 
