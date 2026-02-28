@@ -1331,6 +1331,7 @@ class DaySpiralRenderer extends ClockRenderer {
             // Pass 2: Clean
             this._resetShadow();
             this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'trailing');
+            this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'leading-mask');
             this._drawHourHandGeometry(hourAngle, connR, handWeight, true);
         }
 
@@ -1402,6 +1403,7 @@ class DaySpiralRenderer extends ClockRenderer {
             // Pass 2: Clean
             this._resetShadow();
             this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'trailing');
+            this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'leading-mask');
             this._drawHourHandGeometry(hourRads, connR, hourWeight, true);
         }
 
@@ -1549,7 +1551,8 @@ class DaySpiralRenderer extends ClockRenderer {
         push();
         noFill();
         stroke(255);
-        strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
+        let weight = Math.max(1.2, this.secondaryStrokeWeight * 0.35);
+        strokeWeight(weight);
         strokeCap(ROUND);
 
         let spiralWidth = rMax - rMin;
@@ -1565,22 +1568,53 @@ class DaySpiralRenderer extends ClockRenderer {
         let endX = rMax + extra;
         let radius = halfW;
 
+        // Calculate angular offset to compensate for the ROUND cap's overhang
+        // The cap extends by weight/2, which corresponds to an angle of (weight/2)/radius on the arc.
+        let capOffsetAngle = (weight / 2) / radius;
+
         if (layer === 'leading') {
             // Leading edge (clockwise-side, y > 0, beneath spiral)
-            // Left Arc (from inner-straight-edge PI to bottom-edge HALF_PI)
-            arc(startX + radius, 0, radius * 2, radius * 2, HALF_PI, PI);
+            // Left Arc (from inner-straight-edge PI + offset to bottom-edge HALF_PI)
+            arc(startX + radius, 0, radius * 2, radius * 2, HALF_PI, PI + capOffsetAngle);
             // Bottom edge
             line(startX + radius, radius, endX - radius, radius);
-            // Right Arc (from bottom-edge HALF_PI to outer-straight-edge 0)
-            arc(endX - radius, 0, radius * 2, radius * 2, 0, HALF_PI);
+            // Right Arc (from bottom-edge HALF_PI to outer-straight-edge 0 - offset)
+            arc(endX - radius, 0, radius * 2, radius * 2, -capOffsetAngle, HALF_PI);
+        } else if (layer === 'leading-mask') {
+            // ONLY redraw parts of the leading edge that are STRICTLY outside 
+            // the spiral boundaries [rMin, rMax] to perfectly mask the trailing shadow.
+
+            // Left side (inside the spiral: x < rMin)
+            drawingContext.save();
+            drawingContext.beginPath();
+            drawingContext.rect(-this.diameter, -this.diameter, this.diameter + rMin, this.diameter * 2);
+            drawingContext.clip();
+
+            arc(startX + radius, 0, radius * 2, radius * 2, HALF_PI, PI + capOffsetAngle);
+            if (startX + radius < rMin) {
+                line(startX + radius, radius, rMin, radius);
+            }
+            drawingContext.restore();
+
+            // Right side (outside the spiral: x > rMax)
+            drawingContext.save();
+            drawingContext.beginPath();
+            drawingContext.rect(rMax, -this.diameter, this.diameter * 2, this.diameter * 2);
+            drawingContext.clip();
+
+            arc(endX - radius, 0, radius * 2, radius * 2, -capOffsetAngle, HALF_PI);
+            if (endX - radius > rMax) {
+                line(rMax, radius, endX - radius, radius);
+            }
+            drawingContext.restore();
         } else {
             // Trailing edge (counter-clockwise-side, y < 0, above spiral)
-            // Left Arc (from inner-straight-edge PI to top-edge 1.5*PI)
-            arc(startX + radius, 0, radius * 2, radius * 2, PI, PI + HALF_PI);
+            // Left Arc (from inner-straight-edge PI - offset to top-edge 1.5*PI)
+            arc(startX + radius, 0, radius * 2, radius * 2, PI - capOffsetAngle, PI + HALF_PI);
             // Top edge
             line(startX + radius, -radius, endX - radius, -radius);
-            // Right Arc (from top-edge 1.5*PI to outer-straight-edge TWO_PI/0)
-            arc(endX - radius, 0, radius * 2, radius * 2, PI + HALF_PI, TWO_PI);
+            // Right Arc (from top-edge 1.5*PI to outer-straight-edge TWO_PI/0 + offset)
+            arc(endX - radius, 0, radius * 2, radius * 2, PI + HALF_PI, TWO_PI + capOffsetAngle);
         }
 
         pop();
