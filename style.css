@@ -1077,11 +1077,15 @@ screen and (max-height: 600px) {
   }
 
   #top-left-container {
+    top: 4px;
+    left: 8px;
     max-width: 250px;
     max-height: 40%;
   }
 
   #top-right-container {
+    top: 4px;
+    right: 8px;
     max-width: 200px;
   }
 
