@@ -262,17 +262,8 @@ body {
   pointer-events: auto;
 }
 
-#awakeness-legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-  margin-right: 8px;
-  white-space: nowrap;
-}
-
 #awakeness-legend.hidden {
-  display: none;
+  display: none !important;
 }
 
 .awakeness-line-sample {
@@ -416,6 +407,8 @@ body {
   /* Desktop gap between selectors */
   align-items: flex-end;
 }
+
+
 
 #awakeness-legend {
   margin-bottom: 2px;
@@ -1146,6 +1139,23 @@ screen and (max-height: 600px) {
   .ui-btn {
     font-size: 0.85rem;
     padding: 6px 9px;
+  }
+
+  /* Reduce height of bottom right container and position it lower */
+  #bottom-right-container {
+    bottom: 4px;
+    /* Lower right container to save space above */
+    right: 8px;
+  }
+
+  /* Compact the DaySpiral controls to save vertical space without becoming too wide */
+  #controls-dayspiral {
+    gap: 4px !important;
+  }
+
+  /* Pack gear and legend tightly */
+  #awakeness-legend {
+    margin-bottom: 2px !important;
   }
 
   /* Mobius Setup Landscape Layout */

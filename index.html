@@ -99,26 +99,33 @@
 
           <!-- DaySpiral Specific Controls -->
           <div id="controls-dayspiral" class="controls-group">
-            <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
-            <div id="awakeness-legend" class="hidden">
-              <span class="awakeness-line-sample"></span>
-              <span class="legend-text">= Both Awake</span>
-            </div>
             <div class="selectors-row">
-              <div id="style-selector" class="selector-box">
-                <div class="selector-title">Select Style</div>
-                <div class="selector-options">
-                  <span id="opt-style-dial" class="selector-opt active">Dial</span>
-                  <span id="opt-style-spiral" class="selector-opt">Ribbon</span>
+              <div class="setup-and-style-group"
+                style="display:flex; flex-direction:row; align-items:flex-end; gap:6px;">
+                <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings"
+                  style="margin-bottom: 2px;">⚙️</button>
+                <div id="style-selector" class="selector-box">
+                  <div class="selector-title">Select Style</div>
+                  <div class="selector-options">
+                    <span id="opt-style-dial" class="selector-opt active">Dial</span>
+                    <span id="opt-style-spiral" class="selector-opt">Ribbon</span>
+                  </div>
                 </div>
               </div>
-              <div id="toshow-selector" class="selector-box hidden">
-                <div class="selector-title">To Show</div>
-                <div class="selector-options">
-                  <span id="opt-show-other" class="selector-opt"><span class="color-other">Other Only</span></span>
-                  <span id="opt-show-dual" class="selector-opt active"><span class="color-other">Other</span>+<span
-                      class="color-local">Local</span></span>
-                  <span id="opt-show-local" class="selector-opt"><span class="color-local">Local Only</span></span>
+              <div class="legend-and-show-group"
+                style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+                <div id="awakeness-legend" class="hidden">
+                  <span class="awakeness-line-sample"></span>
+                  <span class="legend-text">= Both Awake</span>
+                </div>
+                <div id="toshow-selector" class="selector-box hidden">
+                  <div class="selector-title">To Show</div>
+                  <div class="selector-options">
+                    <span id="opt-show-other" class="selector-opt"><span class="color-other">Other Only</span></span>
+                    <span id="opt-show-dual" class="selector-opt active"><span class="color-other">Other</span>+<span
+                        class="color-local">Local</span></span>
+                    <span id="opt-show-local" class="selector-opt"><span class="color-local">Local Only</span></span>
+                  </div>
                 </div>
               </div>
             </div>
