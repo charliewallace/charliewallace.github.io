@@ -311,12 +311,19 @@ class DaySpiralRenderer extends ClockRenderer {
             this.drawHourLabels();
         }
 
-        this.drawSpiral(activeTk, locManager, showMode);
-
         // Draw hands - hide during dual mode transition
         const shouldHideHands = this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5;
+
+        // INTERWEAVING LAYER 1: Leading edge of capsule (BENEATH spiral)
         if (!shouldHideHands) {
-            this.drawHands(activeTk, showMode);
+            this.drawHands(activeTk, showMode, 'leading');
+        }
+
+        this.drawSpiral(activeTk, locManager, showMode);
+
+        // INTERWEAVING LAYER 2: Trailing edge of capsule, stem, and other hands (ABOVE spiral)
+        if (!shouldHideHands) {
+            this.drawHands(activeTk, showMode, 'trailing');
         }
 
         this.drawAmPmIndicators(showMode);
@@ -1268,50 +1275,42 @@ class DaySpiralRenderer extends ClockRenderer {
 
     // ... (GMT, etc)
 
-    drawHands(tk, showMode = 'dual') {
+    drawHands(tk, showMode = 'dual', layer = 'trailing') {
         if (this.style === 'SpiralHours') {
-            this.drawHandsLegacySpiral(tk, showMode);
+            this.drawHandsLegacySpiral(tk, showMode, layer);
         } else {
-            this.drawHandsDial(tk, showMode);
+            this.drawHandsDial(tk, showMode, layer);
         }
     }
 
-    drawHandsDial(tk, showMode = 'dual') {
+    drawHandsDial(tk, showMode = 'dual', layer = 'trailing') {
         push();
         let handColor = color(255);
         stroke(handColor);
         strokeCap(ROUND);
-        this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
-
-        // Dial logic (Time on the outer ring mostly, but Hour hand follows spiral? 
-        // Actually DaySpiral description says "Hour hand tip follows the day spiral")
-        // So Dial should ALSO follow the spiral for the hour hand?
-        // "Hour hand tip follows the day spiral, making 1 turn for AM and 1 for PM."
-
-        // Yes, even in Dial mode, the hour hand tracks the spiral.
-        // The difference is mainly the face/ticks style.
-
-        // Let's use the unified logic but cleaner.
 
         let secAngle = map(Math.floor(tk.seconds), 0, 60, 0, TWO_PI) - HALF_PI;
         let minAngle = map(tk.minutes + tk.seconds / 60, 0, 60, 0, TWO_PI) - HALF_PI;
-        // Hour angle (0-24 mapped to 0-4PI)
         let hourAngle = map(tk.hours + tk.minutes / 60, 0, 24, 0, TWO_PI * 2) - HALF_PI;
 
-        // Radii for Dial:
         let faceRadius = this.faceDiameter / 2;
         let rSec = faceRadius * 0.96;
         let rMin = rSec * 0.90;
 
-        // Draw Second Hand
-        strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
-        line(this.centerX, this.centerY, this.centerX + cos(secAngle) * rSec, this.centerY + sin(secAngle) * rSec);
+        // Layer-specific rendering
+        if (layer === 'trailing') {
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
 
-        // Draw Minute Hand
-        strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
-        line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
+            // Draw Second Hand
+            strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
+            line(this.centerX, this.centerY, this.centerX + cos(secAngle) * rSec, this.centerY + sin(secAngle) * rSec);
 
-        // Draw Hour Hand (Two-Pass: Shadow then Clean)
+            // Draw Minute Hand
+            strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
+            line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
+        }
+
+        // Hour Hand Calculations
         let totalPoints = this.numPointsPerTurn * 2;
         let hIdx = Math.floor((tk.hours + tk.minutes / 60) / 24.0 * totalPoints);
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
@@ -1319,38 +1318,31 @@ class DaySpiralRenderer extends ClockRenderer {
         let radii = this._getOvalTipRadii(hIdx, showMode);
         let handWeight = Math.max(3, this.secondaryStrokeWeight * 1.2);
 
-        // Pass 1: Shadow (and Base Body)
-        // Shadow is already active from top of function
-        let connR = this._drawHourHandOvalTip(hourAngle, radii.min, radii.max);
-        this._drawHourHandGeometry(hourAngle, connR, handWeight);
+        if (layer === 'leading') {
+            // Draw leading side underneath spiral
+            this._resetShadow();
+            this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'leading');
+        } else {
+            // Pass 1: Shadow
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)');
+            let connR = this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'trailing');
+            this._drawHourHandGeometry(hourAngle, connR, handWeight, true);
 
-        // Pass 2: Clean Body (Covers shadow artifacts)
-        this._resetShadow();
-        this._drawHourHandOvalTip(hourAngle, radii.min, radii.max);
-        this._drawHourHandGeometry(hourAngle, connR, handWeight);
+            // Pass 2: Clean
+            this._resetShadow();
+            this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'trailing');
+            this._drawHourHandGeometry(hourAngle, connR, handWeight, true);
+        }
 
         this._resetShadow();
         pop();
     }
 
-    drawHandsLegacySpiral(tk, showMode = 'dual') {
+    drawHandsLegacySpiral(tk, showMode = 'dual', layer = 'trailing') {
         // Legacy "Hours in Spiral" Hand Logic
         push();
         let handColor = color(255);
         stroke(handColor);
-        this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
-
-        // Legacy hand weights (scaled)
-        // Sec: 4 * FontScaleFactor
-        // Min: 8 * FontScaleFactor
-        // Hour: 19 * FontScaleFactor
-        let scale = this.fontScale || 1; // Need to ensure fontScale is set in resize
-        // Actually this.fontSize is ~ 40*fontScale. So fontScale ~ fontSize/40.
-        let localScale = this.fontSize / 40.0;
-
-        let secWeight = 4 * localScale;
-        let minWeight = 8 * localScale;
-        let hourWeight = 19 * localScale;
 
         // Time Values
         let theSec = tk.seconds; // float
@@ -1361,76 +1353,57 @@ class DaySpiralRenderer extends ClockRenderer {
         let minRads = map(theMin, 0, 60, 0, TWO_PI) - HALF_PI;
         let hourRads = map(theHour, 0, 24, 0, TWO_PI * 2) - HALF_PI;
 
-        // --- Calculate Radii using Legacy Logic ---
+        let localScale = this.fontSize / 40.0;
+        let secWeight = 4 * localScale;
+        let minWeight = 8 * localScale;
+        let hourWeight = 19 * localScale;
 
-        // Spiral Array Indexing
-        // iiSpiral = int((Val / Max) * NumSpiralPointsPerTurn [ * 2 if 24h]);
-
-        let idxMax = this.numPointsPerTurn * this.numTurns; // total valid points
-
-        // 1. Hour Radius
-        let iiHour = Math.floor((theHour / 24) * this.numPointsPerTurn * 2);
-        let hoursRadius = this.clockDiameter / 4; // Fallback
-
-        if (iiHour < idxMax && this.radiusSpiral[iiHour]) {
-            // HoursRadius = RadiusSpiralArray[iiSpiral] - ClockDiameter * 0.035;
-            hoursRadius = this.radiusSpiral[iiHour] - this.clockDiameter * 0.035;
-        }
-
-        // 2. Minute Radius
-        // iiSpiral = int((theMin / 60) * NumSpiralPointsPerTurn);
-        let iiMin = Math.floor((theMin / 60) * this.numPointsPerTurn);
-        if (tk.hours >= 12) { // IsPM
-            iiMin += this.numPointsPerTurn;
-        }
-        let minutesRadius = 0;
-        if (iiMin < idxMax && this.radiusSpiral[iiMin]) {
-            // MinutesRadius = RadiusSpiralArray[iiSpiral] + 0.4 * SpiralLineWidth / 2;
-            minutesRadius = this.radiusSpiral[iiMin] + 0.4 * (this.spiralStrokeWeight / 2);
-        } else {
-            minutesRadius = this.clockDiameter * 0.35; // Fallback
-        }
-
-        // 3. Second Radius
-        // iiSpiral = int((theSec / 60) * NumSpiralPointsPerTurn);
+        // Radii Calculations
+        let idxMax = this.numPointsPerTurn * this.numTurns;
         let iiSec = Math.floor((theSec / 60) * this.numPointsPerTurn);
-        if (tk.hours >= 12) { // IsPM
-            iiSec += this.numPointsPerTurn;
+        if (tk.hours >= 12) iiSec += this.numPointsPerTurn;
+        let secondsRadius = (iiSec < idxMax && this.radiusSpiral[iiSec]) ?
+            this.radiusSpiral[iiSec] + 0.7 * (this.spiralStrokeWeight / 2) : this.clockDiameter * 0.4;
+
+        let iiMin = Math.floor((theMin / 60) * this.numPointsPerTurn);
+        if (tk.hours >= 12) iiMin += this.numPointsPerTurn;
+        let minutesRadius = (iiMin < idxMax && this.radiusSpiral[iiMin]) ?
+            this.radiusSpiral[iiMin] + 0.4 * (this.spiralStrokeWeight / 2) : this.clockDiameter * 0.35;
+
+        // Layer-specific rendering
+        if (layer === 'trailing') {
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
+
+            // Second Hand
+            strokeWeight(secWeight);
+            line(this.centerX, this.centerY, this.centerX + cos(secRads) * secondsRadius, this.centerY + sin(secRads) * secondsRadius);
+
+            // Minute Hand
+            strokeWeight(minWeight);
+            line(this.centerX, this.centerY, this.centerX + cos(minRads) * minutesRadius, this.centerY + sin(minRads) * minutesRadius);
         }
-        let secondsRadius = 0;
-        if (iiSec < idxMax && this.radiusSpiral[iiSec]) {
-            // SecondsRadius = RadiusSpiralArray[iiSpiral] + 0.7 * SpiralLineWidth / 2;
-            secondsRadius = this.radiusSpiral[iiSec] + 0.7 * (this.spiralStrokeWeight / 2);
-        } else {
-            secondsRadius = this.clockDiameter * 0.4; // Fallback
-        }
 
-        // --- Draw Hands ---
-
-        // Second Hand
-        strokeWeight(secWeight);
-        line(this.centerX, this.centerY, this.centerX + cos(secRads) * secondsRadius, this.centerY + sin(secRads) * secondsRadius);
-
-        // Minute Hand
-        strokeWeight(minWeight);
-        line(this.centerX, this.centerY, this.centerX + cos(minRads) * minutesRadius, this.centerY + sin(minRads) * minutesRadius);
-
-        // Hour Hand (Two-Pass: Shadow then Clean)
+        // Hour Hand
         let totalPointsH = this.numPointsPerTurn * 2;
         let hIdx = Math.floor((theHour / 24.0) * totalPointsH);
         if (hIdx >= this.radiusSpiral.length) hIdx = this.radiusSpiral.length - 1;
 
         let radii = this._getOvalTipRadii(hIdx, showMode);
 
-        // Pass 1: Shadow
-        let connR = this._drawHourHandOvalTip(hourRads, radii.min, radii.max);
-        this._drawHourHandGeometry(hourRads, connR, hourWeight);
+        if (layer === 'leading') {
+            this._resetShadow();
+            this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'leading');
+        } else {
+            // Pass 1: Shadow
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)');
+            let connR = this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'trailing');
+            this._drawHourHandGeometry(hourRads, connR, hourWeight, true);
 
-        // Pass 2: Clean
-        this._resetShadow();
-        this._drawHourHandOvalTip(hourRads, radii.min, radii.max);
-        this._drawHourHandGeometry(hourRads, connR, hourWeight);
-
+            // Pass 2: Clean
+            this._resetShadow();
+            this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'trailing');
+            this._drawHourHandGeometry(hourRads, connR, hourWeight, true);
+        }
 
         this._resetShadow();
         pop();
@@ -1572,7 +1545,7 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     // Helper to draw the rounded rectangle tip
-    _drawHourHandOvalTip(hourAngle, rMin, rMax) {
+    _drawHourHandOvalTip(hourAngle, rMin, rMax, layer = 'trailing') {
         push();
         noFill();
         stroke(255);
@@ -1580,39 +1553,56 @@ class DaySpiralRenderer extends ClockRenderer {
         strokeCap(ROUND);
 
         let spiralWidth = rMax - rMin;
-        let w = this.fontSize * 1.1; // Restored original width (tangential)
+        let w = this.fontSize * 1.1;
 
         translate(this.centerX, this.centerY);
         rotate(hourAngle);
 
-        rectMode(CORNERS);
         let halfW = w / 2;
-        // User confirmed 15% padding on each side is correct for length
         let extra = spiralWidth * 0.15;
 
         let startX = rMin - extra;
         let endX = rMax + extra;
+        let radius = halfW;
 
-        rect(startX, -halfW, endX, halfW, halfW);
+        if (layer === 'leading') {
+            // Leading edge (clockwise-side, y > 0, beneath spiral)
+            // Left Arc (from inner-straight-edge PI to bottom-edge HALF_PI)
+            arc(startX + radius, 0, radius * 2, radius * 2, HALF_PI, PI);
+            // Bottom edge
+            line(startX + radius, radius, endX - radius, radius);
+            // Right Arc (from bottom-edge HALF_PI to outer-straight-edge 0)
+            arc(endX - radius, 0, radius * 2, radius * 2, 0, HALF_PI);
+        } else {
+            // Trailing edge (counter-clockwise-side, y < 0, above spiral)
+            // Left Arc (from inner-straight-edge PI to top-edge 1.5*PI)
+            arc(startX + radius, 0, radius * 2, radius * 2, PI, PI + HALF_PI);
+            // Top edge
+            line(startX + radius, -radius, endX - radius, -radius);
+            // Right Arc (from top-edge 1.5*PI to outer-straight-edge TWO_PI/0)
+            arc(endX - radius, 0, radius * 2, radius * 2, PI + HALF_PI, TWO_PI);
+        }
 
         pop();
 
-        return startX; // Return where the hand should stop
+        return startX;
     }
 
+
     // Helper to draw the hour hand geometry (Round Center, Square Tip)
-    _drawHourHandGeometry(hourAngle, length, weight) {
+    _drawHourHandGeometry(hourAngle, length, weight, isStem = false) {
+        if (!isStem) return; // Only draw the stem when explicitly requested
+
         push();
         stroke(255);
         strokeWeight(weight);
 
-        // Round Center (Point) - drawn as a zero-length line with ROUND cap? 
-        // Or actually just a point. Point with weight works.
+        // Round Center (Point)
         strokeCap(ROUND);
         point(this.centerX, this.centerY);
 
-        // Square Tip (Line)
-        strokeCap(SQUARE); // Square end at the tip
+        // Square Tip (Line) - drawn as a single stem connecting to the capsule
+        strokeCap(SQUARE);
         line(this.centerX, this.centerY, this.centerX + cos(hourAngle) * length, this.centerY + sin(hourAngle) * length);
 
         pop();
