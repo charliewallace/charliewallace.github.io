@@ -1581,32 +1581,16 @@ class DaySpiralRenderer extends ClockRenderer {
             // Right Arc (from bottom-edge HALF_PI to outer-straight-edge 0 - offset)
             arc(endX - radius, 0, radius * 2, radius * 2, -capOffsetAngle, HALF_PI);
         } else if (layer === 'leading-mask') {
-            // ONLY redraw parts of the leading edge that are STRICTLY outside 
-            // the spiral boundaries [rMin, rMax] to perfectly mask the trailing shadow.
+            // ONLY redraw a very tiny portion of the leading edge arcs right at the joints (PI and 0).
+            // This small segment purely masks the shadow from the trailing edge endpoints.
+            // By keeping the `maskAngle` extremely small, it naturally won't reach the curved spiral track.
+            let maskAngle = 0.05; // tiny ~3 degree slice - just enough to cover the shadow's width
 
-            // Left side (inside the spiral: x < rMin)
-            drawingContext.save();
-            drawingContext.beginPath();
-            drawingContext.rect(-this.diameter, -this.diameter, this.diameter + rMin, this.diameter * 2);
-            drawingContext.clip();
+            // Left joint
+            arc(startX + radius, 0, radius * 2, radius * 2, PI - maskAngle, PI + capOffsetAngle);
 
-            arc(startX + radius, 0, radius * 2, radius * 2, HALF_PI, PI + capOffsetAngle);
-            if (startX + radius < rMin) {
-                line(startX + radius, radius, rMin, radius);
-            }
-            drawingContext.restore();
-
-            // Right side (outside the spiral: x > rMax)
-            drawingContext.save();
-            drawingContext.beginPath();
-            drawingContext.rect(rMax, -this.diameter, this.diameter * 2, this.diameter * 2);
-            drawingContext.clip();
-
-            arc(endX - radius, 0, radius * 2, radius * 2, -capOffsetAngle, HALF_PI);
-            if (endX - radius > rMax) {
-                line(rMax, radius, endX - radius, radius);
-            }
-            drawingContext.restore();
+            // Right joint
+            arc(endX - radius, 0, radius * 2, radius * 2, -capOffsetAngle, maskAngle);
         } else {
             // Trailing edge (counter-clockwise-side, y < 0, above spiral)
             // Left Arc (from inner-straight-edge PI - offset to top-edge 1.5*PI)
