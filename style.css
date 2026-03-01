@@ -940,7 +940,8 @@ screen and (max-height: 600px) {
     flex-direction: column;
     align-items: flex-start;
     bottom: 15px;
-    /* Lowered to fill corner space */
+    left: 6px;
+    /* Tighter left edge on mobile */
   }
 
   @media (orientation: portrait) {
@@ -968,11 +969,13 @@ screen and (max-height: 600px) {
   #bottom-right-container {
     align-items: flex-end;
     pointer-events: auto;
+    right: 6px;
+    /* Tighter right edge on mobile */
   }
 
   #controls-dayspiral .selectors-row {
-    gap: 2px;
-    /* Super tight gap on mobile to prevent overlap */
+    gap: 4px;
+    /* Column gap between left and right groups */
   }
 
   /* Target the selectors inside the dock to carve out horizontal space */
@@ -1002,8 +1005,16 @@ screen and (max-height: 600px) {
   }
 
   #btn-zen {
-    min-width: 50px;
-    /* Narrower for Zen */
+    min-width: 40px;
+    /* ~20% narrower than 50px */
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  #btn-fullscreen {
+    padding-left: 7px;
+    /* ~10% tighter padding */
+    padding-right: 7px;
   }
 
   /* Specific Tweaks - INCREASED SIZE */
