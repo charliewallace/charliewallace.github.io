@@ -324,7 +324,6 @@ body {
 
 #pinch-zoom-tip {
   font-size: 0.95rem;
-  font-weight: bold;
   font-style: italic;
   color: #fff;
   margin-top: 2px;
@@ -1125,7 +1124,6 @@ screen and (max-height: 600px) {
 
   #pinch-zoom-tip {
     font-size: 0.95rem;
-    font-weight: bold;
     max-width: 200px;
   }
 
