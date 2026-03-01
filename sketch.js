@@ -1557,7 +1557,10 @@ function updateUIElements() {
         }
         locDescEl.textContent = desc;
       } else {
+        // No other location: local city name in yellow
         locDescEl.textContent = LocaleTitle;
+        locDescEl.classList.remove('color-local', 'color-other');
+        if (activeRenderer === daySpiralRenderer) locDescEl.classList.add('color-local');
       }
     }
 
@@ -1577,14 +1580,11 @@ function updateUIElements() {
         // Dynamic Color Assignment (Locale Title - Mobile Only)
         localeEl.classList.remove('color-local', 'color-other');
         if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
-          if (DaySpiralShowMode === 'other') localeEl.classList.add('color-other');
-          else if (DaySpiralShowMode === 'local') {
-            // locale-title shows the OTHER city name in local-only mode, so it should be cyan
-            localeEl.classList.add('color-other');
-          } else {
-            // Dual mode: locale-title shows other city+time (second line), should be cyan
-            localeEl.classList.add('color-other');
-          }
+          // Always cyan when there is an other location (other city shown in all modes)
+          localeEl.classList.add('color-other');
+        } else if (activeRenderer === daySpiralRenderer) {
+          // No other location: local time shown, use local color
+          localeEl.classList.add('color-local');
         }
       }
       if (locDescEl) {
@@ -1595,6 +1595,9 @@ function updateUIElements() {
         if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
           // Always cyan: the desc line always shows the other city (in all modes when other exists)
           locDescEl.classList.add('color-other');
+        } else if (activeRenderer === daySpiralRenderer) {
+          // No other location: local city name shown, use local color
+          locDescEl.classList.add('color-local');
         }
       }
     }
@@ -1681,14 +1684,17 @@ function updateUIElements() {
           timeEl.classList.add('color-other');
         }
       } else {
-        // standard single local time
+        // Standard single local time (no other location) — yellow
         timeLargeEl.textContent = userTimeStr;
         if (timeEl) timeEl.textContent = userTimeStr;
         setDualTimeClass(false);
 
-        // Reset to default white
         timeLargeEl.classList.remove('color-local', 'color-other');
         if (timeEl) timeEl.classList.remove('color-local', 'color-other');
+        if (activeRenderer === daySpiralRenderer) {
+          timeLargeEl.classList.add('color-local');
+          if (timeEl) timeEl.classList.add('color-local');
+        }
       }
     }
   }
@@ -1700,6 +1706,12 @@ function updateUIElements() {
       // Fallback for simple mode
       timeEl.textContent = TimeString;
     }
+  }
+
+  // Enable/disable the "Clear Other Location" button based on whether one is set
+  var clearOtherBtn = document.getElementById('btn-use-gps');
+  if (clearOtherBtn) {
+    clearOtherBtn.disabled = !(locManager && locManager.hasOtherLocation());
   }
 
   // NEW: Update GPS OK Button State (Now in Modal)

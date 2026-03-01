@@ -603,6 +603,13 @@ body {
   transform: scale(0.98);
 }
 
+.ui-btn:disabled,
+.ui-btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .ui-btn.small {
   padding: 4px 8px;
   font-size: 0.75rem;
