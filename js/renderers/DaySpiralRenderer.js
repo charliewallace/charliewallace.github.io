@@ -1317,19 +1317,6 @@ class DaySpiralRenderer extends ClockRenderer {
         let rSec = faceRadius * 0.96;
         let rMin = rSec * 0.90;
 
-        // Layer-specific rendering
-        if (layer === 'trailing') {
-            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
-
-            // Draw Second Hand
-            strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
-            line(this.centerX, this.centerY, this.centerX + cos(secAngle) * rSec, this.centerY + sin(secAngle) * rSec);
-
-            // Draw Minute Hand
-            strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
-            line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
-        }
-
         // Hour Hand Calculations
         let totalPoints = this.numPointsPerTurn * 2;
         let hIdx = Math.floor((tk.hours + tk.minutes / 60) / 24.0 * totalPoints);
@@ -1343,8 +1330,11 @@ class DaySpiralRenderer extends ClockRenderer {
             this._resetShadow();
             this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'leading');
         } else {
+            // Layer-specific rendering (trailing)
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
+
+            // Draw Hour Hand FIRST (bottom)
             // Pass 1: Shadow
-            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)');
             let connR = this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'trailing');
             this._drawHourHandGeometry(hourAngle, connR, handWeight, true);
 
@@ -1353,6 +1343,15 @@ class DaySpiralRenderer extends ClockRenderer {
             this._drawHourHandGeometry(hourAngle, connR, handWeight, true);
             this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'trailing');
             this._drawHourHandOvalTip(hourAngle, radii.min, radii.max, 'leading-mask');
+
+            // Draw Minute Hand ABOVE hour hand
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)');
+            strokeWeight(Math.max(2.2, this.secondaryStrokeWeight * 0.7));
+            line(this.centerX, this.centerY, this.centerX + cos(minAngle) * rMin, this.centerY + sin(minAngle) * rMin);
+
+            // Draw Second Hand ABOVE minute hand (topmost)
+            strokeWeight(Math.max(1.2, this.secondaryStrokeWeight * 0.35));
+            line(this.centerX, this.centerY, this.centerX + cos(secAngle) * rSec, this.centerY + sin(secAngle) * rSec);
         }
 
         this._resetShadow();
@@ -1391,19 +1390,6 @@ class DaySpiralRenderer extends ClockRenderer {
         let minutesRadius = (iiMin < idxMax && this.radiusSpiral[iiMin]) ?
             this.radiusSpiral[iiMin] + 0.4 * (this.spiralStrokeWeight / 2) : this.clockDiameter * 0.35;
 
-        // Layer-specific rendering
-        if (layer === 'trailing') {
-            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
-
-            // Second Hand
-            strokeWeight(secWeight);
-            line(this.centerX, this.centerY, this.centerX + cos(secRads) * secondsRadius, this.centerY + sin(secRads) * secondsRadius);
-
-            // Minute Hand
-            strokeWeight(minWeight);
-            line(this.centerX, this.centerY, this.centerX + cos(minRads) * minutesRadius, this.centerY + sin(minRads) * minutesRadius);
-        }
-
         // Hour Hand
         let totalPointsH = this.numPointsPerTurn * 2;
         let hIdx = Math.floor((theHour / 24.0) * totalPointsH);
@@ -1415,8 +1401,11 @@ class DaySpiralRenderer extends ClockRenderer {
             this._resetShadow();
             this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'leading');
         } else {
+            // Trailing layer: draw hour FIRST (bottom), then minute, then second (top)
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)'); // Hand shadows
+
+            // Hour Hand FIRST (bottommost of the three)
             // Pass 1: Shadow
-            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)');
             let connR = this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'trailing');
             this._drawHourHandGeometry(hourRads, connR, hourWeight, true);
 
@@ -1425,6 +1414,15 @@ class DaySpiralRenderer extends ClockRenderer {
             this._drawHourHandGeometry(hourRads, connR, hourWeight, true);
             this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'trailing');
             this._drawHourHandOvalTip(hourRads, radii.min, radii.max, 'leading-mask');
+
+            // Minute Hand ABOVE hour hand
+            this._applyShadow(10, 0, 4, 'rgba(0,0,0,0.5)');
+            strokeWeight(minWeight);
+            line(this.centerX, this.centerY, this.centerX + cos(minRads) * minutesRadius, this.centerY + sin(minRads) * minutesRadius);
+
+            // Second Hand ABOVE minute hand (topmost)
+            strokeWeight(secWeight);
+            line(this.centerX, this.centerY, this.centerX + cos(secRads) * secondsRadius, this.centerY + sin(secRads) * secondsRadius);
         }
 
         this._resetShadow();
