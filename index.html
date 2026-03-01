@@ -16,8 +16,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CoolweirdClocks</title>
-  <link rel="stylesheet" href="style.css?v=0.5.12">
-  <link rel="stylesheet" href="modal-fixes.css?v=0.5.12">
+  <link rel="stylesheet" href="style.css?v=0.6.0">
+  <link rel="stylesheet" href="modal-fixes.css?v=0.6.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
   <!-- Google tag (gtag.js) -->
@@ -99,28 +99,39 @@
 
           <!-- DaySpiral Specific Controls -->
           <div id="controls-dayspiral" class="controls-group">
-            <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
-            <div id="awakeness-legend" class="hidden">
-              <span class="awakeness-line-sample"></span>
-              <span class="legend-text">= Both Awake</span>
-            </div>
-            <div class="selectors-row">
-              <div id="style-selector" class="selector-box">
-                <div class="selector-title">Select Style</div>
-                <div class="selector-options">
-                  <span id="opt-style-dial" class="selector-opt active">Dial</span>
-                  <span id="opt-style-spiral" class="selector-opt">Ribbon</span>
+            <div class="selectors-row" style="display:flex; flex-direction:row; align-items:flex-end; gap:4px;">
+
+              <!-- Left Column: Setup + Style -->
+              <div class="setup-and-style-group"
+                style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
+                <div id="style-selector" class="selector-box" style="margin-bottom: 0;">
+                  <div class="selector-title">Select Style</div>
+                  <div class="selector-options">
+                    <span id="opt-style-dial" class="selector-opt active">Dial</span>
+                    <span id="opt-style-spiral" class="selector-opt">Ribbon</span>
+                  </div>
                 </div>
               </div>
-              <div id="toshow-selector" class="selector-box hidden">
-                <div class="selector-title">To Show</div>
-                <div class="selector-options">
-                  <span id="opt-show-other" class="selector-opt"><span class="color-other">Other Only</span></span>
-                  <span id="opt-show-dual" class="selector-opt active"><span class="color-other">Other</span>+<span
-                      class="color-local">Local</span></span>
-                  <span id="opt-show-local" class="selector-opt"><span class="color-local">Local Only</span></span>
+
+              <!-- Right Column: Legend + To Show -->
+              <div class="legend-and-show-group"
+                style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                <div id="awakeness-legend" class="hidden" style="margin-bottom: 0; margin-left: 2px;">
+                  <span class="awakeness-line-sample"></span>
+                  <span class="legend-text">= Both Awake</span>
+                </div>
+                <div id="toshow-selector" class="selector-box hidden" style="margin-bottom: 0;">
+                  <div class="selector-title">To Show</div>
+                  <div class="selector-options">
+                    <span id="opt-show-other" class="selector-opt"><span class="color-other">Other Only</span></span>
+                    <span id="opt-show-dual" class="selector-opt active"><span class="color-other">Other</span>+<span
+                        class="color-local">Local</span></span>
+                    <span id="opt-show-local" class="selector-opt"><span class="color-local">Local Only</span></span>
+                  </div>
                 </div>
               </div>
+
             </div>
             <button id="btn-dayspiral-hours" class="ui-btn" style="display:none;">Hours</button>
           </div>
@@ -344,14 +355,14 @@
   <!-- THREE.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <script src="sketch.js?v=0.5.12"></script>
+  <script src="sketch.js?v=0.6.0"></script>
 
   <!-- App Modules -->
-  <script src="js/TimeKeeper.js?v=0.5.12"></script>
-  <script src="js/LocationManager.js?v=0.5.12"></script>
-  <script src="js/ClockRenderer.js?v=0.5.12"></script>
-  <script src="js/renderers/DaySpiralRenderer.js?v=0.5.12"></script>
-  <script src="js/renderers/MobiusRenderer.js?v=0.5.12"></script>
+  <script src="js/TimeKeeper.js?v=0.6.0"></script>
+  <script src="js/LocationManager.js?v=0.6.0"></script>
+  <script src="js/ClockRenderer.js?v=0.6.0"></script>
+  <script src="js/renderers/DaySpiralRenderer.js?v=0.6.0"></script>
+  <script src="js/renderers/MobiusRenderer.js?v=0.6.0"></script>
 </body>
 
 </html>

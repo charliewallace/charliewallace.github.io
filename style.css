@@ -262,17 +262,8 @@ body {
   pointer-events: auto;
 }
 
-#awakeness-legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-  margin-right: 8px;
-  white-space: nowrap;
-}
-
 #awakeness-legend.hidden {
-  display: none;
+  display: none !important;
 }
 
 .awakeness-line-sample {
@@ -416,6 +407,8 @@ body {
   /* Desktop gap between selectors */
   align-items: flex-end;
 }
+
+
 
 #awakeness-legend {
   margin-bottom: 2px;
@@ -590,7 +583,7 @@ body {
 
 .ui-btn.toggled-on {
   background: var(--warning-color) !important;
-  color: #000 !important;
+  color: #fff !important;
   border-color: #aa8800 !important;
   font-weight: 600;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -608,6 +601,13 @@ body {
 
 .ui-btn:active {
   transform: scale(0.98);
+}
+
+.ui-btn:disabled,
+.ui-btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .ui-btn.small {
@@ -947,7 +947,8 @@ screen and (max-height: 600px) {
     flex-direction: column;
     align-items: flex-start;
     bottom: 15px;
-    /* Lowered to fill corner space */
+    left: 6px;
+    /* Tighter left edge on mobile */
   }
 
   @media (orientation: portrait) {
@@ -975,11 +976,13 @@ screen and (max-height: 600px) {
   #bottom-right-container {
     align-items: flex-end;
     pointer-events: auto;
+    right: 6px;
+    /* Tighter right edge on mobile */
   }
 
   #controls-dayspiral .selectors-row {
-    gap: 2px;
-    /* Super tight gap on mobile to prevent overlap */
+    gap: 4px;
+    /* Column gap between left and right groups */
   }
 
   /* Target the selectors inside the dock to carve out horizontal space */
@@ -1009,8 +1012,16 @@ screen and (max-height: 600px) {
   }
 
   #btn-zen {
-    min-width: 50px;
-    /* Narrower for Zen */
+    min-width: 40px;
+    /* ~20% narrower than 50px */
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  #btn-fullscreen {
+    padding-left: 7px;
+    /* ~10% tighter padding */
+    padding-right: 7px;
   }
 
   /* Specific Tweaks - INCREASED SIZE */
@@ -1084,11 +1095,15 @@ screen and (max-height: 600px) {
   }
 
   #top-left-container {
+    top: 4px;
+    left: 8px;
     max-width: 250px;
     max-height: 40%;
   }
 
   #top-right-container {
+    top: 4px;
+    right: 8px;
     max-width: 200px;
   }
 
@@ -1146,6 +1161,23 @@ screen and (max-height: 600px) {
   .ui-btn {
     font-size: 0.85rem;
     padding: 6px 9px;
+  }
+
+  /* Reduce height of bottom right container and position it lower */
+  #bottom-right-container {
+    bottom: 4px;
+    /* Lower right container to save space above */
+    right: 8px;
+  }
+
+  /* Compact the DaySpiral controls to save vertical space without becoming too wide */
+  #controls-dayspiral {
+    gap: 4px !important;
+  }
+
+  /* Pack gear and legend tightly */
+  #awakeness-legend {
+    margin-bottom: 2px !important;
   }
 
   /* Mobius Setup Landscape Layout */
