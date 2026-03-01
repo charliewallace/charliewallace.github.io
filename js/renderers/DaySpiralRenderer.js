@@ -1070,17 +1070,37 @@ class DaySpiralRenderer extends ClockRenderer {
             innerFontSize = this.fontSize * 0.58; // matching Ribbon inner digitSize
         }
 
-        // 1. Label for Outer Spiral ("Local")
+        // 1. Label for Outer Spiral ("Local" or city name depending on mode)
         // Only show from Stage 5 onwards (after migration and drawing)
-        // HIDE if in 'local' mode (restoring single-mode look)
         if (showMode === 'dual' && (!this.isAnimatingDualMode || this.animationStage >= 5)) {
+            // Dual: show "Local" in yellow next to outer spiral start
+            textSize(outerFontSize);
+            let x1 = this.centerX + this.xSpiral[0] - margin;
+            let y1 = this.centerY + this.ySpiral[0];
+            text("Local", x1, y1);
+        } else if (showMode === 'local') {
+            // Local-only with an other location set: still label the spiral "Local" in yellow
             textSize(outerFontSize);
             let x1 = this.centerX + this.xSpiral[0] - margin;
             let y1 = this.centerY + this.ySpiral[0];
             text("Local", x1, y1);
         }
 
-        if (showMode !== 'dual') return; // Don't show city label in local or other mode
+        if (showMode !== 'dual' && showMode !== 'other') return; // Nothing more for local mode
+
+        if (showMode === 'other') {
+            // Other-only: show city name in cyan next to the (outer) spiral start
+            fill(200, 255, 255);
+            textSize(outerFontSize);
+            let cityName = locManager.otherLocation.cityName || "Other";
+            if (cityName.includes(',')) cityName = cityName.split(',')[0].trim();
+            let x1 = this.centerX + this.xSpiral[0] - margin;
+            let y1 = this.centerY + this.ySpiral[0];
+            text(cityName, x1, y1);
+            this._resetShadow();
+            textStyle(NORMAL);
+            return;
+        }
 
         // 2. Label for Inner Spiral (City Name)
         fill(200, 255, 255); // Light Cyan for inner spiral label
