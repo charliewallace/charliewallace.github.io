@@ -1547,15 +1547,12 @@ function updateUIElements() {
         let desc = locManager.otherLocation.cityName || LocaleTitle;
         // DaySpiral Dual Mode: User wants time next to location name
         if (activeRenderer === daySpiralRenderer) {
-          if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'local') {
-            desc = LocaleTitle; // Local-Only
+          const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false);
+          if (DaySpiralShowMode === 'other') {
+            desc = desc; // other location description only (no time appended)
           } else {
-            const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false); // No seconds
-            if (DaySpiralShowMode === 'other') {
-              desc = desc; // "other location description below but not including the time" for Other-Only
-            } else {
-              desc += " " + otherTimeStr; // Other+Local
-            }
+            // In both 'local' and 'dual' modes, always show other location + its time in cyan on desktop
+            desc += " " + otherTimeStr;
           }
         }
         locDescEl.textContent = desc;
@@ -1581,10 +1578,13 @@ function updateUIElements() {
         localeEl.classList.remove('color-local', 'color-other');
         if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
           if (DaySpiralShowMode === 'other') localeEl.classList.add('color-other');
-          else if (DaySpiralShowMode === 'local') localeEl.classList.add('color-local');
-          // Dual: Mobile title is a combination, we keep it neutral/white or pick primary?
-          // User didn't specify mobile combination, but following the "top line yellow, bottom cyan" logic:
-          // Mobile only has one line for title. Let's keep it neutral if dual.
+          else if (DaySpiralShowMode === 'local') {
+            // locale-title shows the OTHER city name in local-only mode, so it should be cyan
+            localeEl.classList.add('color-other');
+          } else {
+            // Dual mode: locale-title shows other city+time (second line), should be cyan
+            localeEl.classList.add('color-other');
+          }
         }
       }
       if (locDescEl) {
@@ -1593,11 +1593,8 @@ function updateUIElements() {
         // Dynamic Color Assignment (Location Description - Desktop)
         locDescEl.classList.remove('color-local', 'color-other');
         if (locManager && locManager.hasOtherLocation() && activeRenderer === daySpiralRenderer) {
-          if (DaySpiralShowMode === 'other' || DaySpiralShowMode === 'dual') {
-            locDescEl.classList.add('color-other'); // Cyan in Other and Dual (Bottom line)
-          } else if (DaySpiralShowMode === 'local') {
-            locDescEl.classList.add('color-local');
-          }
+          // Always cyan: the desc line always shows the other city (in all modes when other exists)
+          locDescEl.classList.add('color-other');
         }
       }
     }
@@ -1648,10 +1645,11 @@ function updateUIElements() {
           timeLargeEl.classList.add('color-other');
           if (timeEl) timeEl.classList.add('color-other');
         } else if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode === 'local') {
-          // "Local Only" mode
-          timeLargeEl.textContent = userTimeStr;
-          if (timeEl) timeEl.textContent = userTimeStr;
-          setDualTimeClass(false);
+          // "Local Only" mode: show "Local HH:MM" at same smaller size as Other+Local top line
+          const combinedStr = "Local " + userTimeStr;
+          timeLargeEl.textContent = combinedStr;
+          if (timeEl) timeEl.textContent = combinedStr;
+          setDualTimeClass(true); // Use the smaller font to match Other+Local style
 
           // Apply Yellow
           timeLargeEl.classList.add('color-local');
