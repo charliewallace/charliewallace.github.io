@@ -99,12 +99,13 @@
 
           <!-- DaySpiral Specific Controls -->
           <div id="controls-dayspiral" class="controls-group">
-            <div class="selectors-row">
+            <div class="selectors-row" style="display:flex; flex-direction:row; align-items:flex-end; gap:8px;">
+
+              <!-- Left Column: Setup + Style -->
               <div class="setup-and-style-group"
-                style="display:flex; flex-direction:row; align-items:flex-end; gap:6px;">
-                <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings"
-                  style="margin-bottom: 2px;">⚙️</button>
-                <div id="style-selector" class="selector-box">
+                style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
+                <div id="style-selector" class="selector-box" style="margin-bottom: 0;">
                   <div class="selector-title">Select Style</div>
                   <div class="selector-options">
                     <span id="opt-style-dial" class="selector-opt active">Dial</span>
@@ -112,13 +113,15 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Right Column: Legend + To Show -->
               <div class="legend-and-show-group"
-                style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
-                <div id="awakeness-legend" class="hidden">
+                style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                <div id="awakeness-legend" class="hidden" style="margin-bottom: 0; margin-left: 2px;">
                   <span class="awakeness-line-sample"></span>
                   <span class="legend-text">= Both Awake</span>
                 </div>
-                <div id="toshow-selector" class="selector-box hidden">
+                <div id="toshow-selector" class="selector-box hidden" style="margin-bottom: 0;">
                   <div class="selector-title">To Show</div>
                   <div class="selector-options">
                     <span id="opt-show-other" class="selector-opt"><span class="color-other">Other Only</span></span>
@@ -128,6 +131,7 @@
                   </div>
                 </div>
               </div>
+
             </div>
             <button id="btn-dayspiral-hours" class="ui-btn" style="display:none;">Hours</button>
           </div>
