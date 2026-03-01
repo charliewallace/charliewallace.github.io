@@ -1063,6 +1063,28 @@ screen and (max-height: 600px) {
   .input-prompt {
     font-size: 0.75rem;
   }
+
+  /* === Mobile: Compact style/show selectors (hide active item, strip box) === */
+  /* Only applies to Style and To Show selectors; Select Clock is unchanged */
+
+  #style-selector,
+  #toshow-selector {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  #style-selector .selector-title,
+  #toshow-selector .selector-title {
+    display: none;
+  }
+
+  /* Hide the "you are here" active label — only show the arrow switch-buttons */
+  #style-selector .selector-opt.active,
+  #toshow-selector .selector-opt.active {
+    display: none !important;
+  }
 }
 
 /* ===================================================
