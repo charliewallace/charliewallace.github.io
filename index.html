@@ -51,9 +51,9 @@
         </div>
 
         <div class="button-group">
-          <div style="display:flex; flex-direction:row; gap:6px; align-items:center;">
+          <div style="display:flex; flex-direction:row; gap:6px; align-items:stretch;">
             <button id="btn-about" class="ui-btn">About</button>
-            <button id="btn-setup" class="ui-btn">Settings</button>
+            <button id="btn-setup" class="ui-btn gear-btn" title="Settings">⚙️</button>
           </div>
           <div id="pinch-zoom-tip" class="mobile-only">Tip: Pinch<br>to zoom!</div>
         </div>
@@ -92,7 +92,7 @@
         </div>
         <div class="button-row-bottom-left">
           <button id="btn-zen" class="ui-btn">Zen</button>
-          <button id="btn-fullscreen" class="ui-btn">Full Screen</button>
+          <button id="btn-fullscreen" class="ui-btn gear-btn" title="Full Screen">⛶</button>
         </div>
       </div>
 
@@ -118,7 +118,7 @@
 
               <!-- Right Column: Legend + To Show -->
               <div class="legend-and-show-group"
-                style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
                 <div id="awakeness-legend" class="hidden" style="margin-bottom: 0; margin-left: 2px;">
                   <span class="awakeness-line-sample"></span>
                   <span class="legend-text">= Both Awake</span>

@@ -426,15 +426,6 @@ body {
 
 .gear-btn {
   font-size: 1.2rem !important;
-  /* Slightly smaller icon */
-  padding: 0 !important;
-  /* Remove offset padding */
-  min-width: 44px !important;
-  height: 34px;
-  /* Matches standard desktop ui-btn height (~34px) */
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 #precise-hint {
@@ -625,6 +616,17 @@ body {
   font-size: 0.8rem;
   /* Matched to default button size */
   padding: 6px 12px;
+}
+
+/* Icon buttons (Settings, Fullscreen) to match text button heights natively */
+.ui-btn.gear-btn {
+  padding: 6px 8px;
+  /* Slightly narrower horizontal padding for square-ish look */
+  line-height: 1;
+  /* Match height of text */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* --- Links --- */
@@ -977,6 +979,8 @@ screen and (max-height: 600px) {
     align-items: flex-end;
     pointer-events: auto;
     right: 6px;
+    bottom: 15px !important;
+    /* Lifted to match bottom-left container */
     /* Tighter right edge on mobile */
   }
 
@@ -1100,8 +1104,8 @@ screen and (max-height: 600px) {
   #style-selector .selector-opt,
   #toshow-selector .selector-opt {
     width: auto !important;
-    padding: 4px 6px !important;
-    /* Slightly tighter button visually */
+    padding: 4px 8px !important;
+    /* Tighter padding to avoid clock graphic */
     margin: 0 !important;
   }
 
@@ -1111,9 +1115,11 @@ screen and (max-height: 600px) {
   }
 
   .selectors-row {
-    gap: 2px !important;
+    gap: 8px !important;
+    /* Slightly increased gap between columns */
   }
 }
+
 
 /* ===================================================
    RESPONSIVE: Mobile Portrait Specific

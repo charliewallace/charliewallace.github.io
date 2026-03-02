@@ -1438,8 +1438,8 @@ function onFullScreenChange(e) {
   var fsBtn = document.getElementById('btn-fullscreen');
   if (fsBtn) {
     // transition to/from full screen mode
-    fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
-
+    fsBtn.textContent = fs ? '✖' : '⛶';
+    fsBtn.title = fs ? 'Exit Full Screen' : 'Full Screen';
 
   }
 
