@@ -216,16 +216,17 @@ class MobiusRenderer extends ClockRenderer {
 
     resize(w, h) {
         if (!this.camera || !this.renderer) return;
-        this.camera.aspect = w / h;
+        const aspect = w / h;
+        this.camera.aspect = aspect;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
 
-        // Mobile zoom adjustment
-        if (w < 600) {
-            this.camera.position.z = 13.0;
-        } else {
-            this.camera.position.z = 7.2;
+        // Smooth zoom adjustment based on aspect ratio
+        let targetZ = 7.2;
+        if (aspect < 1.0) {
+            targetZ = 7.2 / aspect;
         }
+        this.camera.position.z = Math.min(targetZ, 25.0);
     }
 
     update(tk, loc) {
