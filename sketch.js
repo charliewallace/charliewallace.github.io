@@ -180,6 +180,9 @@ var daySpiralRenderer;
 var mobiusRenderer;
 var activeRenderer;
 
+// NEW Moon Calculation override
+var EnableMoonCalcs = true;
+
 
 
 // Multi-provider IP location fetch with failover support
@@ -875,6 +878,12 @@ function parseUrlHash() {
   var zen = params.get('zen') || params.get('focus');
   var dali = params.get('dali'); // TEST, FINDME
 
+  // Moon calcs toggle
+  var moonParams = params.get('moon');
+  if (moonParams === '0') {
+    EnableMoonCalcs = false;
+  }
+
   // Zen mode
   if (zen === '1') {
     IsZenMode = true;
@@ -1276,6 +1285,11 @@ function updateUrlHash() {
       params.set('otherCity', other.cityName);
     }
     console.log("  🌎 Including alternate location in URL");
+  }
+
+  // Moon computations override
+  if (typeof EnableMoonCalcs !== 'undefined' && !EnableMoonCalcs) {
+    params.set('moon', '0');
   }
 
   // Zen mode
@@ -1933,8 +1947,21 @@ function openDetailsModal() {
     }
 
     // Build a details-grid HTML block for one location
-    function buildGrid(city, tz, lat, lon, sunriseH, sunriseM, sunsetH, sunsetM, dstStr) {
+    function buildGrid(city, tz, lat, lon, sunriseH, sunriseM, sunsetH, sunsetM, dstStr, moonRiseTime, moonSetTime, moonIllum) {
       let tzStr = (tz >= 0 ? "+" : "") + tz;
+
+      let moonInfo = '';
+      if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs) {
+        let riseStr = moonRiseTime ? getFormattedTime(moonRiseTime.hour, moonRiseTime.minute) : "Does not rise";
+        let setStr = moonSetTime ? getFormattedTime(moonSetTime.hour, moonSetTime.minute) : "Does not set";
+        let phaseDisplay = moonIllum ? Math.round(moonIllum.fraction * 100) + "%" : "Unknown";
+        moonInfo = `
+            <p><span class="label">Moonrise</span> <span class="value">${riseStr}</span></p>
+            <p><span class="label">Moonset</span>  <span class="value">${setStr}</span></p>
+            <p><span class="label">Moon Phase</span>  <span class="value">${phaseDisplay}</span></p>
+        `;
+      }
+
       return `
         <div class="details-grid">
           <div class="details-column">
@@ -1947,6 +1974,7 @@ function openDetailsModal() {
             <p><span class="label">Time Zone</span> <span class="value">GMT ${tzStr}</span></p>
             <p><span class="label">Sunrise</span> <span class="value">${getFormattedTime(sunriseH, sunriseM)}</span></p>
             <p><span class="label">Sunset</span>  <span class="value">${getFormattedTime(sunsetH, sunsetM)}</span></p>
+            ${moonInfo}
             ${dstStr ? `<p><span class="label">DST</span> <span class="value">${dstStr}</span></p>` : ''}
           </div>
         </div>`;
@@ -1961,7 +1989,10 @@ function openDetailsModal() {
         LocaleTitle, TzOffset,
         Latitude, Longitude,
         SunriseHour, SunriseMin, SunsetHour, SunsetMin,
-        localDst
+        localDst,
+        timeKeeper ? timeKeeper.moonRiseTime : null,
+        timeKeeper ? timeKeeper.moonSetTime : null,
+        timeKeeper ? timeKeeper.moonPhase : null
       );
 
       // --- Other section ---
@@ -1976,7 +2007,10 @@ function openDetailsModal() {
         other.latitude, other.longitude,
         timeKeeper.otherSunriseTime.hour, timeKeeper.otherSunriseTime.minute,
         timeKeeper.otherSunsetTime.hour, timeKeeper.otherSunsetTime.minute,
-        otherDst
+        otherDst,
+        timeKeeper ? timeKeeper.otherMoonRiseTime : null,
+        timeKeeper ? timeKeeper.otherMoonSetTime : null,
+        timeKeeper ? timeKeeper.otherMoonIllum : null
       );
 
       htmlContent = `
@@ -1998,7 +2032,10 @@ function openDetailsModal() {
         LocaleTitle, TzOffset,
         Latitude, Longitude,
         SunriseHour, SunriseMin, SunsetHour, SunsetMin,
-        dstStr
+        dstStr,
+        timeKeeper ? timeKeeper.moonRiseTime : null,
+        timeKeeper ? timeKeeper.moonSetTime : null,
+        timeKeeper ? timeKeeper.moonIllum : null
       );
     }
 

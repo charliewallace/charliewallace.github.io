@@ -31,6 +31,14 @@ class TimeKeeper {
         this.otherSunsetTime = { hour: 18, minute: 0, totalSeconds: 0 };
         this.otherSunriseHourString = "";
         this.otherSunsetHourString = "";
+
+        // Moon state
+        this.moonRiseTime = null;
+        this.moonSetTime = null;
+        this.otherMoonRiseTime = null;
+        this.otherMoonSetTime = null;
+        this.moonIllum = null; // Stores object: {fraction, phase, angle}
+        this.otherMoonIllum = null;
     }
 
     /**
@@ -90,6 +98,30 @@ class TimeKeeper {
         this.sunriseHourString = this._formatVisTime(rise.hour, rise.minute);
         this.sunsetHourString = this._formatVisTime(set.hour, set.minute);
 
+        // --- Moon Times ---
+        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
+            try {
+                // sketch.js passes negated longitude to this function (West is positive). 
+                // SunCalc expects standard negative longitude for West, so we reverse it.
+                const trueLon = -lon;
+                const moonTimes = SunCalc.getMoonTimes(this.currentDate, lat, trueLon);
+                this.moonRiseTime = this._suncalcDateToTimeObj(moonTimes.rise, tzOffset);
+                this.moonSetTime = this._suncalcDateToTimeObj(moonTimes.set, tzOffset);
+
+                const illumination = SunCalc.getMoonIllumination(this.currentDate);
+                this.moonIllum = illumination;
+            } catch (e) {
+                console.error("SunCalc error:", e);
+                this.moonRiseTime = null;
+                this.moonSetTime = null;
+                this.moonIllum = null;
+            }
+        } else {
+            this.moonRiseTime = null;
+            this.moonSetTime = null;
+            this.moonIllum = null;
+        }
+
         this.updateDayState(); // Re-evaluate day state with new sun times
     }
 
@@ -110,8 +142,45 @@ class TimeKeeper {
         // Format strings
         this.otherSunriseHourString = this._formatVisTime(rise.hour, rise.minute);
         this.otherSunsetHourString = this._formatVisTime(set.hour, set.minute);
+
+        // --- Moon Times ---
+        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
+            try {
+                const trueLon = -lon;
+                const moonTimes = SunCalc.getMoonTimes(this.currentDate, lat, trueLon);
+                this.otherMoonRiseTime = this._suncalcDateToTimeObj(moonTimes.rise, tzOffset);
+                this.otherMoonSetTime = this._suncalcDateToTimeObj(moonTimes.set, tzOffset);
+
+                const illumination = SunCalc.getMoonIllumination(this.currentDate);
+                this.otherMoonIllum = illumination;
+            } catch (e) {
+                console.error("SunCalc error:", e);
+                this.otherMoonRiseTime = null;
+                this.otherMoonSetTime = null;
+                this.otherMoonIllum = null;
+            }
+        } else {
+            this.otherMoonRiseTime = null;
+            this.otherMoonSetTime = null;
+            this.otherMoonIllum = null;
+        }
     }
 
+
+    _suncalcDateToTimeObj(dateObj, tzOffset) {
+        if (!dateObj || isNaN(dateObj.getTime())) return null;
+        const browserOffsetHours = -new Date().getTimezoneOffset() / 60;
+        const diffHours = tzOffset - browserOffsetHours;
+        const targetTime = new Date(dateObj.getTime() + diffHours * 60 * 60 * 1000);
+
+        let hour = targetTime.getHours();
+        let minute = targetTime.getMinutes();
+        return {
+            hour: hour,
+            minute: minute,
+            totalSeconds: hour * 3600 + minute * 60
+        };
+    }
 
     updateDayState() {
         // Logic from sketch.js
