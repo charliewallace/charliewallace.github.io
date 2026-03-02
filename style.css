@@ -1069,21 +1069,49 @@ screen and (max-height: 600px) {
 
   #style-selector,
   #toshow-selector {
-    border: none;
-    background: transparent;
-    padding: 0;
-    margin-bottom: 0;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
   }
 
   #style-selector .selector-title,
   #toshow-selector .selector-title {
-    display: none;
+    display: none !important;
   }
 
-  /* Hide the "you are here" active label — only show the arrow switch-buttons */
+  #style-selector .selector-options,
+  #toshow-selector .selector-options {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    gap: 2px !important;
+  }
+
+  /* Hide the active label — only show the arrow switch-buttons */
   #style-selector .selector-opt.active,
   #toshow-selector .selector-opt.active {
     display: none !important;
+  }
+
+  #style-selector .selector-opt,
+  #toshow-selector .selector-opt {
+    width: auto !important;
+    padding: 4px 6px !important;
+    /* Slightly tighter button visually */
+    margin: 0 !important;
+  }
+
+  /* Tighten the layout now that the box chrome is gone */
+  #controls-dayspiral {
+    width: fit-content !important;
+  }
+
+  .selectors-row {
+    gap: 2px !important;
   }
 }
 
