@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 // Mock browser globals
 global.SunCalc = require('../js/suncalc.js');
@@ -6,7 +7,7 @@ global.Astronomy = require('astronomy-engine');
 global.EnableMoonCalcs = true;
 
 // Evaluate TimeKeeper
-const timeKeeperCode = fs.readFileSync('../js/TimeKeeper.js', 'utf8');
+const timeKeeperCode = fs.readFileSync(path.join(__dirname, '../js/TimeKeeper.js'), 'utf8');
 const tkClass = eval(timeKeeperCode + ';\nTimeKeeper;');
 
 const tk = new tkClass();
@@ -23,9 +24,9 @@ console.log("Moon Set: ", tk._formatVisTime(tk.moonSetTime?.hour || -1, tk.moonS
 console.log("Moon Illum:", tk.moonIllum);
 
 // Calculate for Other location (Melbourne)
-console.log("\nTesting calculateOtherLocationSunTimes (Melbourne AEDT)");
+console.log('\nTesting calculateOtherLocationSunTimes (Melbourne AEDT)');
 tk.calculateOtherLocationSunTimes(-37.8136, +144.9631, 11, false);
-console.log("Other Moon Rise:", tk._formatVisTime(tk.otherMoonRiseTime?.hour || -1, tk.otherMoonRiseTime?.minute || 0));
-console.log("Other Moon Set: ", tk._formatVisTime(tk.otherMoonSetTime?.hour || -1, tk.otherMoonSetTime?.minute || 0));
-console.log("Other Moon Illum:", tk.otherMoonIllum);
-
+console.log('Other Sunrise: ', tk.otherSunriseTime);
+console.log('Other Moon Rise:', tk.otherMoonRiseTime);
+console.log('Other Moon Set: ', tk.otherMoonSetTime);
+console.log('Other Moon Illum:', tk.otherMoonIllum);

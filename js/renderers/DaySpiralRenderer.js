@@ -1767,7 +1767,59 @@ class DaySpiralRenderer extends ClockRenderer {
             this._drawSpiralTime(idxSet, "Set", sunSet, currentX, currentY);
         }
 
+        // Moon times mapping based on showMode
+        let moonRise, moonSet;
+        if (showMode === 'other') {
+            moonRise = tk.otherMoonRiseTime;
+            moonSet = tk.otherMoonSetTime;
+        } else {
+            moonRise = tk.moonRiseTime;
+            moonSet = tk.moonSetTime;
+        }
+
+        if (moonRise && typeof moonRise.totalSeconds === 'number') {
+            if (!this._isTimeTooClose(moonRise, sunRise) && !this._isTimeTooClose(moonRise, sunSet) && this._isNighttime(moonRise, sunRise, sunSet)) {
+                let idxMoonRise = Math.floor((moonRise.totalSeconds / 86400) * totalDailyPts);
+                this._drawSpiralTime(idxMoonRise, "Moon ↑", moonRise, currentX, currentY);
+            }
+        }
+
+        if (moonSet && typeof moonSet.totalSeconds === 'number') {
+            if (!this._isTimeTooClose(moonSet, sunRise) && !this._isTimeTooClose(moonSet, sunSet) && this._isNighttime(moonSet, sunRise, sunSet)) {
+                let idxMoonSet = Math.floor((moonSet.totalSeconds / 86400) * totalDailyPts);
+                this._drawSpiralTime(idxMoonSet, "Moon ↓", moonSet, currentX, currentY);
+            }
+        }
+
         pop();
+    }
+
+    _isNighttime(timeObj, sunriseObj, sunsetObj) {
+        if (!timeObj || !sunriseObj || !sunsetObj) return true; // Default show if missing data
+        if (sunriseObj.hour === -1) return true;  // Always dark
+        if (sunriseObj.hour === -2) return false; // Always light
+
+        const t = timeObj.totalSeconds;
+        const sr = sunriseObj.totalSeconds;
+        const ss = sunsetObj.totalSeconds;
+
+        if (sr < ss) {
+            // Normal day (e.g. sunrise 6am, sunset 6pm)
+            return t < sr || t > ss;
+        } else {
+            // Wrapped day (e.g. sunset 1am, sunrise 8am - night is between them)
+            return t > ss && t < sr;
+        }
+    }
+
+    _isTimeTooClose(t1, t2, thresholdSeconds = 1800) {
+        if (!t1 || !t2 || typeof t1.totalSeconds !== 'number' || typeof t2.totalSeconds !== 'number') return false;
+        let diff = Math.abs(t1.totalSeconds - t2.totalSeconds);
+        // Handle midnight wrap-around
+        if (diff > 43200) { // 12 hours
+            diff = 86400 - diff;
+        }
+        return diff < thresholdSeconds;
     }
 
     _drawSpiralTime(idx, label, timeObj, xArray, yArray) {
@@ -1834,25 +1886,62 @@ class DaySpiralRenderer extends ClockRenderer {
         // Draw local times on main track if in dual or local or other-only mode
         const shouldDrawMain = isLocalOnly || isOtherOnly || isDual;
         if (shouldDrawMain) {
-            if (tk.sunriseTime && typeof tk.sunriseTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.sunriseTime, this.xSpiral, this.ySpiral, this.radiusSpiral,
+            let sunRise = tk.sunriseTime;
+            let sunSet = tk.sunsetTime;
+            let mRise = tk.moonRiseTime;
+            let mSet = tk.moonSetTime;
+
+            // In other-only mode, the proxy tk passes local variables, but we are drawing the "main" outer track with them.
+            if (isOtherOnly) {
+                sunRise = tk.otherSunriseTime || tk.sunriseTime; // fallback if proxy handling differs
+                sunSet = tk.otherSunsetTime || tk.sunsetTime;
+                mRise = tk.otherMoonRiseTime || tk.moonRiseTime;
+                mSet = tk.otherMoonSetTime || tk.moonSetTime;
+            }
+
+            if (sunRise && typeof sunRise.totalSeconds === 'number') {
+                this._drawRibbonTime(sunRise, this.xSpiral, this.ySpiral, this.radiusSpiral,
                     false, this.spiralStrokeWeight, 0, showMode);
             }
-            if (tk.sunsetTime && typeof tk.sunsetTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.sunsetTime, this.xSpiral, this.ySpiral, this.radiusSpiral,
+            if (sunSet && typeof sunSet.totalSeconds === 'number') {
+                this._drawRibbonTime(sunSet, this.xSpiral, this.ySpiral, this.radiusSpiral,
                     false, this.spiralStrokeWeight, 0, showMode);
+            }
+            if (mRise && typeof mRise.totalSeconds === 'number') {
+                if (!this._isTimeTooClose(mRise, sunRise) && !this._isTimeTooClose(mRise, sunSet) && this._isNighttime(mRise, sunRise, sunSet)) {
+                    this._drawRibbonTime(mRise, this.xSpiral, this.ySpiral, this.radiusSpiral,
+                        false, this.spiralStrokeWeight, 0, showMode);
+                }
+            }
+            if (mSet && typeof mSet.totalSeconds === 'number') {
+                if (!this._isTimeTooClose(mSet, sunRise) && !this._isTimeTooClose(mSet, sunSet) && this._isNighttime(mSet, sunRise, sunSet)) {
+                    this._drawRibbonTime(mSet, this.xSpiral, this.ySpiral, this.radiusSpiral,
+                        false, this.spiralStrokeWeight, 0, showMode);
+                }
             }
         }
 
         // Draw other times on inner track ONLY in dual mode
         if (this.isDualLocationMode && isDual) {
             const tzDiffHours = locManager.getTimezoneOffsetDifference();
+            let oSunRise = tk.otherSunriseTime;
+            let oSunSet = tk.otherSunsetTime;
 
-            if (tk.otherSunriseTime && typeof tk.otherSunriseTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.otherSunriseTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+            if (oSunRise && typeof oSunRise.totalSeconds === 'number') {
+                this._drawRibbonTime(oSunRise, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
             }
-            if (tk.otherSunsetTime && typeof tk.otherSunsetTime.totalSeconds === 'number') {
-                this._drawRibbonTime(tk.otherSunsetTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+            if (oSunSet && typeof oSunSet.totalSeconds === 'number') {
+                this._drawRibbonTime(oSunSet, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+            }
+            if (tk.otherMoonRiseTime && typeof tk.otherMoonRiseTime.totalSeconds === 'number') {
+                if (!this._isTimeTooClose(tk.otherMoonRiseTime, oSunRise) && !this._isTimeTooClose(tk.otherMoonRiseTime, oSunSet) && this._isNighttime(tk.otherMoonRiseTime, oSunRise, oSunSet)) {
+                    this._drawRibbonTime(tk.otherMoonRiseTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+                }
+            }
+            if (tk.otherMoonSetTime && typeof tk.otherMoonSetTime.totalSeconds === 'number') {
+                if (!this._isTimeTooClose(tk.otherMoonSetTime, oSunRise) && !this._isTimeTooClose(tk.otherMoonSetTime, oSunSet) && this._isNighttime(tk.otherMoonSetTime, oSunRise, oSunSet)) {
+                    this._drawRibbonTime(tk.otherMoonSetTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+                }
             }
         }
     }
@@ -1882,6 +1971,13 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Get position on inner edge of spiral track
         let r = rArray[idx] - (strokeWeight / 2);
+
+        let fontScale = isInner ? 0.32 : 0.55; // Inner: 0.58 * 0.55 ≈ 0.32
+
+        // Move outer spiral annotations slightly outward in dual mode
+        if (!isInner && this.isDualLocationMode && showMode === 'dual') {
+            r += (this.fontSize * fontScale) * 0.33;
+        }
 
         // Calculate angle for rotation
         let theta = (TWO_PI * (idx / this.numPointsPerTurn)) - HALF_PI;
@@ -1914,7 +2010,6 @@ class DaySpiralRenderer extends ClockRenderer {
 
         // Match Ribbon hour number styling
         // Font size matches hour numbers: smaller for inner spiral
-        let fontScale = isInner ? 0.32 : 0.55; // Inner: 0.58 * 0.55 ≈ 0.32
         textSize(this.fontSize * fontScale);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
