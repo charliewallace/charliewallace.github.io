@@ -68,6 +68,7 @@ Try it here: [dayspiral.com/#clock=mobius&rotation=1&zen=1](https://dayspiral.co
 - **Three.js**: 3D rendering for complex geometries like the Mobius strip.
 - **IP Geolocation**: `ipwho.is` for CORS-friendly automatic location detection.
 - **OpenStreetMap & GeoNames**: For city lookup and accurate timezone data.
+- **Astronomy Engine**: High-precision calculations for moon rise, set, and illumination phases.
 
 ## Credits
 
