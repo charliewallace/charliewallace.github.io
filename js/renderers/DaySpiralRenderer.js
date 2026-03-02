@@ -274,9 +274,16 @@ class DaySpiralRenderer extends ClockRenderer {
                 // Swap solar times to be the "primary" for this frame
                 sunriseTime: timeKeeper.otherSunriseTime,
                 sunsetTime: timeKeeper.otherSunsetTime,
+                // Swap lunar times to be the "primary" for this frame
+                moonRiseTime: timeKeeper.otherMoonRiseTime,
+                moonSetTime: timeKeeper.otherMoonSetTime,
+                moonIllum: timeKeeper.otherMoonIllum,
                 // Keep references to others for dual calculation if needed
                 otherSunriseTime: timeKeeper.otherSunriseTime,
-                otherSunsetTime: timeKeeper.otherSunsetTime
+                otherSunsetTime: timeKeeper.otherSunsetTime,
+                otherMoonRiseTime: timeKeeper.otherMoonRiseTime,
+                otherMoonSetTime: timeKeeper.otherMoonSetTime,
+                otherMoonIllum: timeKeeper.otherMoonIllum
             };
         }
 
@@ -471,7 +478,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
     drawSpiral(tk, loc, showMode = 'dual') {
         let dayColor = color(80, 155, 210);
-        let nightColor = color(20, 80, 100);
+        let nightColor = color(25, 95, 115); // Lightened to represent moonlit night
+        let moonDownColor = color(15, 65, 85); // Darker blue for moonless night
         let baseColor = color(90);
 
         const isOtherOnly = (showMode === 'other');
@@ -499,7 +507,8 @@ class DaySpiralRenderer extends ClockRenderer {
             // This means 0 rotation offset because the "0" of the spiral is now that city's midnight.
             // Note: tk already contains the otherCity's sunTimes if isOtherOnly (via proxy update)
             this._drawSpiralTrack(this.xSpiral, this.ySpiral, tk.sunriseTime, tk.sunsetTime,
-                dayColor, nightColor, baseColor, true, 0, sw);
+                dayColor, nightColor, baseColor, true, 0, sw, 1.0, null,
+                tk.moonRiseTime, tk.moonSetTime, moonDownColor);
         }
 
         // 2. Draw Inner Spiral (Dual Mode ONLY)
@@ -510,18 +519,22 @@ class DaySpiralRenderer extends ClockRenderer {
                 const progress = this.getAnimationProgress();
                 const cyanHighlight = color(200, 255, 255);
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
-                    cyanHighlight, cyanHighlight, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, cyanHighlight);
+                    cyanHighlight, cyanHighlight, baseColor, true, tzDiffHours, this.innerStrokeWeight, progress, cyanHighlight,
+                    tk.otherMoonRiseTime, tk.otherMoonSetTime, cyanHighlight);
             } else if (this.isAnimatingDualMode && this.animationStage === 5) {
                 const progress = this.getAnimationProgress();
                 const cyanHighlight = color(200, 255, 255);
                 const curDay = lerpColor(cyanHighlight, dayColor, progress);
                 const curNight = lerpColor(cyanHighlight, nightColor, progress);
+                const curMoonDown = lerpColor(cyanHighlight, moonDownColor, progress);
                 const curBase = lerpColor(cyanHighlight, baseColor, progress);
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
-                    curDay, curNight, curBase, true, tzDiffHours, this.innerStrokeWeight);
+                    curDay, curNight, curBase, true, tzDiffHours, this.innerStrokeWeight, 1.0, null,
+                    tk.otherMoonRiseTime, tk.otherMoonSetTime, curMoonDown);
             } else {
                 this._drawSpiralTrack(this.xSpiralInner, this.ySpiralInner, tk.otherSunriseTime, tk.otherSunsetTime,
-                    dayColor, nightColor, baseColor, true, tzDiffHours, this.innerStrokeWeight);
+                    dayColor, nightColor, baseColor, true, tzDiffHours, this.innerStrokeWeight, 1.0, null,
+                    tk.otherMoonRiseTime, tk.otherMoonSetTime, moonDownColor);
             }
         }
         this._resetShadow();
@@ -539,124 +552,93 @@ class DaySpiralRenderer extends ClockRenderer {
          * @param {boolean} hasValidLocation - Whether location data is valid
          * @param {number} tzOffsetHours - Timezone offset in hours (for rotation adjustment)
          */
-    _drawSpiralTrack(xArray, yArray, sunriseTime, sunsetTime, dayColor, nightColor, baseColor, hasValidLocation, tzOffsetHours, weight = null, limitProgress = 1.0, tintColor = null) {
-        // 1. Draw Base Track (Gray)
+    _drawSpiralTrack(xArray, yArray, sunriseTime, sunsetTime, dayColor, nightColor, baseColor, hasValidLocation, tzOffsetHours, weight = null, limitProgress = 1.0, tintColor = null, moonRiseTime = null, moonSetTime = null, moonDownColor = null) {
         if (weight !== null) strokeWeight(weight);
         else strokeWeight(this.spiralStrokeWeight);
 
-        stroke((tintColor !== null) ? tintColor : baseColor);
-        this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
-        beginShape();
+        strokeCap(SQUARE);
+        noFill();
+
         let currentLen = Math.floor(xArray.length * limitProgress);
-        for (let i = 0; i < currentLen; i++) {
-            vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
-        }
-        endShape();
-
-        // Calculate sunset/sunrise indices with timezone offset adjustment
-        let riseSeconds = 6 * 3600; // 6 AM default
-        let setSeconds = 18 * 3600; // 6 PM default
-
-        if (hasValidLocation && typeof sunriseTime.totalSeconds === 'number') {
-            riseSeconds = sunriseTime.totalSeconds;
-            setSeconds = sunsetTime.totalSeconds;
-
-            // Apply timezone rotation offset (shift the times by the timezone difference)
-            if (tzOffsetHours !== 0) {
-                const offsetSeconds = tzOffsetHours * 3600;
-                riseSeconds -= offsetSeconds;
-                setSeconds -= offsetSeconds;
-
-                // Wrap to 0-86400 range (24 hours)
-                if (riseSeconds < 0) riseSeconds += 86400;
-                if (riseSeconds >= 86400) riseSeconds -= 86400;
-                if (setSeconds < 0) setSeconds += 86400;
-                if (setSeconds >= 86400) setSeconds -= 86400;
-            }
-        }
-
         let len = xArray.length;
         let totalDailyPts = this.numPointsPerTurn * 2;
 
-        let idxRise = Math.floor((riseSeconds / 86400) * totalDailyPts);
-        let idxSet = Math.floor((setSeconds / 86400) * totalDailyPts);
+        const getIdx = (timeObj) => {
+            if (!timeObj || typeof timeObj.totalSeconds !== 'number') return null;
+            let secs = timeObj.totalSeconds;
+            if (tzOffsetHours !== 0) {
+                secs -= tzOffsetHours * 3600;
+                if (secs < 0) secs += 86400;
+                if (secs >= 86400) secs -= 86400;
+            }
+            let idx = Math.floor((secs / 86400) * totalDailyPts);
+            return Math.max(0, Math.min(idx, len - 1));
+        };
 
-        // Clamp
-        idxRise = Math.max(0, Math.min(idxRise, len - 1));
-        idxSet = Math.max(0, Math.min(idxSet, len - 1));
+        const idxRise = getIdx(sunriseTime) ?? Math.floor((6 * 3600 / 86400) * totalDailyPts);
+        const idxSet = getIdx(sunsetTime) ?? Math.floor((18 * 3600 / 86400) * totalDailyPts);
 
-        // Only draw day/night colors if we are NOT waiting for location data
-        // Explicitly check the global variable (accessible in browser environment)
-        if (typeof IsLoadingLocation === 'undefined' || !IsLoadingLocation) {
-            if (idxRise < idxSet) {
-                // NORMAL CASE: Sunrise occurs before Sunset in the 24-hour spiral
-                // 2. Draw Night (Midnight -> Sunrise)
-                stroke((tintColor !== null) ? tintColor : nightColor);
-                if (idxRise > 0) {
+        const isNight = (i) => {
+            if (idxRise < idxSet) return (i <= idxRise || i >= idxSet);
+            if (idxRise > idxSet) return (i >= idxSet && i <= idxRise);
+            return true; // default
+        };
+
+        const idxMRise = getIdx(moonRiseTime);
+        const idxMSet = getIdx(moonSetTime);
+
+        const isMoonDown = (i) => {
+            if (idxMRise === null && idxMSet === null) return false;
+            if (idxMRise !== null && idxMSet !== null) {
+                if (idxMRise < idxMSet) {
+                    return (i <= idxMRise || i >= idxMSet);
+                } else if (idxMRise > idxMSet) {
+                    return (i >= idxMSet && i <= idxMRise);
+                }
+                return false;
+            } else if (idxMRise !== null) {
+                return i <= idxMRise;
+            } else if (idxMSet !== null) {
+                return i >= idxMSet;
+            }
+            return false;
+        };
+
+        const getColorForIndex = (i) => {
+            if (tintColor !== null) return tintColor;
+            if (typeof IsLoadingLocation !== 'undefined' && IsLoadingLocation) return baseColor;
+
+            if (!hasValidLocation) return nightColor;
+
+            if (!isNight(i)) return dayColor;
+            if (moonDownColor && isMoonDown(i)) return moonDownColor;
+            return nightColor;
+        };
+
+        this._applyShadow(12, 0, 4, 'rgba(0,0,0,0.3)');
+
+        if (currentLen > 0) {
+            let startIdx = 0;
+            let currentColor = getColorForIndex(0);
+
+            for (let i = 1; i <= currentLen; i++) {
+                let nextColor = (i < currentLen) ? getColorForIndex(i) : null;
+                if (nextColor !== currentColor || i === currentLen) {
+                    stroke(currentColor);
                     beginShape();
-                    for (let i = 0; i <= idxRise; i++) {
-                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    // Draw up to `i` so contiguous segments share the boundary vertex exactly,
+                    // preventing anti-aliasing gaps between segments.
+                    let endNode = (i < currentLen) ? i : i - 1;
+                    for (let j = startIdx; j <= endNode; j++) {
+                        vertex(this.centerX + xArray[j], this.centerY + yArray[j]);
                     }
                     endShape();
-                }
 
-                // 3. Draw Day (Sunrise -> Sunset)
-                stroke((tintColor !== null) ? tintColor : dayColor);
-                beginShape();
-                for (let i = idxRise; i <= idxSet; i++) {
-                    if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
-                }
-                endShape();
-
-                // 4. Draw Night (Sunset -> Midnight)
-                stroke((tintColor !== null) ? tintColor : nightColor);
-                if (idxSet < len - 1) {
-                    beginShape();
-                    for (let i = idxSet; i < len; i++) {
-                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
+                    if (nextColor !== null) {
+                        currentColor = nextColor;
+                        startIdx = i;
                     }
-                    endShape();
                 }
-            } else if (idxRise > idxSet) {
-                // WRAPPED CASE: Sunset occurs before Sunrise in terms of circular index
-                // (This happens when the other location's daylight period crosses our local midnight)
-
-                // 2. Draw Day (Midnight -> Sunset)
-                stroke(tintColor || dayColor);
-                if (idxSet > 0) {
-                    beginShape();
-                    for (let i = 0; i <= idxSet; i++) {
-                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
-                    }
-                    endShape();
-                }
-
-                // 3. Draw Night (Sunset -> Sunrise)
-                stroke(tintColor || nightColor);
-                beginShape();
-                for (let i = idxSet; i <= idxRise; i++) {
-                    if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
-                }
-                endShape();
-
-                // 4. Draw Day (Sunrise -> Midnight)
-                stroke(tintColor || dayColor);
-                if (idxRise < len - 1) {
-                    beginShape();
-                    for (let i = idxRise; i < len; i++) {
-                        if (i < currentLen) vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
-                    }
-                    endShape();
-                }
-            } else {
-                // SPECIAL CASE: Sun never rises/sets or indices are identical
-                // Default to night for now (matches 0 rise/set indices for "always dark")
-                stroke((tintColor !== null) ? tintColor : nightColor);
-                beginShape();
-                for (let i = 0; i < currentLen; i++) {
-                    vertex(this.centerX + xArray[i], this.centerY + yArray[i]);
-                }
-                endShape();
             }
         }
     }

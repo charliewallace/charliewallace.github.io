@@ -101,12 +101,10 @@ class TimeKeeper {
         // --- Moon Times ---
         if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
             try {
-                // sketch.js passes negated longitude to this function (West is positive). 
-                // SunCalc expects standard negative longitude for West, so we reverse it.
                 const trueLon = -lon;
-                const moonTimes = SunCalc.getMoonTimes(this.currentDate, lat, trueLon);
-                this.moonRiseTime = this._suncalcDateToTimeObj(moonTimes.rise, tzOffset);
-                this.moonSetTime = this._suncalcDateToTimeObj(moonTimes.set, tzOffset);
+                const moonTimes = this._getAccurateMoonTimes(this.currentDate, lat, trueLon, tzOffset);
+                this.moonRiseTime = moonTimes.rise;
+                this.moonSetTime = moonTimes.set;
 
                 const illumination = SunCalc.getMoonIllumination(this.currentDate);
                 this.moonIllum = illumination;
@@ -147,9 +145,9 @@ class TimeKeeper {
         if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
             try {
                 const trueLon = -lon;
-                const moonTimes = SunCalc.getMoonTimes(this.currentDate, lat, trueLon);
-                this.otherMoonRiseTime = this._suncalcDateToTimeObj(moonTimes.rise, tzOffset);
-                this.otherMoonSetTime = this._suncalcDateToTimeObj(moonTimes.set, tzOffset);
+                const moonTimes = this._getAccurateMoonTimes(this.currentDate, lat, trueLon, tzOffset);
+                this.otherMoonRiseTime = moonTimes.rise;
+                this.otherMoonSetTime = moonTimes.set;
 
                 const illumination = SunCalc.getMoonIllumination(this.currentDate);
                 this.otherMoonIllum = illumination;
@@ -169,17 +167,56 @@ class TimeKeeper {
 
     _suncalcDateToTimeObj(dateObj, tzOffset) {
         if (!dateObj || isNaN(dateObj.getTime())) return null;
-        const browserOffsetHours = -new Date().getTimezoneOffset() / 60;
-        const diffHours = tzOffset - browserOffsetHours;
-        const targetTime = new Date(dateObj.getTime() + diffHours * 60 * 60 * 1000);
 
-        let hour = targetTime.getHours();
-        let minute = targetTime.getMinutes();
+        // dateObj is the absolute UTC time of the event.
+        // We shift the UTC time by the target location's timezone offset
+        // so that extracting the UTC hours/minutes gives us the local time at that location.
+        const targetTime = new Date(dateObj.getTime() + tzOffset * 60 * 60 * 1000);
+
+        let hour = targetTime.getUTCHours();
+        let minute = targetTime.getUTCMinutes();
+
         return {
             hour: hour,
             minute: minute,
             totalSeconds: hour * 3600 + minute * 60
         };
+    }
+
+    _getAccurateMoonTimes(targetDate, lat, lon, tzOffset) {
+        const targetYear = targetDate.getFullYear();
+        const targetMonth = targetDate.getMonth();
+        const targetDay = targetDate.getDate();
+
+        let riseTime = null;
+        let setTime = null;
+
+        // Query a 72-hour UTC window to ensure we catch all events that might bleed into our target local timezone day
+        for (let i = -1; i <= 1; i++) {
+            const dUTC = new Date(Date.UTC(targetYear, targetMonth, targetDay + i));
+            const times = SunCalc.getMoonTimes(dUTC, lat, lon, true);
+
+            const checkEvent = (evtDate) => {
+                if (!evtDate || isNaN(evtDate.getTime())) return null;
+                // Shift the absolute UTC event into the target timezone
+                const shifted = new Date(evtDate.getTime() + tzOffset * 3600 * 1000);
+                if (shifted.getUTCFullYear() === targetYear &&
+                    shifted.getUTCMonth() === targetMonth &&
+                    shifted.getUTCDate() === targetDay) {
+                    return {
+                        hour: shifted.getUTCHours(),
+                        minute: shifted.getUTCMinutes(),
+                        totalSeconds: shifted.getUTCHours() * 3600 + shifted.getUTCMinutes() * 60
+                    };
+                }
+                return null;
+            };
+
+            if (!riseTime) riseTime = checkEvent(times.rise);
+            if (!setTime) setTime = checkEvent(times.set);
+        }
+
+        return { rise: riseTime, set: setTime };
     }
 
     updateDayState() {
