@@ -51,8 +51,11 @@
         </div>
 
         <div class="button-group">
-          <button id="btn-about" class="ui-btn">About</button>
-          <div id="pinch-zoom-tip" class="mobile-only">Tip: zoom in for details with pinch-to-zoom!</div>
+          <div style="display:flex; flex-direction:row; gap:6px; align-items:stretch;">
+            <button id="btn-about" class="ui-btn">About</button>
+            <button id="btn-setup" class="ui-btn gear-btn" title="Settings">⚙️</button>
+          </div>
+          <div id="pinch-zoom-tip" class="mobile-only">Tip: Pinch<br>to zoom!</div>
         </div>
       </div>
 
@@ -89,7 +92,7 @@
         </div>
         <div class="button-row-bottom-left">
           <button id="btn-zen" class="ui-btn">Zen</button>
-          <button id="btn-fullscreen" class="ui-btn">Full Screen</button>
+          <button id="btn-fullscreen" class="ui-btn gear-btn" title="Full Screen">⛶</button>
         </div>
       </div>
 
@@ -104,7 +107,6 @@
               <!-- Left Column: Setup + Style -->
               <div class="setup-and-style-group"
                 style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                <button id="btn-setup-dayspiral" class="ui-btn gear-btn" title="DaySpiral Settings">⚙️</button>
                 <div id="style-selector" class="selector-box" style="margin-bottom: 0;">
                   <div class="selector-title">Select Style</div>
                   <div class="selector-options">
@@ -116,7 +118,7 @@
 
               <!-- Right Column: Legend + To Show -->
               <div class="legend-and-show-group"
-                style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
                 <div id="awakeness-legend" class="hidden" style="margin-bottom: 0; margin-left: 2px;">
                   <span class="awakeness-line-sample"></span>
                   <span class="legend-text">= Both Awake</span>
@@ -146,7 +148,6 @@
             <div class="horizontal-row">
               <button id="btn-demo" class="ui-btn">Demo</button>
               <button id="btn-dali" class="ui-btn">Dali</button>
-              <button id="btn-setup-mobius" class="ui-btn gear-btn" title="Mobius Settings">⚙️</button>
             </div>
           </div>
 

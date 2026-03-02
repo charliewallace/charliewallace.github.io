@@ -513,10 +513,14 @@ function oneTimeInit() {
     closeAllModals();
   });
 
-  // Setup Button for Day Spiral Clock
-  var setupBtn = select('#btn-setup-dayspiral');
+  // Unified Settings button - opens the appropriate modal for the active clock
+  var setupBtn = select('#btn-setup');
   if (setupBtn) setupBtn.mousePressed(() => {
-    openModal('modal-setup-dayspiral');
+    if (activeRenderer === mobiusRenderer) {
+      openModal('modal-setup-mobius');
+    } else {
+      openModal('modal-setup-dayspiral');
+    }
   });
 
   // DaySpiral Style Buttons
@@ -628,10 +632,6 @@ function oneTimeInit() {
     }
   });
 
-  var btnSetupMobius = select('#btn-setup-mobius');
-  if (btnSetupMobius) btnSetupMobius.mousePressed(() => {
-    openModal('modal-setup-mobius');
-  });
 
   // Setup Modal Change Listeners
   var selHours = select('#select-shape-hours');
@@ -1438,8 +1438,8 @@ function onFullScreenChange(e) {
   var fsBtn = document.getElementById('btn-fullscreen');
   if (fsBtn) {
     // transition to/from full screen mode
-    fsBtn.textContent = fs ? 'Exit Full Screen' : 'Full Screen';
-
+    fsBtn.textContent = fs ? '✖' : '⛶';
+    fsBtn.title = fs ? 'Exit Full Screen' : 'Full Screen';
 
   }
 
