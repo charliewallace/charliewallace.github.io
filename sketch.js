@@ -1510,7 +1510,8 @@ function updateUIElements() {
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show your night and day together in one view, you need a 24-hour clock; ' +
-      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ';
+      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
+      'The darker part of the night spiral shows when the moon has set. ';
     if (descEl) descEl.textContent = descText;
 
     // Manage 'Hours' button visibility
@@ -3878,6 +3879,7 @@ function updateAboutModalContent() {
     title = "About Day Spiral Clock";
     descText = 'To show both night and day in one view, you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
+      'The darker part of the night spiral shows when the moon has set. ' +
       'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
       'The darker part of the spiral indicates night. ' +
       'When showing both local and "Other" time, the green line shows when interaction is feasible. ';
