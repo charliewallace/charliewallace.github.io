@@ -484,12 +484,14 @@ class DaySpiralRenderer extends ClockRenderer {
     drawSpiral(tk, loc, showMode = 'dual') {
         let dayColor = color(80, 155, 210);
 
-        // 1. Make moonDownColor 10% darker than (15, 65, 85) -> (13.5, 58.5, 76.5) -> round to (14, 59, 77)
-        let moonDownColor = color(14, 59, 77); // Darker blue for moonless night
+        // 1. Make moonDownColor 10% darker than (15, 65, 85) -> (14, 59, 77)
+        // AND NOW 15% darker still -> (12, 50, 65)
+        let moonDownColor = color(12, 50, 65); // Darker blue for moonless night
 
         // 2. Define extremes for moon-up (nightColor)
         // Minimum lightness for new moon (visibly distinct from moonDownColor)
-        let minMoonUpColor = color(19, 72, 92);
+        // Reduced 15% from (19, 72, 92) -> (16, 61, 78)
+        let minMoonUpColor = color(16, 61, 78);
         // Maximum lightness for full moon (much darker than dayColor [80,155,210])
         let maxMoonUpColor = color(23, 83, 100);
 
@@ -499,6 +501,11 @@ class DaySpiralRenderer extends ClockRenderer {
             f = tk.otherMoonIllum.fraction;
         } else if (tk.moonIllum) {
             f = tk.moonIllum.fraction;
+        }
+
+        // Apply URL Hash Phase Test Override
+        if (typeof TestMoonPhase !== 'undefined' && TestMoonPhase !== null) {
+            f = constrain(TestMoonPhase / 100, 0, 1);
         }
 
         // Dynamically interpolate the night color (moon-up)
@@ -2070,6 +2077,13 @@ class DaySpiralRenderer extends ClockRenderer {
         let f = tk.moonIllum.fraction;
         let phase = tk.moonIllum.phase; // 0.0 to 1.0 (new -> full -> new)
         let lat = tk.latitude;
+
+        // Apply URL Hash Phase Test Override
+        if (typeof TestMoonPhase !== 'undefined' && TestMoonPhase !== null) {
+            f = constrain(TestMoonPhase / 100, 0, 1);
+            // Simulate phase based on f to get waxing/waning right
+            phase = f / 2;
+        }
 
         // Determine if waxing (0.0 to 0.5)
         let isWaxing = (phase < 0.5);

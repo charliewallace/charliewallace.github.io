@@ -904,6 +904,15 @@ function parseUrlHash() {
     else btnMoon.removeClass('toggled-on');
   }
 
+  // Moon phase override for testing
+  if (params.has('testMoonPhase')) {
+    let val = parseFloat(params.get('testMoonPhase'));
+    if (!isNaN(val)) {
+      window.TestMoonPhase = val;
+      console.log("  🌙 testMoonPhase override active:", val);
+    }
+  }
+
   // Zen mode
   if (zen === '1') {
     IsZenMode = true;
