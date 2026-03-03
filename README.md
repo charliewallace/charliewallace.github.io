@@ -22,7 +22,7 @@ CoolweirdClocks provides a robust set of features common to all its clock design
 
 ### DaySpiral Clock
 A unique visualization that shows you your whole day, including day and night, sunrise and sunset. To show night and day you need a 24-hour clock; using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. See screenshot above.
-- **Sunset/Sunrise**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun at your location; times of sunrise and sunset are displayed within the spiral.
+- **Sunset/Sunrise & Moon Phase**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun at your location; times of sunrise and sunset are displayed within the spiral. During the night, the periods when the moon has set are rendered in a slightly darker color, dynamically interpolating based on the phase and brightness of the moon. A dynamic graphic at the top of the dial tracks the current phase of the moon directly.
 - **Spiral Geometry**: The hour hand follows the spiral path, making two full turns to complete a day: one for AM and one for PM.
 - **Ribbon Style**: An alternative style that embeds hour tick marks and numbers directly along the spiral track and eliminates the clock face for a simpler presentation.
 - **Dual Location Mode**: Display the day and night of a second location on an inner spiral to compare time and sunlight across the world. Great for coordinating with a partner or family member who lives in a different time zone.
@@ -31,6 +31,7 @@ A unique visualization that shows you your whole day, including day and night, s
 **Specific URL Parameters:**
 - `daySpiralStyle=SpiralHours`: Activates the "Ribbon" visual style.
 - `daySpiralTimeFormat=24`: Sets the DaySpiral to 24-hour time format.
+- `moon=0`: Disables the moon phase graphic and night spiral interpolation.
 
 ### Mobius Clock
 
