@@ -2105,8 +2105,16 @@ class DaySpiralRenderer extends ClockRenderer {
         }
 
         let edgeR = innerR - (sw / 2);
-        let y = this.centerY - (edgeR / 2);
         let D = this.fontSize * 1.35;
+
+        // Define label parameters to center the combined graphic
+        let labelFontSize = this.fontSize * 0.44; // 20% smaller than 0.55
+        let labelGap = this.fontSize * 0.10; // Tighten the gap slightly
+
+        // The center of the available space is this.centerY - (edgeR / 2).
+        // To center the combination of the label, the gap, and the moon graphic, 
+        // we shift the moon graphic down by half the size of the label+gap.
+        let y = this.centerY - (edgeR / 2) + (labelFontSize + labelGap) / 2;
 
         // Flip light direction if Southern Hemisphere
         if (lat < 0) {
@@ -2150,6 +2158,22 @@ class DaySpiralRenderer extends ClockRenderer {
                 }
             }
         }
+
+        // 3. Draw "Moon" Label above the graphic
+        fill(255, 235, 120, 255);
+        textSize(labelFontSize);
+        textStyle(BOLD);
+        textAlign(CENTER, BOTTOM);
+
+        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)');
+        let labelY = y - (D / 2) - labelGap;
+
+        push();
+        translate(x, labelY);
+        text("Moon", 0, 0);
+        pop();
+
+        this._resetShadow();
 
         pop();
     }
