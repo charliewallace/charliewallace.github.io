@@ -321,6 +321,11 @@ class DaySpiralRenderer extends ClockRenderer {
         // Draw hands - hide during dual mode transition
         const shouldHideHands = this.isAnimatingDualMode && this.animationStage >= 2 && this.animationStage <= 5;
 
+        // Draw moon BEFORE clock hands
+        if (typeof ShowMoon !== 'undefined' && ShowMoon) {
+            this._drawMoonPhase(activeTk, showMode);
+        }
+
         // INTERWEAVING LAYER 1: Leading edge of capsule (BENEATH spiral)
         if (!shouldHideHands) {
             this.drawHands(activeTk, showMode, 'leading');
@@ -588,6 +593,7 @@ class DaySpiralRenderer extends ClockRenderer {
         const idxMSet = getIdx(moonSetTime);
 
         const isMoonDown = (i) => {
+            if (typeof ShowMoon !== 'undefined' && !ShowMoon) return false;
             if (idxMRise === null && idxMSet === null) return false;
             if (idxMRise !== null && idxMSet !== null) {
                 if (idxMRise < idxMSet) {
@@ -1757,12 +1763,12 @@ class DaySpiralRenderer extends ClockRenderer {
         // In the proxy tk, sunriseTime/sunsetTime are already swapped if showMode === 'other'.
         // And tzRotation is now 0 (true local clock).
 
-        if (sunRise && typeof sunRise.totalSeconds === 'number') {
+        if (sunRise && typeof sunRise.totalSeconds === 'number' && sunRise.hour >= 0) {
             let idxRise = Math.floor((sunRise.totalSeconds / 86400) * totalDailyPts);
             this._drawSpiralTime(idxRise, "Rise", sunRise, currentX, currentY);
         }
 
-        if (sunSet && typeof sunSet.totalSeconds === 'number') {
+        if (sunSet && typeof sunSet.totalSeconds === 'number' && sunSet.hour >= 0) {
             let idxSet = Math.floor((sunSet.totalSeconds / 86400) * totalDailyPts);
             this._drawSpiralTime(idxSet, "Set", sunSet, currentX, currentY);
         }
@@ -1777,17 +1783,19 @@ class DaySpiralRenderer extends ClockRenderer {
             moonSet = tk.moonSetTime;
         }
 
-        if (moonRise && typeof moonRise.totalSeconds === 'number') {
-            if (!this._isTimeTooClose(moonRise, sunRise) && !this._isTimeTooClose(moonRise, sunSet) && this._isNighttime(moonRise, sunRise, sunSet)) {
-                let idxMoonRise = Math.floor((moonRise.totalSeconds / 86400) * totalDailyPts);
-                this._drawSpiralTime(idxMoonRise, "Moon ↑", moonRise, currentX, currentY);
+        if (typeof ShowMoon !== 'undefined' && ShowMoon) {
+            if (moonRise && typeof moonRise.totalSeconds === 'number') {
+                if (!this._isTimeTooClose(moonRise, sunRise) && !this._isTimeTooClose(moonRise, sunSet) && this._isNighttime(moonRise, sunRise, sunSet)) {
+                    let idxMoonRise = Math.floor((moonRise.totalSeconds / 86400) * totalDailyPts);
+                    this._drawSpiralTime(idxMoonRise, "Moon ↑", moonRise, currentX, currentY);
+                }
             }
-        }
 
-        if (moonSet && typeof moonSet.totalSeconds === 'number') {
-            if (!this._isTimeTooClose(moonSet, sunRise) && !this._isTimeTooClose(moonSet, sunSet) && this._isNighttime(moonSet, sunRise, sunSet)) {
-                let idxMoonSet = Math.floor((moonSet.totalSeconds / 86400) * totalDailyPts);
-                this._drawSpiralTime(idxMoonSet, "Moon ↓", moonSet, currentX, currentY);
+            if (moonSet && typeof moonSet.totalSeconds === 'number') {
+                if (!this._isTimeTooClose(moonSet, sunRise) && !this._isTimeTooClose(moonSet, sunSet) && this._isNighttime(moonSet, sunRise, sunSet)) {
+                    let idxMoonSet = Math.floor((moonSet.totalSeconds / 86400) * totalDailyPts);
+                    this._drawSpiralTime(idxMoonSet, "Moon ↓", moonSet, currentX, currentY);
+                }
             }
         }
 
@@ -1899,24 +1907,26 @@ class DaySpiralRenderer extends ClockRenderer {
                 mSet = tk.otherMoonSetTime || tk.moonSetTime;
             }
 
-            if (sunRise && typeof sunRise.totalSeconds === 'number') {
+            if (sunRise && typeof sunRise.totalSeconds === 'number' && sunRise.hour >= 0) {
                 this._drawRibbonTime(sunRise, this.xSpiral, this.ySpiral, this.radiusSpiral,
                     false, this.spiralStrokeWeight, 0, showMode);
             }
-            if (sunSet && typeof sunSet.totalSeconds === 'number') {
+            if (sunSet && typeof sunSet.totalSeconds === 'number' && sunSet.hour >= 0) {
                 this._drawRibbonTime(sunSet, this.xSpiral, this.ySpiral, this.radiusSpiral,
                     false, this.spiralStrokeWeight, 0, showMode);
             }
-            if (mRise && typeof mRise.totalSeconds === 'number') {
-                if (!this._isTimeTooClose(mRise, sunRise) && !this._isTimeTooClose(mRise, sunSet) && this._isNighttime(mRise, sunRise, sunSet)) {
-                    this._drawRibbonTime(mRise, this.xSpiral, this.ySpiral, this.radiusSpiral,
-                        false, this.spiralStrokeWeight, 0, showMode);
+            if (typeof ShowMoon !== 'undefined' && ShowMoon) {
+                if (mRise && typeof mRise.totalSeconds === 'number') {
+                    if (!this._isTimeTooClose(mRise, sunRise) && !this._isTimeTooClose(mRise, sunSet) && this._isNighttime(mRise, sunRise, sunSet)) {
+                        this._drawRibbonTime(mRise, this.xSpiral, this.ySpiral, this.radiusSpiral,
+                            false, this.spiralStrokeWeight, 0, showMode);
+                    }
                 }
-            }
-            if (mSet && typeof mSet.totalSeconds === 'number') {
-                if (!this._isTimeTooClose(mSet, sunRise) && !this._isTimeTooClose(mSet, sunSet) && this._isNighttime(mSet, sunRise, sunSet)) {
-                    this._drawRibbonTime(mSet, this.xSpiral, this.ySpiral, this.radiusSpiral,
-                        false, this.spiralStrokeWeight, 0, showMode);
+                if (mSet && typeof mSet.totalSeconds === 'number') {
+                    if (!this._isTimeTooClose(mSet, sunRise) && !this._isTimeTooClose(mSet, sunSet) && this._isNighttime(mSet, sunRise, sunSet)) {
+                        this._drawRibbonTime(mSet, this.xSpiral, this.ySpiral, this.radiusSpiral,
+                            false, this.spiralStrokeWeight, 0, showMode);
+                    }
                 }
             }
         }
@@ -1927,20 +1937,22 @@ class DaySpiralRenderer extends ClockRenderer {
             let oSunRise = tk.otherSunriseTime;
             let oSunSet = tk.otherSunsetTime;
 
-            if (oSunRise && typeof oSunRise.totalSeconds === 'number') {
+            if (oSunRise && typeof oSunRise.totalSeconds === 'number' && oSunRise.hour >= 0) {
                 this._drawRibbonTime(oSunRise, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
             }
-            if (oSunSet && typeof oSunSet.totalSeconds === 'number') {
+            if (oSunSet && typeof oSunSet.totalSeconds === 'number' && oSunSet.hour >= 0) {
                 this._drawRibbonTime(oSunSet, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
             }
-            if (tk.otherMoonRiseTime && typeof tk.otherMoonRiseTime.totalSeconds === 'number') {
-                if (!this._isTimeTooClose(tk.otherMoonRiseTime, oSunRise) && !this._isTimeTooClose(tk.otherMoonRiseTime, oSunSet) && this._isNighttime(tk.otherMoonRiseTime, oSunRise, oSunSet)) {
-                    this._drawRibbonTime(tk.otherMoonRiseTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+            if (typeof ShowMoon !== 'undefined' && ShowMoon) {
+                if (tk.otherMoonRiseTime && typeof tk.otherMoonRiseTime.totalSeconds === 'number') {
+                    if (!this._isTimeTooClose(tk.otherMoonRiseTime, oSunRise) && !this._isTimeTooClose(tk.otherMoonRiseTime, oSunSet) && this._isNighttime(tk.otherMoonRiseTime, oSunRise, oSunSet)) {
+                        this._drawRibbonTime(tk.otherMoonRiseTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+                    }
                 }
-            }
-            if (tk.otherMoonSetTime && typeof tk.otherMoonSetTime.totalSeconds === 'number') {
-                if (!this._isTimeTooClose(tk.otherMoonSetTime, oSunRise) && !this._isTimeTooClose(tk.otherMoonSetTime, oSunSet) && this._isNighttime(tk.otherMoonSetTime, oSunRise, oSunSet)) {
-                    this._drawRibbonTime(tk.otherMoonSetTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+                if (tk.otherMoonSetTime && typeof tk.otherMoonSetTime.totalSeconds === 'number') {
+                    if (!this._isTimeTooClose(tk.otherMoonSetTime, oSunRise) && !this._isTimeTooClose(tk.otherMoonSetTime, oSunSet) && this._isNighttime(tk.otherMoonSetTime, oSunRise, oSunSet)) {
+                        this._drawRibbonTime(tk.otherMoonSetTime, this.xSpiralInner, this.ySpiralInner, this.radiusSpiralInner, true, this.innerStrokeWeight, tzDiffHours, showMode);
+                    }
                 }
             }
         }
@@ -2030,6 +2042,96 @@ class DaySpiralRenderer extends ClockRenderer {
         text(timeStr, 0, 0);
 
         this._resetShadow();
+        pop();
+    }
+
+    _drawMoonPhase(tk, showMode = 'dual') {
+        if (!tk || !tk.moonIllum) return;
+
+        let f = tk.moonIllum.fraction;
+        let phase = tk.moonIllum.phase; // 0.0 to 1.0 (new -> full -> new)
+        let lat = tk.latitude;
+
+        // Determine if waxing (0.0 to 0.5)
+        let isWaxing = (phase < 0.5);
+
+        // On the day of the new moon (0%), let the lit portion disappear entirely.
+        // On the day of the full moon (100%), draw perfectly full without artifacts.
+        let fRound = Math.round(f * 100);
+        if (fRound === 0) {
+            f = 0.0;
+        } else if (fRound === 100) {
+            f = 1.0;
+        } else if (f < 0.10) {
+            // Broaden very thin crescents so they remain distinctly visible
+            f = 0.10;
+        }
+
+        let isCrescent = (f < 0.5);
+
+        // Position: centered horizontally, gap between center and top inner spiral
+        let x = this.centerX;
+
+        let innerR, sw;
+        if (this.isDualLocationMode && showMode === 'dual') {
+            innerR = (this.radiusSpiralInner && this.radiusSpiralInner.length > 0)
+                ? this.radiusSpiralInner[this.radiusSpiralInner.length - 1]
+                : this.ClockRadius;
+            sw = this.innerStrokeWeight;
+        } else {
+            innerR = (this.radiusSpiral && this.radiusSpiral.length > 0)
+                ? this.radiusSpiral[this.radiusSpiral.length - 1]
+                : this.ClockRadius;
+            sw = this.spiralStrokeWeight;
+        }
+
+        let edgeR = innerR - (sw / 2);
+        let y = this.centerY - (edgeR / 2);
+        let D = this.fontSize * 1.35;
+
+        // Flip light direction if Southern Hemisphere
+        if (lat < 0) {
+            isWaxing = !isWaxing;
+        }
+
+        push();
+        noStroke();
+
+        // 1. Draw base unlit moon (dark grey)
+        fill(85, 85, 80, 255);
+        ellipse(x, y, D, D);
+
+        // 2. Draw lit portion (soft yellow)
+        if (f > 0.0) {
+            fill(255, 235, 120, 255);
+
+            if (isWaxing) {
+                // Right half lit
+                arc(x, y, D, D, -HALF_PI, HALF_PI);
+                if (isCrescent) {
+                    // Cover up inner part of right half with unlit
+                    fill(85, 85, 80, 255);
+                    ellipse(x, y, D * (1 - 2 * f), D);
+                } else {
+                    // Add to the right half with lit ellipse on left
+                    fill(255, 235, 120, 255);
+                    ellipse(x, y, D * (2 * f - 1), D);
+                }
+            } else {
+                // Left half lit
+                arc(x, y, D, D, HALF_PI, PI + HALF_PI);
+                if (isCrescent) {
+                    // Cover up inner part of left half with unlit
+                    fill(85, 85, 80, 255);
+                    ellipse(x, y, D * (1 - 2 * f), D);
+                } else {
+                    // Add to the left half with lit ellipse on right
+                    fill(255, 235, 120, 255);
+                    ellipse(x, y, D * (2 * f - 1), D);
+                }
+            }
+        }
+
         pop();
     }
 }

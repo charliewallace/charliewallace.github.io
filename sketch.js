@@ -93,6 +93,7 @@ var IsLoadingLocation = false; // true if waiting for location data (network or 
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
 var DaySpiralShowMode = 'local'; // 'other', 'dual', 'local' - Default to local on start
 var HasSeenDualModeAnimation = false; // Ensures guided transition only plays once per session
+var ShowMoon = true; // Whether the Moon Phase display is active
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset = 64800, BaseMsSunset;
@@ -526,6 +527,15 @@ function oneTimeInit() {
     }
   });
 
+  // Moon Toggle Button
+  var btnToggleMoon = select('#btn-toggle-moon');
+  if (btnToggleMoon) btnToggleMoon.mousePressed(() => {
+    ShowMoon = !ShowMoon;
+    if (ShowMoon) btnToggleMoon.addClass('toggled-on');
+    else btnToggleMoon.removeClass('toggled-on');
+    updateUrlHash();
+  });
+
   // DaySpiral Style Buttons
   select('#opt-style-dial').mousePressed(() => setDaySpiralStyle('Dial'));
   select('#opt-style-spiral').mousePressed(() => setDaySpiralStyle('SpiralHours'));
@@ -878,10 +888,17 @@ function parseUrlHash() {
   var zen = params.get('zen') || params.get('focus');
   var dali = params.get('dali'); // TEST, FINDME
 
-  // Moon calcs toggle
+  // Moon display toggle
   var moonParams = params.get('moon');
   if (moonParams === '0') {
-    EnableMoonCalcs = false;
+    ShowMoon = false;
+  }
+
+  // Set initial UI button state for moon
+  let btnMoon = select('#btn-toggle-moon');
+  if (btnMoon) {
+    if (ShowMoon) btnMoon.addClass('toggled-on');
+    else btnMoon.removeClass('toggled-on');
   }
 
   // Zen mode
@@ -1287,8 +1304,8 @@ function updateUrlHash() {
     console.log("  🌎 Including alternate location in URL");
   }
 
-  // Moon computations override
-  if (typeof EnableMoonCalcs !== 'undefined' && !EnableMoonCalcs) {
+  // Moon display override
+  if (!ShowMoon) {
     params.set('moon', '0');
   }
 
