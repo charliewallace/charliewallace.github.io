@@ -491,7 +491,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // Minimum lightness for new moon (visibly distinct from moonDownColor)
         let minMoonUpColor = color(19, 72, 92);
         // Maximum lightness for full moon (much darker than dayColor [80,155,210])
-        let maxMoonUpColor = color(28, 100, 120);
+        let maxMoonUpColor = color(23, 83, 100);
 
         // Get moon fraction
         let f = 0.5;
