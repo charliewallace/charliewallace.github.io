@@ -483,8 +483,27 @@ class DaySpiralRenderer extends ClockRenderer {
 
     drawSpiral(tk, loc, showMode = 'dual') {
         let dayColor = color(80, 155, 210);
-        let nightColor = color(25, 95, 115); // Lightened to represent moonlit night
-        let moonDownColor = color(15, 65, 85); // Darker blue for moonless night
+
+        // 1. Make moonDownColor 10% darker than (15, 65, 85) -> (13.5, 58.5, 76.5) -> round to (14, 59, 77)
+        let moonDownColor = color(14, 59, 77); // Darker blue for moonless night
+
+        // 2. Define extremes for moon-up (nightColor)
+        // Minimum lightness for new moon (visibly distinct from moonDownColor)
+        let minMoonUpColor = color(19, 72, 92);
+        // Maximum lightness for full moon (much darker than dayColor [80,155,210])
+        let maxMoonUpColor = color(28, 100, 120);
+
+        // Get moon fraction
+        let f = 0.5;
+        if (showMode === 'other' && tk.otherMoonIllum) {
+            f = tk.otherMoonIllum.fraction;
+        } else if (tk.moonIllum) {
+            f = tk.moonIllum.fraction;
+        }
+
+        // Dynamically interpolate the night color (moon-up)
+        let nightColor = lerpColor(minMoonUpColor, maxMoonUpColor, f);
+
         let baseColor = color(90);
 
         const isOtherOnly = (showMode === 'other');
