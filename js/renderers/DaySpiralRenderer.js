@@ -388,8 +388,6 @@ class DaySpiralRenderer extends ClockRenderer {
             this.drawSpiralLabels(locManager, showMode);
         }
 
-        this.drawDayLabels(activeTk, locManager);
-
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) {
             this.drawGMT(locManager);
         }
@@ -1214,47 +1212,6 @@ class DaySpiralRenderer extends ClockRenderer {
         textStyle(NORMAL);
     }
 
-
-    drawDayLabels(tk, locManager) {
-        // Only show day labels in Dial mode
-        if (this.style !== 'Dial') return;
-
-        // Hide DOW abbreviations in dual mode as requested
-        if (this.isDualLocationMode) return;
-
-        if (typeof IsGmtShown !== 'undefined' && IsGmtShown) return;
-        if (!this.xSpiral || this.xSpiral.length === 0) return;
-
-        // ... existing day label logic ...
-        // (It was at the bottom of the previous file view, assuming it's correct)
-
-        // Just redundant check removal for safely rendering:
-        let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        let todayIdx = tk.dayOfWeek;
-        let nextDayIdx = (todayIdx + 1) % 7;
-
-        let labelColor = color(255, 235, 120); // Softer yellow
-        fill(labelColor);
-        noStroke();
-        textSize(this.fontSize);
-        textStyle(BOLD);
-        textAlign(RIGHT, CENTER); // RIGHT align so text appears to the left of the spiral start
-
-        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)'); // More visible shadow for text
-
-        // Shifted further left to avoid crowding "12A" label (was -0.55)
-        let xOffset = -(this.fontSize * 0.9);
-        let yOffset = this.fontSize * 0.12;   // Reduced (about 1/8 character height)
-
-        // Start (Outer) - show today's day abbreviation
-        let idxStart = 0;
-        text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart] + xOffset, this.centerY + this.ySpiral[idxStart] + yOffset);
-
-        // End label removed - was colliding with last hour label and not adding much value
-
-        this._resetShadow();
-        textStyle(NORMAL);
-    }
 
     drawGMT(locManager) {
         if (!locManager || !locManager.hasValidLocation) return;
