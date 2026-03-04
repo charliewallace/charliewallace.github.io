@@ -46,7 +46,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.6.0 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.6.1 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -93,6 +93,7 @@ var IsLoadingLocation = false; // true if waiting for location data (network or 
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
 var DaySpiralShowMode = 'local'; // 'other', 'dual', 'local' - Default to local on start
 var HasSeenDualModeAnimation = false; // Ensures guided transition only plays once per session
+var ShowMoon = true; // Whether the Moon Phase display is active
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset = 64800, BaseMsSunset;
@@ -179,6 +180,9 @@ var locManager;
 var daySpiralRenderer;
 var mobiusRenderer;
 var activeRenderer;
+
+// NEW Moon Calculation override
+var EnableMoonCalcs = true;
 
 
 
@@ -416,7 +420,10 @@ function oneTimeInit() {
   // NOTE: CSS handles all positioning now (responsive design)
 
   // --- NEW MODAL BUTTONS ---
-  select('#btn-about').mousePressed(() => openModal('modal-about'));
+  select('#btn-about').mousePressed(() => {
+    updateAboutModalContent();
+    openModal('modal-about');
+  });
 
   // --- MODAL CLOSE BUTTONS ---
   selectAll('.btn-close-modal').forEach(btn => {
@@ -521,6 +528,15 @@ function oneTimeInit() {
     } else {
       openModal('modal-setup-dayspiral');
     }
+  });
+
+  // Moon Toggle Button
+  var btnToggleMoon = select('#btn-toggle-moon');
+  if (btnToggleMoon) btnToggleMoon.mousePressed(() => {
+    ShowMoon = !ShowMoon;
+    if (ShowMoon) btnToggleMoon.addClass('toggled-on');
+    else btnToggleMoon.removeClass('toggled-on');
+    updateUrlHash();
   });
 
   // DaySpiral Style Buttons
@@ -874,6 +890,28 @@ function parseUrlHash() {
   var city = params.get('city');
   var zen = params.get('zen') || params.get('focus');
   var dali = params.get('dali'); // TEST, FINDME
+
+  // Moon display toggle
+  var moonParams = params.get('moon');
+  if (moonParams === '0') {
+    ShowMoon = false;
+  }
+
+  // Set initial UI button state for moon
+  let btnMoon = select('#btn-toggle-moon');
+  if (btnMoon) {
+    if (ShowMoon) btnMoon.addClass('toggled-on');
+    else btnMoon.removeClass('toggled-on');
+  }
+
+  // Moon phase override for testing
+  if (params.has('testMoonPhase')) {
+    let val = parseFloat(params.get('testMoonPhase'));
+    if (!isNaN(val)) {
+      window.TestMoonPhase = val;
+      console.log("  🌙 testMoonPhase override active:", val);
+    }
+  }
 
   // Zen mode
   if (zen === '1') {
@@ -1278,6 +1316,11 @@ function updateUrlHash() {
     console.log("  🌎 Including alternate location in URL");
   }
 
+  // Moon display override
+  if (!ShowMoon) {
+    params.set('moon', '0');
+  }
+
   // Zen mode
   if (IsZenMode) {
     params.set('zen', '1');
@@ -1497,6 +1540,10 @@ function updateUIElements() {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show your night and day together in one view, you need a 24-hour clock; ' +
       'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ';
+
+    if (typeof ShowMoon !== 'undefined' && ShowMoon) {
+      descText += 'The darker part of the night spiral shows when the moon has set. ';
+    }
     if (descEl) descEl.textContent = descText;
 
     // Manage 'Hours' button visibility
@@ -1933,8 +1980,21 @@ function openDetailsModal() {
     }
 
     // Build a details-grid HTML block for one location
-    function buildGrid(city, tz, lat, lon, sunriseH, sunriseM, sunsetH, sunsetM, dstStr) {
+    function buildGrid(city, tz, lat, lon, sunriseH, sunriseM, sunsetH, sunsetM, dstStr, moonRiseTime, moonSetTime, moonIllum) {
       let tzStr = (tz >= 0 ? "+" : "") + tz;
+
+      let moonInfo = '';
+      if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs) {
+        let riseStr = moonRiseTime ? getFormattedTime(moonRiseTime.hour, moonRiseTime.minute) : "Does not rise";
+        let setStr = moonSetTime ? getFormattedTime(moonSetTime.hour, moonSetTime.minute) : "Does not set";
+        let phaseDisplay = moonIllum ? Math.round(moonIllum.fraction * 100) + "%" : "Unknown";
+        moonInfo = `
+            <p><span class="label">Moonrise</span> <span class="value">${riseStr}</span></p>
+            <p><span class="label">Moonset</span>  <span class="value">${setStr}</span></p>
+            <p><span class="label">Moon Phase</span>  <span class="value">${phaseDisplay}</span></p>
+        `;
+      }
+
       return `
         <div class="details-grid">
           <div class="details-column">
@@ -1947,6 +2007,7 @@ function openDetailsModal() {
             <p><span class="label">Time Zone</span> <span class="value">GMT ${tzStr}</span></p>
             <p><span class="label">Sunrise</span> <span class="value">${getFormattedTime(sunriseH, sunriseM)}</span></p>
             <p><span class="label">Sunset</span>  <span class="value">${getFormattedTime(sunsetH, sunsetM)}</span></p>
+            ${moonInfo}
             ${dstStr ? `<p><span class="label">DST</span> <span class="value">${dstStr}</span></p>` : ''}
           </div>
         </div>`;
@@ -1961,7 +2022,10 @@ function openDetailsModal() {
         LocaleTitle, TzOffset,
         Latitude, Longitude,
         SunriseHour, SunriseMin, SunsetHour, SunsetMin,
-        localDst
+        localDst,
+        timeKeeper ? timeKeeper.moonRiseTime : null,
+        timeKeeper ? timeKeeper.moonSetTime : null,
+        timeKeeper ? timeKeeper.moonPhase : null
       );
 
       // --- Other section ---
@@ -1976,7 +2040,10 @@ function openDetailsModal() {
         other.latitude, other.longitude,
         timeKeeper.otherSunriseTime.hour, timeKeeper.otherSunriseTime.minute,
         timeKeeper.otherSunsetTime.hour, timeKeeper.otherSunsetTime.minute,
-        otherDst
+        otherDst,
+        timeKeeper ? timeKeeper.otherMoonRiseTime : null,
+        timeKeeper ? timeKeeper.otherMoonSetTime : null,
+        timeKeeper ? timeKeeper.otherMoonIllum : null
       );
 
       htmlContent = `
@@ -1998,7 +2065,10 @@ function openDetailsModal() {
         LocaleTitle, TzOffset,
         Latitude, Longitude,
         SunriseHour, SunriseMin, SunsetHour, SunsetMin,
-        dstStr
+        dstStr,
+        timeKeeper ? timeKeeper.moonRiseTime : null,
+        timeKeeper ? timeKeeper.moonSetTime : null,
+        timeKeeper ? timeKeeper.moonIllum : null
       );
     }
 
@@ -3840,8 +3910,13 @@ function updateAboutModalContent() {
   if (activeRenderer === daySpiralRenderer) {
     title = "About Day Spiral Clock";
     descText = 'To show both night and day in one view, you need a 24-hour clock; ' +
-      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ' +
-      'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
+      'using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. ';
+
+    if (typeof ShowMoon !== 'undefined' && ShowMoon) {
+      descText += 'The darker part of the night spiral shows when the moon has set. ';
+    }
+
+    descText += 'The hour hand tip follows the spiral, making 1 turn for AM and 1 for PM. ' +
       'The darker part of the spiral indicates night. ' +
       'When showing both local and "Other" time, the green line shows when interaction is feasible. ';
     if (locationWarning) descText += locationWarning;

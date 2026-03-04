@@ -24,15 +24,16 @@ CoolweirdClocks provides a robust set of features common to all its clock design
 
 ### DaySpiral Clock
 A unique visualization that shows you your whole day, including day and night, sunrise and sunset. To show night and day you need a 24-hour clock; using a spiral is a way to squeeze 24 hours into the more-familiar 12-hour clock face. See screenshot above.
-- **Sunset/Sunrise**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun at your location; times of sunrise and sunset are displayed within the spiral.
+- **Sunset/Sunrise & Moon Phase**: Color-coded segments (light blue for day, dark blue for night) show the rhythm of the sun at your location; times of sunrise and sunset are displayed within the spiral. During the night, the periods when the moon has set are rendered in a darker color. Times of moonrise and moonset are also displayed if they happen during the night. A dynamic moon phase graphic displays the current phase of the moon.
 - **Spiral Geometry**: The hour hand follows the spiral path, making two full turns to complete a day: one for AM and one for PM.
 - **Ribbon Style**: An alternative style that embeds hour tick marks and numbers directly along the spiral track and eliminates the clock face for a simpler presentation.
-- **Dual Location Mode**: Display the day and night of a second location on an inner spiral to compare time and sunlight across the world. Great for coordinating with a partner or family member who lives in a different time zone.
+- **Dual Location Mode**: Display the day and night of a second location on an inner spiral to compare time and sunlight across the world. Great for coordinating with a partner or family member who lives in a different time zone. Show both, or the second location only.
 - **Both-Awake Line**: A green arc appears in dual mode to indicate when both locations are simultaneously in their "awake" hours (9 AM - 8 PM), making it easy to see when interaction is feasible.
 
 **Specific URL Parameters:**
 - `daySpiralStyle=SpiralHours`: Activates the "Ribbon" visual style.
 - `daySpiralTimeFormat=24`: Sets the DaySpiral to 24-hour time format.
+- `moon=0`: Disables the moon phase graphic and moon-down coloring on the night spiral.
 
 ### Mobius Clock
 
@@ -70,6 +71,7 @@ Try it here: [dayspiral.com/#clock=mobius&rotation=1&zen=1](https://dayspiral.co
 - **Three.js**: 3D rendering for complex geometries like the Mobius strip.
 - **IP Geolocation**: `ipwho.is` for CORS-friendly automatic location detection.
 - **OpenStreetMap & GeoNames**: For city lookup and accurate timezone data.
+- **Astronomy Engine**: High-precision calculations for moon rise, set, and illumination phases.
 
 ## Credits
 

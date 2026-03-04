@@ -31,6 +31,14 @@ class TimeKeeper {
         this.otherSunsetTime = { hour: 18, minute: 0, totalSeconds: 0 };
         this.otherSunriseHourString = "";
         this.otherSunsetHourString = "";
+
+        // Moon state
+        this.moonRiseTime = null;
+        this.moonSetTime = null;
+        this.otherMoonRiseTime = null;
+        this.otherMoonSetTime = null;
+        this.moonIllum = null; // Stores object: {fraction, phase, angle}
+        this.otherMoonIllum = null;
     }
 
     /**
@@ -90,6 +98,37 @@ class TimeKeeper {
         this.sunriseHourString = this._formatVisTime(rise.hour, rise.minute);
         this.sunsetHourString = this._formatVisTime(set.hour, set.minute);
 
+        // --- Moon Times ---
+        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
+            try {
+                const trueLon = -lon;
+                const moonTimes = this._getAccurateMoonTimes(this.currentDate, lat, trueLon, tzOffset);
+                this.moonRiseTime = moonTimes.rise;
+                this.moonSetTime = moonTimes.set;
+
+                if (typeof Astronomy !== 'undefined') {
+                    const illum = Astronomy.Illumination(Astronomy.Body.Moon, this.currentDate);
+                    const phaseDeg = Astronomy.MoonPhase(this.currentDate);
+                    this.moonIllum = {
+                        fraction: illum.phase_fraction,
+                        phase: phaseDeg / 360.0
+                    };
+                } else {
+                    const illumination = SunCalc.getMoonIllumination(this.currentDate);
+                    this.moonIllum = illumination;
+                }
+            } catch (e) {
+                console.error("Moon calc error:", e);
+                this.moonRiseTime = null;
+                this.moonSetTime = null;
+                this.moonIllum = null;
+            }
+        } else {
+            this.moonRiseTime = null;
+            this.moonSetTime = null;
+            this.moonIllum = null;
+        }
+
         this.updateDayState(); // Re-evaluate day state with new sun times
     }
 
@@ -110,8 +149,124 @@ class TimeKeeper {
         // Format strings
         this.otherSunriseHourString = this._formatVisTime(rise.hour, rise.minute);
         this.otherSunsetHourString = this._formatVisTime(set.hour, set.minute);
+
+        // --- Moon Times ---
+        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
+            try {
+                const trueLon = -lon;
+                const moonTimes = this._getAccurateMoonTimes(this.currentDate, lat, trueLon, tzOffset);
+                this.otherMoonRiseTime = moonTimes.rise;
+                this.otherMoonSetTime = moonTimes.set;
+
+                if (typeof Astronomy !== 'undefined') {
+                    const illum = Astronomy.Illumination(Astronomy.Body.Moon, this.currentDate);
+                    const phaseDeg = Astronomy.MoonPhase(this.currentDate);
+                    this.otherMoonIllum = {
+                        fraction: illum.phase_fraction,
+                        phase: phaseDeg / 360.0
+                    };
+                } else {
+                    const illumination = SunCalc.getMoonIllumination(this.currentDate);
+                    this.otherMoonIllum = illumination;
+                }
+            } catch (e) {
+                console.error("Moon calc error:", e);
+                this.otherMoonRiseTime = null;
+                this.otherMoonSetTime = null;
+                this.otherMoonIllum = null;
+            }
+        } else {
+            this.otherMoonRiseTime = null;
+            this.otherMoonSetTime = null;
+            this.otherMoonIllum = null;
+        }
     }
 
+
+    _suncalcDateToTimeObj(dateObj, tzOffset) {
+        if (!dateObj || isNaN(dateObj.getTime())) return null;
+
+        // dateObj is the absolute UTC time of the event.
+        // We shift the UTC time by the target location's timezone offset
+        // so that extracting the UTC hours/minutes gives us the local time at that location.
+        const targetTime = new Date(dateObj.getTime() + tzOffset * 60 * 60 * 1000);
+
+        let hour = targetTime.getUTCHours();
+        let minute = targetTime.getUTCMinutes();
+
+        return {
+            hour: hour,
+            minute: minute,
+            totalSeconds: hour * 3600 + minute * 60
+        };
+    }
+
+    _getAccurateMoonTimes(targetDate, lat, lon, tzOffset) {
+        // Shift absolute time into the target timezone to find the correct local Year/Month/Day
+        const targetLocalTime = new Date(targetDate.getTime() + tzOffset * 3600 * 1000);
+        const targetYear = targetLocalTime.getUTCFullYear();
+        const targetMonth = targetLocalTime.getUTCMonth();
+        const targetDay = targetLocalTime.getUTCDate();
+
+        let riseTime = null;
+        let setTime = null;
+
+        const checkEvent = (evtDate) => {
+            if (!evtDate || isNaN(evtDate.getTime())) return null;
+            // Shift the absolute UTC event into the target timezone
+            const shifted = new Date(evtDate.getTime() + tzOffset * 3600 * 1000);
+            if (shifted.getUTCFullYear() === targetYear &&
+                shifted.getUTCMonth() === targetMonth &&
+                shifted.getUTCDate() === targetDay) {
+                return {
+                    hour: shifted.getUTCHours(),
+                    minute: shifted.getUTCMinutes(),
+                    totalSeconds: shifted.getUTCHours() * 3600 + shifted.getUTCMinutes() * 60
+                };
+            }
+            return null;
+        };
+
+        if (typeof Astronomy !== 'undefined') {
+            const observer = new Astronomy.Observer(lat, lon, 0);
+            const searchStartUTC = new Date(Date.UTC(targetYear, targetMonth, targetDay - 1, 0, 0, 0));
+            const searchLimitUTC = new Date(Date.UTC(targetYear, targetMonth, targetDay + 2, 0, 0, 0));
+
+            let currentRiseSearch = searchStartUTC;
+            while (currentRiseSearch < searchLimitUTC && !riseTime) {
+                let r = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, +1, currentRiseSearch, 4);
+                if (r && r.date) {
+                    riseTime = checkEvent(r.date);
+                    currentRiseSearch = new Date(r.date.getTime() + 1000 * 60); // advance 1 min
+                } else {
+                    break;
+                }
+            }
+
+            let currentSetSearch = searchStartUTC;
+            while (currentSetSearch < searchLimitUTC && !setTime) {
+                let s = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, currentSetSearch, 4);
+                if (s && s.date) {
+                    setTime = checkEvent(s.date);
+                    currentSetSearch = new Date(s.date.getTime() + 1000 * 60); // advance 1 min
+                } else {
+                    break;
+                }
+            }
+        } else {
+            // SunCalc fallback
+            // Query a 72-hour UTC window to ensure we catch all events that might bleed into our target local timezone day
+            for (let i = -1; i <= 1; i++) {
+                const dUTC = new Date(Date.UTC(targetYear, targetMonth, targetDay + i));
+                const times = SunCalc.getMoonTimes(dUTC, lat, lon, true);
+
+                if (!riseTime) riseTime = checkEvent(times.rise);
+                if (!setTime) setTime = checkEvent(times.set);
+            }
+        }
+
+        return { rise: riseTime, set: setTime };
+    }
 
     updateDayState() {
         // Logic from sketch.js
