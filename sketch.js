@@ -4019,13 +4019,9 @@ function setOtherLocation(lat, lon, tz, cityName, isDst = false) {
     // Always switch to Dual mode when setting an other location
     DaySpiralShowMode = 'dual';
 
-    // Start animation ONLY if transitioning from single to dual mode 
-    // AND the user hasn't seen the animation yet this session
-    if (wasInSingleMode && !HasSeenDualModeAnimation) {
-      console.log("🎬 Playing first-time dual mode animation");
-      daySpiralRenderer.startDualModeAnimation();
-      HasSeenDualModeAnimation = true;
-    }
+    // Start animation when transitioning to dual mode or picking a new city
+    console.log("🎬 Playing dual mode animation");
+    daySpiralRenderer.startDualModeAnimation();
 
     daySpiralRenderer.resize(window.innerWidth, window.innerHeight);
   }
