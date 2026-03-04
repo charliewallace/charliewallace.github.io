@@ -1783,7 +1783,7 @@ body.zen-mode #btn-zen-desktop:hover {
 
   /* Increased gap and taller dialog for landscape */
   #modal-details .modal-body {
-    max-height: 80vh;
+    max-height: 60vh;
     /* More height in landscape */
   }
 
