@@ -1813,14 +1813,14 @@ class DaySpiralRenderer extends ClockRenderer {
             if (moonRise && typeof moonRise.totalSeconds === 'number') {
                 if (!this._isTimeTooClose(moonRise, sunRise) && !this._isTimeTooClose(moonRise, sunSet) && this._isNighttime(moonRise, sunRise, sunSet)) {
                     let idxMoonRise = Math.floor((moonRise.totalSeconds / 86400) * totalDailyPts);
-                    this._drawSpiralTime(idxMoonRise, "Moon ↑", moonRise, currentX, currentY);
+                    this._drawSpiralTime(idxMoonRise, "Moon↑", moonRise, currentX, currentY);
                 }
             }
 
             if (moonSet && typeof moonSet.totalSeconds === 'number') {
                 if (!this._isTimeTooClose(moonSet, sunRise) && !this._isTimeTooClose(moonSet, sunSet) && this._isNighttime(moonSet, sunRise, sunSet)) {
                     let idxMoonSet = Math.floor((moonSet.totalSeconds / 86400) * totalDailyPts);
-                    this._drawSpiralTime(idxMoonSet, "Moon ↓", moonSet, currentX, currentY);
+                    this._drawSpiralTime(idxMoonSet, "Moon↓", moonSet, currentX, currentY);
                 }
             }
         }
@@ -1846,7 +1846,7 @@ class DaySpiralRenderer extends ClockRenderer {
         }
     }
 
-    _isTimeTooClose(t1, t2, thresholdSeconds = 1800) {
+    _isTimeTooClose(t1, t2, thresholdSeconds = 2400) {
         if (!t1 || !t2 || typeof t1.totalSeconds !== 'number' || typeof t2.totalSeconds !== 'number') return false;
         let diff = Math.abs(t1.totalSeconds - t2.totalSeconds);
         // Handle midnight wrap-around
