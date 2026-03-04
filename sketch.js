@@ -1572,7 +1572,8 @@ function updateUIElements() {
       if (locManager && locManager.hasOtherLocation()) {
         let mobileTitle = locManager.otherLocation.cityName || LocaleTitle;
         // DaySpiral Dual Mode: Show time next to location name (matching desktop behavior)
-        if (activeRenderer === daySpiralRenderer) {
+        // EXCEPT in 'Other Only' mode, where the time is already shown in the larger font above
+        if (activeRenderer === daySpiralRenderer && (typeof DaySpiralShowMode === 'undefined' || DaySpiralShowMode !== 'other')) {
           const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false); // No seconds
           mobileTitle += " " + otherTimeStr;
         }
