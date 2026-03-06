@@ -401,7 +401,7 @@ function oneTimeInit() {
   activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
 
   // Set page background to match the active renderer
-  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(128,128,128)' : '';
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(80,80,80)' : '';
 
 
   // Overall app initialization ----------------
@@ -3893,7 +3893,7 @@ function setClockMode(mode) {
   activeRenderer.resize(window.innerWidth, window.innerHeight);
 
   // Set page background to match the active renderer
-  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(128,128,128)' : '';
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(80,80,80)' : '';
 
   updateUIElements(); // Ensure title/desc update immediately
   updateAboutModalContent(); // Update About content based on clock

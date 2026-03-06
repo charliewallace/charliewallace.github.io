@@ -78,7 +78,7 @@ class SpiroClock {
   update() {
     if (!this.active) return;
 
-    background(128); // Clear canvas to medium gray each frame
+    background(80); // Clear canvas to medium-dark gray each frame
 
     // Current time with fractional parts for smooth movement
     let now = new Date();
@@ -105,12 +105,6 @@ class SpiroClock {
     minute60Angle -= HALF_PI;
     second60Angle -= HALF_PI;
 
-    // Digital time (upper right)
-    push();
-    textAlign(RIGHT, TOP); textSize(16); textStyle(NORMAL);
-    fill(0); noStroke();
-    text(now.toLocaleTimeString(), width - 15, 12);
-    pop();
 
     // --- Static hour ring ---
     push(); noFill(); stroke(0); strokeWeight(2);
@@ -121,7 +115,7 @@ class SpiroClock {
     // Hour ring with 12 ticks (no indicator on static ring itself)
     this.drawRing(this.clockCenter,
       this.fixedRingOuterRadius, this.fixedRingInnerRadius,
-      255, 128, 0,
+      255, 80, 0,
       0, -HALF_PI, 12, 0, false, false, null, null,
       this.HOUR_LABELS, -HALF_PI);
 
@@ -387,7 +381,7 @@ class SpiroClock {
     // --- Draw gear ring with indicator (on top of mini gears) ---
     let discClr = isRed ? color(255, 0, 0) : 0;
     this.drawRing(gc, gearR, gearInnerR,
-      255, 128, discClr,
+      255, 80, discClr,
       curRotNorm, rotOrigin, nTicks, 0, false, true,
       indicatorLabel, null,
       labels, null);
