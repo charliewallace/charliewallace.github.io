@@ -78,6 +78,8 @@ class SpiroClock {
   update() {
     if (!this.active) return;
 
+    background(128); // Clear canvas to medium gray each frame
+
     // Current time with fractional parts for smooth movement
     let now = new Date();
     let hour24 = now.getHours();

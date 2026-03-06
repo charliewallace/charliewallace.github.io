@@ -390,14 +390,18 @@ function oneTimeInit() {
 
   mobiusRenderer = new MobiusRenderer('mobius-container');
   mobiusRenderer.init();
-  
+
   spiroClockRenderer = new SpiroClock({ keepNumbersHoriz: false });
   spiroClockRenderer.init();
 
   // Select the default renderer and activate it.
-  activeRenderer = daySpiralRenderer; // Start with default
+  // activeRenderer = daySpiralRenderer; // Start with default
+  activeRenderer = spiroClockRenderer; // FINDME - for test only
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
+
+  // Set page background to match the active renderer
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(128,128,128)' : '';
 
 
   // Overall app initialization ----------------
@@ -3887,6 +3891,10 @@ function setClockMode(mode) {
 
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight);
+
+  // Set page background to match the active renderer
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(128,128,128)' : '';
+
   updateUIElements(); // Ensure title/desc update immediately
   updateAboutModalContent(); // Update About content based on clock
 
