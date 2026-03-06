@@ -390,6 +390,9 @@ function oneTimeInit() {
 
   mobiusRenderer = new MobiusRenderer('mobius-container');
   mobiusRenderer.init();
+  
+  spiroClockRenderer = new SpiroClock({ keepNumbersHoriz: false });
+  spiroClockRenderer.init();
 
   // Select the default renderer and activate it.
   activeRenderer = daySpiralRenderer; // Start with default
