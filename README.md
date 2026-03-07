@@ -31,6 +31,9 @@ A unique visualization that shows you your whole day, including day and night, s
 **Specific URL Parameters:**
 - `daySpiralStyle=SpiralHours`: Activates the "Ribbon" visual style.
 - `daySpiralTimeFormat=24`: Sets the DaySpiral to 24-hour time format.
+- `daySpiralShowMode=[dual|local|other]`: Sets the display mode (default `local`).
+- `enableDayspiralDialNumbers=0`: Hides the 1-12 hour numbers around the Dial face.
+- `enableSpiralAnnotations=0`: Disables sunrise/set and moonrise/set annotations on the spiral.
 - `moon=0`: Disables the moon phase graphic and moon-down coloring on the night spiral.
 
 ### Mobius Clock
@@ -59,7 +62,7 @@ A 12-hour clock face where time moves along a fully three-dimensional Mobius str
 
 ![Steampunk Clock](SteampunkClock.png)
 
-A stylized clock that uses nested spirographic gears to display the time.
+A stylized clock that uses nested spirographic gears to display the time. The image shows the clock at 7:50:00.
 - **Nested Gears**: Each ring rolls inside the one above it, with the hour, minute, and second values shown on successively smaller gears.
 - **Always in Motion**: The spinning anti-gear and support gears keep the mechanism in continuous motion.
 - **Red Indicator Lights**: Black indicators light up in red each time they enter a socket, creating a sequence of 4 red dots lighting up on the hour.
@@ -68,6 +71,7 @@ A stylized clock that uses nested spirographic gears to display the time.
 **Specific URL Parameters:**
 - `clock=steampunk`: Activates the Steampunk clock.
 - `keepNumbersHoriz=1`: Keeps the numbers upright instead of rotating with the gears.
+- `colorStyle=[brass|silver|bronze]`: Changes the metallic styling of the steampunk clock (hypothetical example, if you add this later).
 
 ---
 
