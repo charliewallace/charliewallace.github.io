@@ -86,7 +86,7 @@ class SpiroClock {
   update(timeKeeper) {
     if (!this.active) return;
 
-    background(80); // Clear canvas to medium-dark gray each frame
+    background(64); // Clear canvas to medium-dark gray each frame
 
 
 
@@ -135,7 +135,7 @@ class SpiroClock {
     // Hour ring with 12 ticks (no indicator on static ring itself)
     this.drawRing(this.clockCenter,
       this.fixedRingOuterRadius, this.fixedRingInnerRadius,
-      255, 80, 0,
+      255, 64, 0,
       0, -HALF_PI, 12, 0, false, false, null, null,
       this.HOUR_LABELS, -HALF_PI);
 
@@ -401,7 +401,7 @@ class SpiroClock {
     // --- Draw gear ring with indicator (on top of mini gears) ---
     let discClr = isRed ? color(255, 0, 0) : 0;
     this.drawRing(gc, gearR, gearInnerR,
-      255, 80, discClr,
+      255, 64, discClr,
       curRotNorm, rotOrigin, nTicks, 0, false, true,
       indicatorLabel, null,
       labels, null);

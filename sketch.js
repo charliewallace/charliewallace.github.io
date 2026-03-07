@@ -46,7 +46,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.6.1 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.7.0 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -400,7 +400,7 @@ function oneTimeInit() {
   activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
 
   // Set page background to match the active renderer
-  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(80,80,80)' : '';
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(64,64,64)' : '';
 
 
   // Overall app initialization ----------------
@@ -1588,7 +1588,9 @@ function updateUIElements() {
     if (descEl) descEl.textContent = mobiusDescText;
   } else if (typeof activeRenderer !== 'undefined' && typeof spiroClockRenderer !== 'undefined' && activeRenderer === spiroClockRenderer) {
     if (titleEl) titleEl.textContent = 'Steampunk Clock';
-    var steampunkDescText = 'Wheels within wheels, always turning, who has the time? This clock it\'s burning...';
+    var steampunkDescText = "Uses nested spirographic gears to display the time. " +
+      "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
+      "on successively smaller gears.";
     if (descEl) descEl.textContent = steampunkDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
@@ -3943,21 +3945,27 @@ function setClockMode(mode) {
     activeRenderer = mobiusRenderer;
     select('#controls-mobius').removeClass('hidden');
     select('#opt-mobius').addClass('active');
+    var setupBtn = select('#btn-setup');
+    if (setupBtn) setupBtn.removeClass('hidden');
   } else if (mode === 'steampunk') {
     activeRenderer = spiroClockRenderer;
     select('#controls-steampunk').removeClass('hidden');
     select('#opt-steampunk').addClass('active');
+    var setupBtn = select('#btn-setup');
+    if (setupBtn) setupBtn.addClass('hidden');
   } else {
     activeRenderer = daySpiralRenderer;
     select('#controls-dayspiral').removeClass('hidden');
     select('#opt-dayspiral').addClass('active');
+    var setupBtn = select('#btn-setup');
+    if (setupBtn) setupBtn.removeClass('hidden');
   }
 
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight);
 
   // Set page background to match the active renderer
-  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(80,80,80)' : '';
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(64,64,64)' : '';
 
   updateUIElements(); // Ensure title/desc update immediately
   updateAboutModalContent(); // Update About content based on clock
@@ -4007,7 +4015,9 @@ function updateAboutModalContent() {
     title = "About Steampunk Clock";
     descText = "The Steampunk Clock uses nested spirographic gears to display the time. " +
       "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
-      "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion.";
+      "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion. " +
+      "The black indicators light up in red each time they enter a socket; " +
+      "watch 4 red dots light up in sequence on the hour!"
   }
 
   if (aboutTitleEl) aboutTitleEl.html(title);
