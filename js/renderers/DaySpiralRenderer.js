@@ -1631,6 +1631,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
     // Draw AM/PM indicators and separator line for Dial mode when numbers are hidden
     drawAmPmIndicators(showMode = 'dual') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
+
         // Only show if: style is Dial, hours are hidden
         if (this.style !== 'Dial' || this.hoursVisible) return;
 
@@ -2033,6 +2035,7 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     _drawMoonPhase(tk, showMode = 'dual') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
         if (!tk || !tk.moonIllum) return;
 
         let f = tk.moonIllum.fraction;
