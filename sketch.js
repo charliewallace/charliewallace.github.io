@@ -92,6 +92,7 @@ var IsUserInitiatedLocation = false; // true if location was set by user action 
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
 var DaySpiralShowMode = 'local'; // 'other', 'dual', 'local' - Default to local on start
+var EnableSpiralAnnotations = 1; // 1 = enabled, 0 = disabled
 var HasSeenDualModeAnimation = false; // Ensures guided transition only plays once per session
 var ShowMoon = true; // Whether the Moon Phase display is active
 
@@ -570,6 +571,13 @@ function oneTimeInit() {
     }
   });
 
+  // DaySpiral Sun/Moon Annotations Checkbox
+  var annCheck = select('#check-dayspiral-annotations');
+  if (annCheck) annCheck.changed(() => {
+    EnableSpiralAnnotations = annCheck.checked() ? 1 : 0;
+    updateUrlHash();
+  });
+
   // DaySpiral Guided Transition Checkbox
   var transitionCheck = select('#check-dayspiral-guided-transition');
   if (transitionCheck) transitionCheck.changed(() => {
@@ -965,14 +973,16 @@ function parseUrlHash() {
   var daySpiralShowHours = params.get('daySpiralShowHours');
   var daySpiralShowMode = params.get('daySpiralShowMode');
   var dualAnim = params.get('dualAnim');
+  var enaAnn = params.get('enableSpiralAnnotations');
 
-  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null || daySpiralShowMode) {
+  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null || daySpiralShowMode || enaAnn !== null) {
     window._initialDaySpiralState = {
       style: daySpiralStyle || 'Dial',
       timeFormat: daySpiralTimeFormat || '12',
       showHours: daySpiralShowHours === '1', // Default false
       dualAnim: dualAnim !== '0', // Default true
-      showMode: daySpiralShowMode || 'dual'
+      showMode: daySpiralShowMode || 'dual',
+      enableAnnotations: enaAnn !== '0' // Default true
     };
   }
 
@@ -1170,6 +1180,12 @@ function applyInitialState() {
       if (chk) chk.checked(state.dualAnim);
     }
 
+    if (state.enableAnnotations !== undefined) {
+      EnableSpiralAnnotations = state.enableAnnotations ? 1 : 0;
+      const annCheck = select('#check-dayspiral-annotations');
+      if (annCheck) annCheck.checked(EnableSpiralAnnotations === 1);
+    }
+
     if (state.showMode) {
       setDaySpiralShowMode(state.showMode);
     }
@@ -1307,7 +1323,7 @@ function updateUrlHash() {
   // Clear managed parameters to re-add them based on current state
   const managedKeys = [
     'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
-    'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode',
+    'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode', 'enableSpiralAnnotations',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
     'otherLat', 'otherLon', 'otherTz', 'otherCity',
@@ -1409,6 +1425,11 @@ function updateUrlHash() {
       params.set('daySpiralShowMode', DaySpiralShowMode);
     } else {
       params.delete('daySpiralShowMode');
+    }
+
+    // Add DaySpiral annotations setting
+    if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) {
+      params.set('enableSpiralAnnotations', '0');
     }
   }
 

@@ -1717,16 +1717,18 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawRiseSetTimes(tk, showMode = 'dual') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
+
         // Skip in dual mode unless a single-location showMode is active
         if (this.style !== 'Dial' || this.hoursVisible) return;
         if (this.isDualLocationMode && showMode === 'dual') return;
         if (this.isAnimatingDualMode) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
+        push();
         // Use standard Yellow text color (255, 235, 120) at 90% opacity
         let c = color(255, 235, 120, 230);
 
-        push();
         fill(c);
         noStroke();
 
@@ -1864,7 +1866,9 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     // Draw Rise/Set times on the spiral for Ribbon (SpiralHours) mode
-    drawRibbonRiseSetTimes(tk, locManager, showMode = 'dual') {
+    drawRibbonRiseSetTimes(tk, locManager, showMode = 'local') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
+
         if (this.style !== 'SpiralHours') return;
 
         // Hide during dual mode animation (stages 2-5)
