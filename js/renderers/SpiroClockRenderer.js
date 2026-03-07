@@ -133,9 +133,10 @@ class SpiroClock {
     pop();
 
     // Hour ring with 12 ticks (no indicator on static ring itself)
+    let clrStaticOuter = color(200, 190, 210); // Pale Lavender
     this.drawRing(this.clockCenter,
       this.fixedRingOuterRadius, this.fixedRingInnerRadius,
-      255, 64, 0,
+      clrStaticOuter, 64, 0,
       0, -HALF_PI, 12, 0, false, false, null, null,
       this.HOUR_LABELS, -HALF_PI);
 
@@ -146,21 +147,27 @@ class SpiroClock {
     let m5wf = m60wf * twk;
     let s60wf = m5wf * twk;
 
+    // Pastel, mutated colors matching light gray brightness
+    let clrHour = color(220, 200, 190); // Dusty Rose / Peach
+    let clrMin = color(190, 210, 190);  // Sage Green
+    let clrMin5 = color(190, 200, 220); // Slate Blue
+    let clrSec = color(220, 220, 190);  // Pale Gold / Khaki
+
     let r1 = this.drawSpiroRing(hourAngle - HALF_PI, 12, 12,
       this.clockCenter, this.fixedRingInnerRadius, h12wf, 0,
-      this.MIN60_LABELS, str(hourDisplay));
+      this.MIN60_LABELS, str(hourDisplay), clrHour);
 
     let r2 = this.drawSpiroRing(minute60Angle + HALF_PI, 12, 5,
       r1.center, r1.innerR, m60wf, r1.angle,
-      this.MIN5_LABELS, str(minDisplay));
+      this.MIN5_LABELS, str(minDisplay), clrMin);
 
     let r3 = this.drawSpiroRing(minute5Angle, 5, 12,
       r2.center, r2.innerR, m5wf, r2.angle,
-      this.SEC60_LABELS, str(min5Display));
+      this.SEC60_LABELS, str(min5Display), clrMin5);
 
     this.drawSpiroRing(second60Angle, 12, 0,
       r3.center, r3.innerR, s60wf, r3.angle + HALF_PI,
-      null, str(secDisplay));
+      null, str(secDisplay), clrSec);
   }
 
   // ---- drawRing ----
@@ -296,7 +303,7 @@ class SpiroClock {
   // Returns { center, innerR, angle } for chaining to the next gear.
   drawSpiroRing(curRot, cyclesPerRev, nTicks,
     ringCenter, ringRadius, widthFrac, rotOrigin,
-    labels, indicatorLabel) {
+    labels, indicatorLabel, ringClr = 255) {
     // --- Gear geometry ---
     let gearR = (cyclesPerRev - 1) * (ringRadius / cyclesPerRev);
     let offsetAngle = this._norm(-curRot * (cyclesPerRev - 1));
@@ -401,7 +408,7 @@ class SpiroClock {
     // --- Draw gear ring with indicator (on top of mini gears) ---
     let discClr = isRed ? color(255, 0, 0) : 0;
     this.drawRing(gc, gearR, gearInnerR,
-      255, 64, discClr,
+      ringClr, 64, discClr,
       curRotNorm, rotOrigin, nTicks, 0, false, true,
       indicatorLabel, null,
       labels, null);
