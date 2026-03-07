@@ -395,8 +395,7 @@ function oneTimeInit() {
   spiroClockRenderer.init();
 
   // Select the default renderer and activate it.
-  // activeRenderer = daySpiralRenderer; // Start with default
-  activeRenderer = spiroClockRenderer; // FINDME - for test only
+  activeRenderer = daySpiralRenderer; // Start with default
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
 
@@ -537,6 +536,17 @@ function oneTimeInit() {
     }
   });
 
+  // Steampunk: Keep Numbers Level toggle button
+  var btnKeepLevel = select('#btn-keep-numbers-level');
+  if (btnKeepLevel) btnKeepLevel.mousePressed(() => {
+    if (spiroClockRenderer) {
+      spiroClockRenderer.keepNumbersHoriz = !spiroClockRenderer.keepNumbersHoriz;
+      if (spiroClockRenderer.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
+      else btnKeepLevel.removeClass('toggled-on');
+      updateUrlHash();
+    }
+  });
+
   // Moon Toggle Button
   var btnToggleMoon = select('#btn-toggle-moon');
   if (btnToggleMoon) btnToggleMoon.mousePressed(() => {
@@ -584,6 +594,7 @@ function oneTimeInit() {
   // Renderer Switching logic
   select('#opt-dayspiral').mousePressed(() => setClockMode('dayspiral'));
   select('#opt-mobius').mousePressed(() => setClockMode('mobius'));
+  select('#opt-steampunk').mousePressed(() => setClockMode('steampunk'));
 
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
@@ -932,8 +943,15 @@ function parseUrlHash() {
 
   // Clock mode - store for later application (after renderers are initialized)
   var clockMode = params.get('clock');
-  if (clockMode === 'mobius' || clockMode === 'dayspiral') {
+  if (clockMode === 'mobius' || clockMode === 'dayspiral' || clockMode === 'steampunk') {
     window._initialClockMode = clockMode;
+  }
+
+  // Steampunk state - store for later application
+  if (params.has('keepNumbersHoriz')) {
+    window._initialSteampunkState = {
+      keepNumbersHoriz: params.get('keepNumbersHoriz') === '1'
+    };
   }
 
   // DaySpiral state - store for later application
@@ -1251,6 +1269,21 @@ function applyInitialState() {
     delete window._initialMobiusState; // Clean up
   }
 
+  // Apply Steampunk state if specified
+  if (window._initialSteampunkState) {
+    console.log("  ⚙️ Applying Steampunk settings:", window._initialSteampunkState);
+    const state = window._initialSteampunkState;
+    if (state.keepNumbersHoriz !== undefined && spiroClockRenderer) {
+      spiroClockRenderer.keepNumbersHoriz = state.keepNumbersHoriz;
+      const btnKeepLevel = select('#btn-keep-numbers-level');
+      if (btnKeepLevel) {
+        if (state.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
+        else btnKeepLevel.removeClass('toggled-on');
+      }
+    }
+    delete window._initialSteampunkState;
+  }
+
   // Apply alternate location if specified
   if (window._initialOtherLocation) {
     const other = window._initialOtherLocation;
@@ -1277,7 +1310,8 @@ function updateUrlHash() {
     'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
-    'otherLat', 'otherLon', 'otherTz', 'otherCity'
+    'otherLat', 'otherLon', 'otherTz', 'otherCity',
+    'keepNumbersHoriz'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1337,6 +1371,8 @@ function updateUrlHash() {
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined') {
     if (activeRenderer === mobiusRenderer) {
       params.set('clock', 'mobius');
+    } else if (activeRenderer === spiroClockRenderer) {
+      params.set('clock', 'steampunk');
     } else {
       // Don't set clock if it's the default (dayspiral)
       params.delete('clock');
@@ -1407,6 +1443,13 @@ function updateUrlHash() {
     }
     if (mobiusRenderer.dayNightMode === true) {
       params.set('dayNight', '1');
+    }
+  }
+
+  // Steampunk-specific state
+  if (typeof spiroClockRenderer !== 'undefined' && spiroClockRenderer) {
+    if (spiroClockRenderer.keepNumbersHoriz === true) {
+      params.set('keepNumbersHoriz', '1');
     }
   }
 
@@ -1543,6 +1586,10 @@ function updateUIElements() {
       'completing a cycle in only one turn.';
 
     if (descEl) descEl.textContent = mobiusDescText;
+  } else if (typeof activeRenderer !== 'undefined' && typeof spiroClockRenderer !== 'undefined' && activeRenderer === spiroClockRenderer) {
+    if (titleEl) titleEl.textContent = 'Steampunk Clock';
+    var steampunkDescText = 'Wheels within wheels, always turning, who has the time? This clock it\'s burning...';
+    if (descEl) descEl.textContent = steampunkDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show your night and day together in one view, you need a 24-hour clock; ' +
@@ -3871,22 +3918,35 @@ function draw() {
 
 function setClockMode(mode) {
   if ((mode === 'dayspiral' && activeRenderer === daySpiralRenderer) ||
-    (mode === 'mobius' && activeRenderer === mobiusRenderer)) {
+    (mode === 'mobius' && activeRenderer === mobiusRenderer) ||
+    (mode === 'steampunk' && activeRenderer === spiroClockRenderer)) {
     return; // Already in this mode
   }
 
   activeRenderer.deactivate();
 
+  // Hide all control groups
+  select('#controls-dayspiral').addClass('hidden');
+  select('#controls-mobius').addClass('hidden');
+  select('#controls-steampunk').addClass('hidden');
+
+  // Remove active class from all selector options
+  select('#opt-dayspiral').removeClass('active');
+  select('#opt-mobius').removeClass('active');
+  select('#opt-steampunk').removeClass('active');
+
   if (mode === 'mobius') {
     activeRenderer = mobiusRenderer;
-    // Switch Control Groups
-    select('#controls-dayspiral').addClass('hidden');
     select('#controls-mobius').removeClass('hidden');
+    select('#opt-mobius').addClass('active');
+  } else if (mode === 'steampunk') {
+    activeRenderer = spiroClockRenderer;
+    select('#controls-steampunk').removeClass('hidden');
+    select('#opt-steampunk').addClass('active');
   } else {
     activeRenderer = daySpiralRenderer;
-    // Switch Control Groups
-    select('#controls-mobius').addClass('hidden');
     select('#controls-dayspiral').removeClass('hidden');
+    select('#opt-dayspiral').addClass('active');
   }
 
   activeRenderer.activate();
@@ -3939,6 +3999,11 @@ function updateAboutModalContent() {
       "Noon is at the bottom of the upper arch, and midnight is at the top. " +
       "The minute and second indicators move along the center of the strip, so they complete a cycle in only one turn.";
     if (locationWarning) descText += " " + locationWarning;
+  } else if (activeRenderer === spiroClockRenderer) {
+    title = "About Steampunk Clock";
+    descText = "The Steampunk Clock uses nested spirographic gears to display the time. " +
+      "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
+      "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion.";
   }
 
   if (aboutTitleEl) aboutTitleEl.html(title);

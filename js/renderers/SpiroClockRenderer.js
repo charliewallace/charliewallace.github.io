@@ -52,10 +52,18 @@ class SpiroClock {
 
   activate() {
     this.active = true;
+    // SpiroClock shares the p5 canvas with DaySpiralRenderer (both in canvas-container)
+    const el = document.getElementById('canvas-container');
+    if (el) {
+      el.classList.remove('hidden');
+      el.style.display = '';
+    }
   }
 
   deactivate() {
     this.active = false;
+    const el = document.getElementById('canvas-container');
+    if (el) el.classList.add('hidden');
   }
 
   resize(w, h) {
@@ -79,6 +87,8 @@ class SpiroClock {
     if (!this.active) return;
 
     background(80); // Clear canvas to medium-dark gray each frame
+
+
 
     // Current time with fractional parts for smooth movement
     let now = new Date();
