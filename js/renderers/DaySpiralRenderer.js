@@ -1749,6 +1749,8 @@ class DaySpiralRenderer extends ClockRenderer {
         textSize(this.fontSize * 0.55);
         textStyle(BOLD);
 
+        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)');
+
         // Indices - totalDailyPts is 2 * numPointsPerTurn (24 hours)
         let totalDailyPts = this.numPointsPerTurn * 2;
 
@@ -1797,6 +1799,7 @@ class DaySpiralRenderer extends ClockRenderer {
             }
         }
 
+        this._resetShadow();
         pop();
     }
 
@@ -2113,9 +2116,15 @@ class DaySpiralRenderer extends ClockRenderer {
         push();
         noStroke();
 
+        // Apply shadow for the base circle so internal layers don't cast inner shadows
+        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)');
+
         // 1. Draw base unlit moon (dark grey)
         fill(85, 85, 80, 255);
         ellipse(x, y, D, D);
+
+        // Turn off shadow for the internal layers to prevent internal shadow lines
+        this._resetShadow();
 
         // 2. Draw lit portion (soft yellow)
         if (f > 0.0) {
@@ -2155,6 +2164,7 @@ class DaySpiralRenderer extends ClockRenderer {
         textAlign(CENTER, BOTTOM);
 
         this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)');
+
         let labelY = y - (D / 2) - labelGap;
 
         push();
