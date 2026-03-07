@@ -1420,8 +1420,8 @@ function updateUrlHash() {
       params.set('dualAnim', '0');
     }
 
-    // Add DaySpiral show mode (only show if not default 'local')
-    if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode !== 'local') {
+    // Add DaySpiral show mode (only show if not default 'local' AND if an other location exists)
+    if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode !== 'local' && locManager && locManager.hasOtherLocation()) {
       params.set('daySpiralShowMode', DaySpiralShowMode);
     } else {
       params.delete('daySpiralShowMode');
