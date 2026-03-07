@@ -1888,12 +1888,16 @@ function updateUIElements() {
   // Update Clock Selector Highlighting
   var optSpiral = select('#opt-dayspiral');
   var optMobius = select('#opt-mobius');
+  var optSteampunk = select('#opt-steampunk');
+  if (optSpiral) optSpiral.removeClass('active');
+  if (optMobius) optMobius.removeClass('active');
+  if (optSteampunk) optSteampunk.removeClass('active');
   if (activeRenderer === daySpiralRenderer) {
     if (optSpiral) optSpiral.addClass('active');
-    if (optMobius) optMobius.removeClass('active');
-  } else {
-    if (optSpiral) optSpiral.removeClass('active');
+  } else if (activeRenderer === mobiusRenderer) {
     if (optMobius) optMobius.addClass('active');
+  } else if (activeRenderer === spiroClockRenderer) {
+    if (optSteampunk) optSteampunk.addClass('active');
   }
 
   // Update DaySpiral Style Selector Highlighting
