@@ -83,7 +83,7 @@ class SpiroClock {
   }
 
   // ---- Main update (ported from timer1_Tick + UpdateClock) ----
-  update() {
+  update(timeKeeper) {
     if (!this.active) return;
 
     background(80); // Clear canvas to medium-dark gray each frame
@@ -91,11 +91,21 @@ class SpiroClock {
 
 
     // Current time with fractional parts for smooth movement
-    let now = new Date();
-    let hour24 = now.getHours();
-    let rawSec = now.getSeconds();
-    let rawMin = now.getMinutes();
-    let sec = rawSec + now.getMilliseconds() / 1000;
+    // Use timeKeeper if available (provides timezone-adjusted time for Other Location)
+    let hour24, rawMin, rawSec, ms;
+    if (timeKeeper) {
+      hour24 = timeKeeper.hours;
+      rawMin = timeKeeper.minutes;
+      rawSec = timeKeeper.seconds;
+      ms = timeKeeper.millis;
+    } else {
+      let now = new Date();
+      hour24 = now.getHours();
+      rawMin = now.getMinutes();
+      rawSec = now.getSeconds();
+      ms = now.getMilliseconds();
+    }
+    let sec = rawSec + ms / 1000;
     let min = rawMin + sec / 60;
     let hour12 = (hour24 % 12) + min / 60;
 
