@@ -96,6 +96,8 @@ var EnableSpiralAnnotations = 1; // 1 = enabled, 0 = disabled
 var EnableDayspiralDialNumbers = 1; // 1 = enabled, 0 = disabled
 var HasSeenDualModeAnimation = false; // Ensures guided transition only plays once per session
 var ShowMoon = true; // Whether the Moon Phase display is active
+var IsSuperZen = false;
+var SavedSuperZenStates = null;
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset = 64800, BaseMsSunset;
@@ -519,7 +521,42 @@ function oneTimeInit() {
     fsBtn.mousePressed(toggleFullScreen);
   }
 
-  select('#btn-zen').mousePressed(toggleZenMode);
+  // Zen Mode Button - enhanced for Super-Zen via Shift-Click or Long-Press
+  var btnZen = document.getElementById('btn-zen');
+  if (btnZen) {
+    let pressTimer;
+    let isLongPress = false;
+
+    // Mouse handlers (Click)
+    btnZen.addEventListener('click', (e) => {
+      if (e.shiftKey) {
+        toggleSuperZenMode();
+      } else {
+        toggleZenMode();
+      }
+    });
+
+    // Touch handlers for mobile long-press
+    btnZen.addEventListener('touchstart', (e) => {
+      isLongPress = false;
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+      }, 800); // 800ms for long press
+    }, { passive: true });
+
+    btnZen.addEventListener('touchend', (e) => {
+      clearTimeout(pressTimer);
+      if (isLongPress) {
+        e.preventDefault(); // Prevent 'click' from firing
+        toggleSuperZenMode();
+      }
+      // If it's not a long press, we let 'click' handle the normal toggleZenMode
+    });
+
+    btnZen.addEventListener('touchcancel', () => {
+      clearTimeout(pressTimer);
+    });
+  }
 
   // "GPS OK?" Button (Relocated to modal)
   var gpsBtnModal = select('#btn-gps-modal');
@@ -2887,7 +2924,9 @@ function handleLocationError(error) {
 
 // Helper to force exit Zen Mode (e.g. on error)
 function exitZenMode() {
-  if (IsZenMode) {
+  if (IsSuperZen) {
+    toggleSuperZenMode();
+  } else if (IsZenMode) {
     toggleZenMode();
   }
 }
@@ -2918,7 +2957,14 @@ function handleNetworkError(err) {
 
 //-----------------------------------------------------------------
 // Toggle Zen Mode
-function toggleZenMode() {
+function toggleZenMode(bypassSuperCheck = false) {
+  // If we are currently in Super-Zen mode, any attempt to toggle regular Zen mode
+  // should gracefully exit Super-Zen mode instead.
+  if (!bypassSuperCheck && IsSuperZen) {
+    toggleSuperZenMode();
+    return;
+  }
+
   IsZenMode = !IsZenMode;
 
   if (IsZenMode) {
@@ -2930,6 +2976,100 @@ function toggleZenMode() {
   }
 
   updateUrlHash();
+}
+
+//-----------------------------------------------------------------
+// Toggle Super-Zen Mode
+function toggleSuperZenMode() {
+  IsSuperZen = !IsSuperZen;
+
+  if (IsSuperZen) {
+    // Save current states
+    SavedSuperZenStates = {
+      enableDayspiralDialNumbers: typeof EnableDayspiralDialNumbers !== 'undefined' ? EnableDayspiralDialNumbers : 1,
+      enableSpiralAnnotations: typeof EnableSpiralAnnotations !== 'undefined' ? EnableSpiralAnnotations : 1,
+      showMoon: typeof ShowMoon !== 'undefined' ? ShowMoon : true,
+      mobiusHoursVisible: typeof mobiusRenderer !== 'undefined' ? mobiusRenderer.hoursVisible : true,
+      wasFullscreen: typeof fullscreen === 'function' && fullscreen()
+    };
+
+    // Override settings for minimum visual noise
+    if (typeof EnableDayspiralDialNumbers !== 'undefined') EnableDayspiralDialNumbers = 0;
+    if (typeof EnableSpiralAnnotations !== 'undefined') EnableSpiralAnnotations = 0;
+    if (typeof ShowMoon !== 'undefined') ShowMoon = false;
+    if (typeof mobiusRenderer !== 'undefined') {
+      mobiusRenderer.hoursVisible = false;
+      if (mobiusRenderer.hourNumbersGroup) mobiusRenderer.hourNumbersGroup.visible = false;
+    }
+
+    // Update UI checkboxes
+    const annCheck = select('#check-dayspiral-annotations');
+    if (annCheck) annCheck.checked(false);
+    const dialNumCheck = select('#check-dayspiral-dial-numbers');
+    if (dialNumCheck) dialNumCheck.checked(false);
+    const btnToggleMoon = select('#btn-toggle-moon');
+    if (btnToggleMoon) btnToggleMoon.removeClass('toggled-on');
+    const btnHideHours = select('#btn-hide-hours');
+    if (btnHideHours) btnHideHours.removeClass('toggled-on');
+
+    // Force application of new geometry if renderer exists
+    if (typeof daySpiralRenderer !== 'undefined' && daySpiralRenderer.active) {
+      daySpiralRenderer.resize(width, height);
+    }
+
+    // Go Fullscreen if not already
+    if (typeof fullscreen === 'function' && !fullscreen()) {
+      try { fullscreen(true); } catch (e) { }
+    }
+
+    // Go visually into Zen Mode
+    if (!IsZenMode) {
+      toggleZenMode(true);
+    }
+  } else {
+    // Restore states
+    if (SavedSuperZenStates) {
+      if (typeof EnableDayspiralDialNumbers !== 'undefined') EnableDayspiralDialNumbers = SavedSuperZenStates.enableDayspiralDialNumbers;
+      if (typeof EnableSpiralAnnotations !== 'undefined') EnableSpiralAnnotations = SavedSuperZenStates.enableSpiralAnnotations;
+      if (typeof ShowMoon !== 'undefined') ShowMoon = SavedSuperZenStates.showMoon;
+      if (typeof mobiusRenderer !== 'undefined') {
+        mobiusRenderer.hoursVisible = SavedSuperZenStates.mobiusHoursVisible;
+        if (mobiusRenderer.hourNumbersGroup) mobiusRenderer.hourNumbersGroup.visible = mobiusRenderer.hoursVisible;
+      }
+
+      // Restore UI checkboxes
+      const annCheck = select('#check-dayspiral-annotations');
+      if (annCheck) annCheck.checked(EnableSpiralAnnotations === 1);
+      const dialNumCheck = select('#check-dayspiral-dial-numbers');
+      if (dialNumCheck) dialNumCheck.checked(EnableDayspiralDialNumbers === 1);
+      const btnToggleMoon = select('#btn-toggle-moon');
+      if (btnToggleMoon) {
+        if (ShowMoon) btnToggleMoon.addClass('toggled-on');
+        else btnToggleMoon.removeClass('toggled-on');
+      }
+      const btnHideHours = select('#btn-hide-hours');
+      if (btnHideHours && typeof mobiusRenderer !== 'undefined') {
+        if (mobiusRenderer.hoursVisible) btnHideHours.addClass('toggled-on');
+        else btnHideHours.removeClass('toggled-on');
+      }
+
+      // Restore fullscreen state if we changed it
+      if (typeof fullscreen === 'function' && !SavedSuperZenStates.wasFullscreen && fullscreen()) {
+        try { fullscreen(false); } catch (e) { }
+      }
+      SavedSuperZenStates = null;
+    }
+
+    // Rebuild geometry
+    if (typeof daySpiralRenderer !== 'undefined' && daySpiralRenderer.active) {
+      daySpiralRenderer.resize(width, height);
+    }
+
+    // Exit Zen Mode
+    if (IsZenMode) {
+      toggleZenMode(true);
+    }
+  }
 }
 
 //-----------------------------------------------------------------

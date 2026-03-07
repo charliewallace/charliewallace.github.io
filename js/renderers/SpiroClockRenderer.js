@@ -86,7 +86,9 @@ class SpiroClock {
   update(timeKeeper) {
     if (!this.active) return;
 
-    background(64); // Clear canvas to medium-dark gray each frame
+    // Darken background by 25% (to 48) instead of 50% when in Zen or Super-Zen mode
+    this.bgColor = (typeof IsZenMode !== 'undefined' && IsZenMode) ? 48 : 64;
+    background(this.bgColor); // Clear canvas to chosen gray level each frame
 
 
 
@@ -136,7 +138,7 @@ class SpiroClock {
     let clrStaticOuter = color(200, 190, 210); // Pale Lavender
     this.drawRing(this.clockCenter,
       this.fixedRingOuterRadius, this.fixedRingInnerRadius,
-      clrStaticOuter, 64, 0,
+      clrStaticOuter, this.bgColor, 0,
       0, -HALF_PI, 12, 0, false, false, null, null,
       this.HOUR_LABELS, -HALF_PI);
 
@@ -408,7 +410,7 @@ class SpiroClock {
     // --- Draw gear ring with indicator (on top of mini gears) ---
     let discClr = isRed ? color(255, 0, 0) : 0;
     this.drawRing(gc, gearR, gearInnerR,
-      ringClr, 64, discClr,
+      ringClr, this.bgColor || 64, discClr,
       curRotNorm, rotOrigin, nTicks, 0, false, true,
       indicatorLabel, null,
       labels, null);
