@@ -204,14 +204,20 @@ class DaySpiralRenderer extends ClockRenderer {
         let radius = minDim / 2;
 
         this.clockDiameter = radius * 1.912;
-        this.diameter = this.clockDiameter;
         this.faceDiameter = radius * 1.66;
         this.numbersRadius = radius * 0.893;
 
         // Spiral settings default (Dial)
-        // Spiral settings default (Dial)
         let startRadius = radius * 0.40;
         let endRadius = radius * 0.74;
+
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) {
+            // When dial numbers are turned off, we have more room to expand
+            startRadius = radius * 0.45;
+            endRadius = radius * 0.90;
+            // Expand the gray background to fit the larger spiral with margin
+            this.faceDiameter = radius * 1.98;
+        }
 
         // Check if we're in dual-location mode to set visual weights
         const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
@@ -232,6 +238,7 @@ class DaySpiralRenderer extends ClockRenderer {
         } else {
             // Dial
             let nTurns = 2;
+
             let deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
 
             this.singleModeStrokeWeight = deltaRadiusPerTurn * 0.66;
@@ -444,6 +451,8 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawHourLabels() {
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) return;
+
         noStroke();
         fill(this.hourDigitColor); // color of hour digits
         textSize(this.fontSize);
@@ -876,6 +885,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // 2. In other views (like "Other Only"), respect the toggle.
         const isDualView = (showMode === 'dual');
         if (!isDualView && !this.hoursVisible) return;
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) return;
 
         fill(200, 255, 255); // Light Cyan for inner spiral label
         const isSingleRendering = (showMode !== 'dual');
@@ -974,6 +984,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // 2. In other views (Single, Local Only, Other Only), respect the toggle.
         const isDualView = (showMode === 'dual' && this.isDualLocationMode);
         if (!isDualView && !this.hoursVisible) return;
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) return;
 
         fill(255, 235, 120); // Yellow for outer spiral
         noStroke();

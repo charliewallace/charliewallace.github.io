@@ -93,6 +93,7 @@ var IsLoadingLocation = false; // true if waiting for location data (network or 
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
 var DaySpiralShowMode = 'local'; // 'other', 'dual', 'local' - Default to local on start
 var EnableSpiralAnnotations = 1; // 1 = enabled, 0 = disabled
+var EnableDayspiralDialNumbers = 1; // 1 = enabled, 0 = disabled
 var HasSeenDualModeAnimation = false; // Ensures guided transition only plays once per session
 var ShowMoon = true; // Whether the Moon Phase display is active
 
@@ -578,6 +579,16 @@ function oneTimeInit() {
     updateUrlHash();
   });
 
+  // DaySpiral Show Dial Numbers Checkbox
+  var dialNumCheck = select('#check-dayspiral-dial-numbers');
+  if (dialNumCheck) dialNumCheck.changed(() => {
+    EnableDayspiralDialNumbers = dialNumCheck.checked() ? 1 : 0;
+    if (daySpiralRenderer && daySpiralRenderer.active) {
+      daySpiralRenderer.resize(width, height);
+    }
+    updateUrlHash();
+  });
+
   // DaySpiral Guided Transition Checkbox
   var transitionCheck = select('#check-dayspiral-guided-transition');
   if (transitionCheck) transitionCheck.changed(() => {
@@ -974,15 +985,17 @@ function parseUrlHash() {
   var daySpiralShowMode = params.get('daySpiralShowMode');
   var dualAnim = params.get('dualAnim');
   var enaAnn = params.get('enableSpiralAnnotations');
+  var enaDialNum = params.get('enableDayspiralDialNumbers');
 
-  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null || daySpiralShowMode || enaAnn !== null) {
+  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null || daySpiralShowMode || enaAnn !== null || enaDialNum !== null) {
     window._initialDaySpiralState = {
       style: daySpiralStyle || 'Dial',
       timeFormat: daySpiralTimeFormat || '12',
       showHours: daySpiralShowHours === '1', // Default false
       dualAnim: dualAnim !== '0', // Default true
       showMode: daySpiralShowMode || 'dual',
-      enableAnnotations: enaAnn !== '0' // Default true
+      enableAnnotations: enaAnn !== '0', // Default true
+      enableDialNumbers: enaDialNum !== '0' // Default true
     };
   }
 
@@ -1186,6 +1199,16 @@ function applyInitialState() {
       if (annCheck) annCheck.checked(EnableSpiralAnnotations === 1);
     }
 
+    if (state.enableDialNumbers !== undefined) {
+      EnableDayspiralDialNumbers = state.enableDialNumbers ? 1 : 0;
+      const dialNumCheck = select('#check-dayspiral-dial-numbers');
+      if (dialNumCheck) dialNumCheck.checked(EnableDayspiralDialNumbers === 1);
+      // Force renderer resize to apply dial size changes on load
+      if (typeof daySpiralRenderer !== 'undefined' && daySpiralRenderer.active) {
+        daySpiralRenderer.resize(width, height);
+      }
+    }
+
     if (state.showMode) {
       setDaySpiralShowMode(state.showMode);
     }
@@ -1323,7 +1346,7 @@ function updateUrlHash() {
   // Clear managed parameters to re-add them based on current state
   const managedKeys = [
     'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
-    'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode', 'enableSpiralAnnotations',
+    'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode', 'enableSpiralAnnotations', 'enableDayspiralDialNumbers',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
     'otherLat', 'otherLon', 'otherTz', 'otherCity',
@@ -1430,6 +1453,11 @@ function updateUrlHash() {
     // Add DaySpiral annotations setting
     if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) {
       params.set('enableSpiralAnnotations', '0');
+    }
+
+    // Add DaySpiral dial numbers setting
+    if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) {
+      params.set('enableDayspiralDialNumbers', '0');
     }
   }
 
