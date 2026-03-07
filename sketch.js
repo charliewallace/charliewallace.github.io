@@ -46,7 +46,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.6.1 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.7.0 ©2026 Charlie Wallace";
 
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
@@ -92,8 +92,12 @@ var IsUserInitiatedLocation = false; // true if location was set by user action 
 var IsLoadingLocation = false; // true if waiting for location data (network or GPS)
 var IsSearchingForOtherLocation = false; // true if the current location lookup is for the secondary spiral
 var DaySpiralShowMode = 'local'; // 'other', 'dual', 'local' - Default to local on start
+var EnableSpiralAnnotations = 1; // 1 = enabled, 0 = disabled
+var EnableDayspiralDialNumbers = 1; // 1 = enabled, 0 = disabled
 var HasSeenDualModeAnimation = false; // Ensures guided transition only plays once per session
 var ShowMoon = true; // Whether the Moon Phase display is active
+var IsSuperZen = false;
+var SavedSuperZenStates = null;
 
 var OutputHour, OutputMin;
 var SunsetHour, SunsetMin, SecondsToSunset = 64800, BaseMsSunset;
@@ -391,10 +395,16 @@ function oneTimeInit() {
   mobiusRenderer = new MobiusRenderer('mobius-container');
   mobiusRenderer.init();
 
+  spiroClockRenderer = new SpiroClock({ keepNumbersHoriz: false });
+  spiroClockRenderer.init();
+
   // Select the default renderer and activate it.
   activeRenderer = daySpiralRenderer; // Start with default
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight); // FORCE RESIZE ON STARTUP
+
+  // Set page background to match the active renderer
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(64,64,64)' : '';
 
 
   // Overall app initialization ----------------
@@ -511,7 +521,42 @@ function oneTimeInit() {
     fsBtn.mousePressed(toggleFullScreen);
   }
 
-  select('#btn-zen').mousePressed(toggleZenMode);
+  // Zen Mode Button - enhanced for Super-Zen via Shift-Click or Long-Press
+  var btnZen = document.getElementById('btn-zen');
+  if (btnZen) {
+    let pressTimer;
+    let isLongPress = false;
+
+    // Mouse handlers (Click)
+    btnZen.addEventListener('click', (e) => {
+      if (e.shiftKey) {
+        toggleSuperZenMode();
+      } else {
+        toggleZenMode();
+      }
+    });
+
+    // Touch handlers for mobile long-press
+    btnZen.addEventListener('touchstart', (e) => {
+      isLongPress = false;
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+      }, 800); // 800ms for long press
+    }, { passive: true });
+
+    btnZen.addEventListener('touchend', (e) => {
+      clearTimeout(pressTimer);
+      if (isLongPress) {
+        e.preventDefault(); // Prevent 'click' from firing
+        toggleSuperZenMode();
+      }
+      // If it's not a long press, we let 'click' handle the normal toggleZenMode
+    });
+
+    btnZen.addEventListener('touchcancel', () => {
+      clearTimeout(pressTimer);
+    });
+  }
 
   // "GPS OK?" Button (Relocated to modal)
   var gpsBtnModal = select('#btn-gps-modal');
@@ -527,6 +572,17 @@ function oneTimeInit() {
       openModal('modal-setup-mobius');
     } else {
       openModal('modal-setup-dayspiral');
+    }
+  });
+
+  // Steampunk: Keep Numbers Level toggle button
+  var btnKeepLevel = select('#btn-keep-numbers-level');
+  if (btnKeepLevel) btnKeepLevel.mousePressed(() => {
+    if (spiroClockRenderer) {
+      spiroClockRenderer.keepNumbersHoriz = !spiroClockRenderer.keepNumbersHoriz;
+      if (spiroClockRenderer.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
+      else btnKeepLevel.removeClass('toggled-on');
+      updateUrlHash();
     }
   });
 
@@ -553,6 +609,23 @@ function oneTimeInit() {
     }
   });
 
+  // DaySpiral Sun/Moon Annotations Checkbox
+  var annCheck = select('#check-dayspiral-annotations');
+  if (annCheck) annCheck.changed(() => {
+    EnableSpiralAnnotations = annCheck.checked() ? 1 : 0;
+    updateUrlHash();
+  });
+
+  // DaySpiral Show Dial Numbers Checkbox
+  var dialNumCheck = select('#check-dayspiral-dial-numbers');
+  if (dialNumCheck) dialNumCheck.changed(() => {
+    EnableDayspiralDialNumbers = dialNumCheck.checked() ? 1 : 0;
+    if (daySpiralRenderer && daySpiralRenderer.active) {
+      daySpiralRenderer.resize(width, height);
+    }
+    updateUrlHash();
+  });
+
   // DaySpiral Guided Transition Checkbox
   var transitionCheck = select('#check-dayspiral-guided-transition');
   if (transitionCheck) transitionCheck.changed(() => {
@@ -577,6 +650,7 @@ function oneTimeInit() {
   // Renderer Switching logic
   select('#opt-dayspiral').mousePressed(() => setClockMode('dayspiral'));
   select('#opt-mobius').mousePressed(() => setClockMode('mobius'));
+  select('#opt-steampunk').mousePressed(() => setClockMode('steampunk'));
 
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
@@ -925,8 +999,15 @@ function parseUrlHash() {
 
   // Clock mode - store for later application (after renderers are initialized)
   var clockMode = params.get('clock');
-  if (clockMode === 'mobius' || clockMode === 'dayspiral') {
+  if (clockMode === 'mobius' || clockMode === 'dayspiral' || clockMode === 'steampunk') {
     window._initialClockMode = clockMode;
+  }
+
+  // Steampunk state - store for later application
+  if (params.has('keepNumbersHoriz')) {
+    window._initialSteampunkState = {
+      keepNumbersHoriz: params.get('keepNumbersHoriz') === '1'
+    };
   }
 
   // DaySpiral state - store for later application
@@ -940,14 +1021,18 @@ function parseUrlHash() {
   var daySpiralShowHours = params.get('daySpiralShowHours');
   var daySpiralShowMode = params.get('daySpiralShowMode');
   var dualAnim = params.get('dualAnim');
+  var enaAnn = params.get('enableSpiralAnnotations');
+  var enaDialNum = params.get('enableDayspiralDialNumbers');
 
-  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null || daySpiralShowMode) {
+  if (daySpiralStyle || daySpiralTimeFormat || daySpiralShowHours !== null || dualAnim !== null || daySpiralShowMode || enaAnn !== null || enaDialNum !== null) {
     window._initialDaySpiralState = {
       style: daySpiralStyle || 'Dial',
       timeFormat: daySpiralTimeFormat || '12',
       showHours: daySpiralShowHours === '1', // Default false
       dualAnim: dualAnim !== '0', // Default true
-      showMode: daySpiralShowMode || 'dual'
+      showMode: daySpiralShowMode || 'dual',
+      enableAnnotations: enaAnn !== '0', // Default true
+      enableDialNumbers: enaDialNum !== '0' // Default true
     };
   }
 
@@ -1145,6 +1230,22 @@ function applyInitialState() {
       if (chk) chk.checked(state.dualAnim);
     }
 
+    if (state.enableAnnotations !== undefined) {
+      EnableSpiralAnnotations = state.enableAnnotations ? 1 : 0;
+      const annCheck = select('#check-dayspiral-annotations');
+      if (annCheck) annCheck.checked(EnableSpiralAnnotations === 1);
+    }
+
+    if (state.enableDialNumbers !== undefined) {
+      EnableDayspiralDialNumbers = state.enableDialNumbers ? 1 : 0;
+      const dialNumCheck = select('#check-dayspiral-dial-numbers');
+      if (dialNumCheck) dialNumCheck.checked(EnableDayspiralDialNumbers === 1);
+      // Force renderer resize to apply dial size changes on load
+      if (typeof daySpiralRenderer !== 'undefined' && daySpiralRenderer.active) {
+        daySpiralRenderer.resize(width, height);
+      }
+    }
+
     if (state.showMode) {
       setDaySpiralShowMode(state.showMode);
     }
@@ -1244,6 +1345,21 @@ function applyInitialState() {
     delete window._initialMobiusState; // Clean up
   }
 
+  // Apply Steampunk state if specified
+  if (window._initialSteampunkState) {
+    console.log("  ⚙️ Applying Steampunk settings:", window._initialSteampunkState);
+    const state = window._initialSteampunkState;
+    if (state.keepNumbersHoriz !== undefined && spiroClockRenderer) {
+      spiroClockRenderer.keepNumbersHoriz = state.keepNumbersHoriz;
+      const btnKeepLevel = select('#btn-keep-numbers-level');
+      if (btnKeepLevel) {
+        if (state.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
+        else btnKeepLevel.removeClass('toggled-on');
+      }
+    }
+    delete window._initialSteampunkState;
+  }
+
   // Apply alternate location if specified
   if (window._initialOtherLocation) {
     const other = window._initialOtherLocation;
@@ -1267,10 +1383,11 @@ function updateUrlHash() {
   // Clear managed parameters to re-add them based on current state
   const managedKeys = [
     'lat', 'lon', 'tz', 'city', 'zen', 'focus', 'clock', 'gmt',
-    'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode',
+    'daySpiralStyle', 'daySpiralTimeFormat', 'daySpiralShowMode', 'enableSpiralAnnotations', 'enableDayspiralDialNumbers',
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
-    'otherLat', 'otherLon', 'otherTz', 'otherCity'
+    'otherLat', 'otherLon', 'otherTz', 'otherCity',
+    'keepNumbersHoriz'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1330,6 +1447,8 @@ function updateUrlHash() {
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined') {
     if (activeRenderer === mobiusRenderer) {
       params.set('clock', 'mobius');
+    } else if (activeRenderer === spiroClockRenderer) {
+      params.set('clock', 'steampunk');
     } else {
       // Don't set clock if it's the default (dayspiral)
       params.delete('clock');
@@ -1361,11 +1480,21 @@ function updateUrlHash() {
       params.set('dualAnim', '0');
     }
 
-    // Add DaySpiral show mode (only show if not default 'local')
-    if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode !== 'local') {
+    // Add DaySpiral show mode (only show if not default 'local' AND if an other location exists)
+    if (typeof DaySpiralShowMode !== 'undefined' && DaySpiralShowMode !== 'local' && locManager && locManager.hasOtherLocation()) {
       params.set('daySpiralShowMode', DaySpiralShowMode);
     } else {
       params.delete('daySpiralShowMode');
+    }
+
+    // Add DaySpiral annotations setting
+    if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) {
+      params.set('enableSpiralAnnotations', '0');
+    }
+
+    // Add DaySpiral dial numbers setting
+    if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) {
+      params.set('enableDayspiralDialNumbers', '0');
     }
   }
 
@@ -1400,6 +1529,13 @@ function updateUrlHash() {
     }
     if (mobiusRenderer.dayNightMode === true) {
       params.set('dayNight', '1');
+    }
+  }
+
+  // Steampunk-specific state
+  if (typeof spiroClockRenderer !== 'undefined' && spiroClockRenderer) {
+    if (spiroClockRenderer.keepNumbersHoriz === true) {
+      params.set('keepNumbersHoriz', '1');
     }
   }
 
@@ -1536,6 +1672,12 @@ function updateUIElements() {
       'completing a cycle in only one turn.';
 
     if (descEl) descEl.textContent = mobiusDescText;
+  } else if (typeof activeRenderer !== 'undefined' && typeof spiroClockRenderer !== 'undefined' && activeRenderer === spiroClockRenderer) {
+    if (titleEl) titleEl.textContent = 'Steampunk Clock';
+    var steampunkDescText = "Uses nested spirographic gears to display the time. " +
+      "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
+      "on successively smaller gears.";
+    if (descEl) descEl.textContent = steampunkDescText;
   } else {
     if (titleEl) titleEl.textContent = 'Day Spiral Clock';
     var descText = 'To show your night and day together in one view, you need a 24-hour clock; ' +
@@ -1572,7 +1714,8 @@ function updateUIElements() {
       if (locManager && locManager.hasOtherLocation()) {
         let mobileTitle = locManager.otherLocation.cityName || LocaleTitle;
         // DaySpiral Dual Mode: Show time next to location name (matching desktop behavior)
-        if (activeRenderer === daySpiralRenderer) {
+        // EXCEPT in 'Other Only' mode, where the time is already shown in the larger font above
+        if (activeRenderer === daySpiralRenderer && (typeof DaySpiralShowMode === 'undefined' || DaySpiralShowMode !== 'other')) {
           const otherTimeStr = TimeKeeper.getFormattedTimeForOffset(locManager.otherLocation.tzOffset, false); // No seconds
           mobileTitle += " " + otherTimeStr;
         }
@@ -1833,12 +1976,16 @@ function updateUIElements() {
   // Update Clock Selector Highlighting
   var optSpiral = select('#opt-dayspiral');
   var optMobius = select('#opt-mobius');
+  var optSteampunk = select('#opt-steampunk');
+  if (optSpiral) optSpiral.removeClass('active');
+  if (optMobius) optMobius.removeClass('active');
+  if (optSteampunk) optSteampunk.removeClass('active');
   if (activeRenderer === daySpiralRenderer) {
     if (optSpiral) optSpiral.addClass('active');
-    if (optMobius) optMobius.removeClass('active');
-  } else {
-    if (optSpiral) optSpiral.removeClass('active');
+  } else if (activeRenderer === mobiusRenderer) {
     if (optMobius) optMobius.addClass('active');
+  } else if (activeRenderer === spiroClockRenderer) {
+    if (optSteampunk) optSteampunk.addClass('active');
   }
 
   // Update DaySpiral Style Selector Highlighting
@@ -2777,7 +2924,9 @@ function handleLocationError(error) {
 
 // Helper to force exit Zen Mode (e.g. on error)
 function exitZenMode() {
-  if (IsZenMode) {
+  if (IsSuperZen) {
+    toggleSuperZenMode();
+  } else if (IsZenMode) {
     toggleZenMode();
   }
 }
@@ -2808,7 +2957,14 @@ function handleNetworkError(err) {
 
 //-----------------------------------------------------------------
 // Toggle Zen Mode
-function toggleZenMode() {
+function toggleZenMode(bypassSuperCheck = false) {
+  // If we are currently in Super-Zen mode, any attempt to toggle regular Zen mode
+  // should gracefully exit Super-Zen mode instead.
+  if (!bypassSuperCheck && IsSuperZen) {
+    toggleSuperZenMode();
+    return;
+  }
+
   IsZenMode = !IsZenMode;
 
   if (IsZenMode) {
@@ -2820,6 +2976,100 @@ function toggleZenMode() {
   }
 
   updateUrlHash();
+}
+
+//-----------------------------------------------------------------
+// Toggle Super-Zen Mode
+function toggleSuperZenMode() {
+  IsSuperZen = !IsSuperZen;
+
+  if (IsSuperZen) {
+    // Save current states
+    SavedSuperZenStates = {
+      enableDayspiralDialNumbers: typeof EnableDayspiralDialNumbers !== 'undefined' ? EnableDayspiralDialNumbers : 1,
+      enableSpiralAnnotations: typeof EnableSpiralAnnotations !== 'undefined' ? EnableSpiralAnnotations : 1,
+      showMoon: typeof ShowMoon !== 'undefined' ? ShowMoon : true,
+      mobiusHoursVisible: typeof mobiusRenderer !== 'undefined' ? mobiusRenderer.hoursVisible : true,
+      wasFullscreen: typeof fullscreen === 'function' && fullscreen()
+    };
+
+    // Override settings for minimum visual noise
+    if (typeof EnableDayspiralDialNumbers !== 'undefined') EnableDayspiralDialNumbers = 0;
+    if (typeof EnableSpiralAnnotations !== 'undefined') EnableSpiralAnnotations = 0;
+    if (typeof ShowMoon !== 'undefined') ShowMoon = false;
+    if (typeof mobiusRenderer !== 'undefined') {
+      mobiusRenderer.hoursVisible = false;
+      if (mobiusRenderer.hourNumbersGroup) mobiusRenderer.hourNumbersGroup.visible = false;
+    }
+
+    // Update UI checkboxes
+    const annCheck = select('#check-dayspiral-annotations');
+    if (annCheck) annCheck.checked(false);
+    const dialNumCheck = select('#check-dayspiral-dial-numbers');
+    if (dialNumCheck) dialNumCheck.checked(false);
+    const btnToggleMoon = select('#btn-toggle-moon');
+    if (btnToggleMoon) btnToggleMoon.removeClass('toggled-on');
+    const btnHideHours = select('#btn-hide-hours');
+    if (btnHideHours) btnHideHours.removeClass('toggled-on');
+
+    // Force application of new geometry if renderer exists
+    if (typeof daySpiralRenderer !== 'undefined' && daySpiralRenderer.active) {
+      daySpiralRenderer.resize(width, height);
+    }
+
+    // Go Fullscreen if not already
+    if (typeof fullscreen === 'function' && !fullscreen()) {
+      try { fullscreen(true); } catch (e) { }
+    }
+
+    // Go visually into Zen Mode
+    if (!IsZenMode) {
+      toggleZenMode(true);
+    }
+  } else {
+    // Restore states
+    if (SavedSuperZenStates) {
+      if (typeof EnableDayspiralDialNumbers !== 'undefined') EnableDayspiralDialNumbers = SavedSuperZenStates.enableDayspiralDialNumbers;
+      if (typeof EnableSpiralAnnotations !== 'undefined') EnableSpiralAnnotations = SavedSuperZenStates.enableSpiralAnnotations;
+      if (typeof ShowMoon !== 'undefined') ShowMoon = SavedSuperZenStates.showMoon;
+      if (typeof mobiusRenderer !== 'undefined') {
+        mobiusRenderer.hoursVisible = SavedSuperZenStates.mobiusHoursVisible;
+        if (mobiusRenderer.hourNumbersGroup) mobiusRenderer.hourNumbersGroup.visible = mobiusRenderer.hoursVisible;
+      }
+
+      // Restore UI checkboxes
+      const annCheck = select('#check-dayspiral-annotations');
+      if (annCheck) annCheck.checked(EnableSpiralAnnotations === 1);
+      const dialNumCheck = select('#check-dayspiral-dial-numbers');
+      if (dialNumCheck) dialNumCheck.checked(EnableDayspiralDialNumbers === 1);
+      const btnToggleMoon = select('#btn-toggle-moon');
+      if (btnToggleMoon) {
+        if (ShowMoon) btnToggleMoon.addClass('toggled-on');
+        else btnToggleMoon.removeClass('toggled-on');
+      }
+      const btnHideHours = select('#btn-hide-hours');
+      if (btnHideHours && typeof mobiusRenderer !== 'undefined') {
+        if (mobiusRenderer.hoursVisible) btnHideHours.addClass('toggled-on');
+        else btnHideHours.removeClass('toggled-on');
+      }
+
+      // Restore fullscreen state if we changed it
+      if (typeof fullscreen === 'function' && !SavedSuperZenStates.wasFullscreen && fullscreen()) {
+        try { fullscreen(false); } catch (e) { }
+      }
+      SavedSuperZenStates = null;
+    }
+
+    // Rebuild geometry
+    if (typeof daySpiralRenderer !== 'undefined' && daySpiralRenderer.active) {
+      daySpiralRenderer.resize(width, height);
+    }
+
+    // Exit Zen Mode
+    if (IsZenMode) {
+      toggleZenMode(true);
+    }
+  }
 }
 
 //-----------------------------------------------------------------
@@ -3863,26 +4113,49 @@ function draw() {
 
 function setClockMode(mode) {
   if ((mode === 'dayspiral' && activeRenderer === daySpiralRenderer) ||
-    (mode === 'mobius' && activeRenderer === mobiusRenderer)) {
+    (mode === 'mobius' && activeRenderer === mobiusRenderer) ||
+    (mode === 'steampunk' && activeRenderer === spiroClockRenderer)) {
     return; // Already in this mode
   }
 
   activeRenderer.deactivate();
 
+  // Hide all control groups
+  select('#controls-dayspiral').addClass('hidden');
+  select('#controls-mobius').addClass('hidden');
+  select('#controls-steampunk').addClass('hidden');
+
+  // Remove active class from all selector options
+  select('#opt-dayspiral').removeClass('active');
+  select('#opt-mobius').removeClass('active');
+  select('#opt-steampunk').removeClass('active');
+
   if (mode === 'mobius') {
     activeRenderer = mobiusRenderer;
-    // Switch Control Groups
-    select('#controls-dayspiral').addClass('hidden');
     select('#controls-mobius').removeClass('hidden');
+    select('#opt-mobius').addClass('active');
+    var setupBtn = select('#btn-setup');
+    if (setupBtn) setupBtn.removeClass('hidden');
+  } else if (mode === 'steampunk') {
+    activeRenderer = spiroClockRenderer;
+    select('#controls-steampunk').removeClass('hidden');
+    select('#opt-steampunk').addClass('active');
+    var setupBtn = select('#btn-setup');
+    if (setupBtn) setupBtn.addClass('hidden');
   } else {
     activeRenderer = daySpiralRenderer;
-    // Switch Control Groups
-    select('#controls-mobius').addClass('hidden');
     select('#controls-dayspiral').removeClass('hidden');
+    select('#opt-dayspiral').addClass('active');
+    var setupBtn = select('#btn-setup');
+    if (setupBtn) setupBtn.removeClass('hidden');
   }
 
   activeRenderer.activate();
   activeRenderer.resize(window.innerWidth, window.innerHeight);
+
+  // Set page background to match the active renderer
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(64,64,64)' : '';
+
   updateUIElements(); // Ensure title/desc update immediately
   updateAboutModalContent(); // Update About content based on clock
 
@@ -3927,6 +4200,13 @@ function updateAboutModalContent() {
       "Noon is at the bottom of the upper arch, and midnight is at the top. " +
       "The minute and second indicators move along the center of the strip, so they complete a cycle in only one turn.";
     if (locationWarning) descText += " " + locationWarning;
+  } else if (activeRenderer === spiroClockRenderer) {
+    title = "About Steampunk Clock";
+    descText = "The Steampunk Clock uses nested spirographic gears to display the time. " +
+      "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
+      "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion. " +
+      "The black indicators light up in red each time they enter a socket; " +
+      "watch 4 red dots light up in sequence on the hour!"
   }
 
   if (aboutTitleEl) aboutTitleEl.html(title);
@@ -4019,13 +4299,9 @@ function setOtherLocation(lat, lon, tz, cityName, isDst = false) {
     // Always switch to Dual mode when setting an other location
     DaySpiralShowMode = 'dual';
 
-    // Start animation ONLY if transitioning from single to dual mode 
-    // AND the user hasn't seen the animation yet this session
-    if (wasInSingleMode && !HasSeenDualModeAnimation) {
-      console.log("🎬 Playing first-time dual mode animation");
-      daySpiralRenderer.startDualModeAnimation();
-      HasSeenDualModeAnimation = true;
-    }
+    // Start animation when transitioning to dual mode or picking a new city
+    console.log("🎬 Playing dual mode animation");
+    daySpiralRenderer.startDualModeAnimation();
 
     daySpiralRenderer.resize(window.innerWidth, window.innerHeight);
   }

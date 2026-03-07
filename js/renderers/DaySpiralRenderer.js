@@ -204,14 +204,20 @@ class DaySpiralRenderer extends ClockRenderer {
         let radius = minDim / 2;
 
         this.clockDiameter = radius * 1.912;
-        this.diameter = this.clockDiameter;
         this.faceDiameter = radius * 1.66;
         this.numbersRadius = radius * 0.893;
 
         // Spiral settings default (Dial)
-        // Spiral settings default (Dial)
         let startRadius = radius * 0.40;
         let endRadius = radius * 0.74;
+
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) {
+            // When dial numbers are turned off, we have more room to expand
+            startRadius = radius * 0.45;
+            endRadius = radius * 0.90;
+            // Expand the gray background to fit the larger spiral with margin
+            this.faceDiameter = radius * 1.98;
+        }
 
         // Check if we're in dual-location mode to set visual weights
         const isDualMode = (typeof locManager !== 'undefined' && locManager.hasOtherLocation());
@@ -232,6 +238,7 @@ class DaySpiralRenderer extends ClockRenderer {
         } else {
             // Dial
             let nTurns = 2;
+
             let deltaRadiusPerTurn = (endRadius - startRadius) / nTurns;
 
             this.singleModeStrokeWeight = deltaRadiusPerTurn * 0.66;
@@ -388,8 +395,6 @@ class DaySpiralRenderer extends ClockRenderer {
             this.drawSpiralLabels(locManager, showMode);
         }
 
-        this.drawDayLabels(activeTk, locManager);
-
         if (typeof IsGmtShown !== 'undefined' && IsGmtShown) {
             this.drawGMT(locManager);
         }
@@ -446,6 +451,8 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawHourLabels() {
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) return;
+
         noStroke();
         fill(this.hourDigitColor); // color of hour digits
         textSize(this.fontSize);
@@ -878,6 +885,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // 2. In other views (like "Other Only"), respect the toggle.
         const isDualView = (showMode === 'dual');
         if (!isDualView && !this.hoursVisible) return;
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) return;
 
         fill(200, 255, 255); // Light Cyan for inner spiral label
         const isSingleRendering = (showMode !== 'dual');
@@ -976,6 +984,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // 2. In other views (Single, Local Only, Other Only), respect the toggle.
         const isDualView = (showMode === 'dual' && this.isDualLocationMode);
         if (!isDualView && !this.hoursVisible) return;
+        if (typeof EnableDayspiralDialNumbers !== 'undefined' && EnableDayspiralDialNumbers === 0) return;
 
         fill(255, 235, 120); // Yellow for outer spiral
         noStroke();
@@ -1214,47 +1223,6 @@ class DaySpiralRenderer extends ClockRenderer {
         textStyle(NORMAL);
     }
 
-
-    drawDayLabels(tk, locManager) {
-        // Only show day labels in Dial mode
-        if (this.style !== 'Dial') return;
-
-        // Hide DOW abbreviations in dual mode as requested
-        if (this.isDualLocationMode) return;
-
-        if (typeof IsGmtShown !== 'undefined' && IsGmtShown) return;
-        if (!this.xSpiral || this.xSpiral.length === 0) return;
-
-        // ... existing day label logic ...
-        // (It was at the bottom of the previous file view, assuming it's correct)
-
-        // Just redundant check removal for safely rendering:
-        let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        let todayIdx = tk.dayOfWeek;
-        let nextDayIdx = (todayIdx + 1) % 7;
-
-        let labelColor = color(255, 235, 120); // Softer yellow
-        fill(labelColor);
-        noStroke();
-        textSize(this.fontSize);
-        textStyle(BOLD);
-        textAlign(RIGHT, CENTER); // RIGHT align so text appears to the left of the spiral start
-
-        this._applyShadow(6, 0, 3, 'rgba(0,0,0,0.8)'); // More visible shadow for text
-
-        // Shifted further left to avoid crowding "12A" label (was -0.55)
-        let xOffset = -(this.fontSize * 0.9);
-        let yOffset = this.fontSize * 0.12;   // Reduced (about 1/8 character height)
-
-        // Start (Outer) - show today's day abbreviation
-        let idxStart = 0;
-        text(dayNames[todayIdx], this.centerX + this.xSpiral[idxStart] + xOffset, this.centerY + this.ySpiral[idxStart] + yOffset);
-
-        // End label removed - was colliding with last hour label and not adding much value
-
-        this._resetShadow();
-        textStyle(NORMAL);
-    }
 
     drawGMT(locManager) {
         if (!locManager || !locManager.hasValidLocation) return;
@@ -1674,6 +1642,8 @@ class DaySpiralRenderer extends ClockRenderer {
 
     // Draw AM/PM indicators and separator line for Dial mode when numbers are hidden
     drawAmPmIndicators(showMode = 'dual') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
+
         // Only show if: style is Dial, hours are hidden
         if (this.style !== 'Dial' || this.hoursVisible) return;
 
@@ -1760,22 +1730,26 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     drawRiseSetTimes(tk, showMode = 'dual') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
+
         // Skip in dual mode unless a single-location showMode is active
         if (this.style !== 'Dial' || this.hoursVisible) return;
         if (this.isDualLocationMode && showMode === 'dual') return;
         if (this.isAnimatingDualMode) return;
         if (!this.xSpiral || this.xSpiral.length === 0) return;
 
+        push();
         // Use standard Yellow text color (255, 235, 120) at 90% opacity
         let c = color(255, 235, 120, 230);
 
-        push();
         fill(c);
         noStroke();
 
         // Reduced by 30% from previous 0.75 -> approx 0.55
         textSize(this.fontSize * 0.55);
         textStyle(BOLD);
+
+        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)');
 
         // Indices - totalDailyPts is 2 * numPointsPerTurn (24 hours)
         let totalDailyPts = this.numPointsPerTurn * 2;
@@ -1813,18 +1787,19 @@ class DaySpiralRenderer extends ClockRenderer {
             if (moonRise && typeof moonRise.totalSeconds === 'number') {
                 if (!this._isTimeTooClose(moonRise, sunRise) && !this._isTimeTooClose(moonRise, sunSet) && this._isNighttime(moonRise, sunRise, sunSet)) {
                     let idxMoonRise = Math.floor((moonRise.totalSeconds / 86400) * totalDailyPts);
-                    this._drawSpiralTime(idxMoonRise, "Moon ↑", moonRise, currentX, currentY);
+                    this._drawSpiralTime(idxMoonRise, "Moon↑", moonRise, currentX, currentY);
                 }
             }
 
             if (moonSet && typeof moonSet.totalSeconds === 'number') {
                 if (!this._isTimeTooClose(moonSet, sunRise) && !this._isTimeTooClose(moonSet, sunSet) && this._isNighttime(moonSet, sunRise, sunSet)) {
                     let idxMoonSet = Math.floor((moonSet.totalSeconds / 86400) * totalDailyPts);
-                    this._drawSpiralTime(idxMoonSet, "Moon ↓", moonSet, currentX, currentY);
+                    this._drawSpiralTime(idxMoonSet, "Moon↓", moonSet, currentX, currentY);
                 }
             }
         }
 
+        this._resetShadow();
         pop();
     }
 
@@ -1846,7 +1821,7 @@ class DaySpiralRenderer extends ClockRenderer {
         }
     }
 
-    _isTimeTooClose(t1, t2, thresholdSeconds = 1800) {
+    _isTimeTooClose(t1, t2, thresholdSeconds = 2400) {
         if (!t1 || !t2 || typeof t1.totalSeconds !== 'number' || typeof t2.totalSeconds !== 'number') return false;
         let diff = Math.abs(t1.totalSeconds - t2.totalSeconds);
         // Handle midnight wrap-around
@@ -1907,7 +1882,9 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     // Draw Rise/Set times on the spiral for Ribbon (SpiralHours) mode
-    drawRibbonRiseSetTimes(tk, locManager, showMode = 'dual') {
+    drawRibbonRiseSetTimes(tk, locManager, showMode = 'local') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
+
         if (this.style !== 'SpiralHours') return;
 
         // Hide during dual mode animation (stages 2-5)
@@ -2072,6 +2049,7 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     _drawMoonPhase(tk, showMode = 'dual') {
+        if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
         if (!tk || !tk.moonIllum) return;
 
         let f = tk.moonIllum.fraction;
@@ -2138,9 +2116,15 @@ class DaySpiralRenderer extends ClockRenderer {
         push();
         noStroke();
 
+        // Apply shadow for the base circle so internal layers don't cast inner shadows
+        this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)');
+
         // 1. Draw base unlit moon (dark grey)
         fill(85, 85, 80, 255);
         ellipse(x, y, D, D);
+
+        // Turn off shadow for the internal layers to prevent internal shadow lines
+        this._resetShadow();
 
         // 2. Draw lit portion (soft yellow)
         if (f > 0.0) {
@@ -2180,6 +2164,7 @@ class DaySpiralRenderer extends ClockRenderer {
         textAlign(CENTER, BOTTOM);
 
         this._applyShadow(8, 0, 4, 'rgba(0,0,0,0.7)');
+
         let labelY = y - (D / 2) - labelGap;
 
         push();

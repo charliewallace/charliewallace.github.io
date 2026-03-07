@@ -99,24 +99,19 @@ class TimeKeeper {
         this.sunsetHourString = this._formatVisTime(set.hour, set.minute);
 
         // --- Moon Times ---
-        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
+        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof Astronomy !== 'undefined') {
             try {
                 const trueLon = -lon;
                 const moonTimes = this._getAccurateMoonTimes(this.currentDate, lat, trueLon, tzOffset);
                 this.moonRiseTime = moonTimes.rise;
                 this.moonSetTime = moonTimes.set;
 
-                if (typeof Astronomy !== 'undefined') {
-                    const illum = Astronomy.Illumination(Astronomy.Body.Moon, this.currentDate);
-                    const phaseDeg = Astronomy.MoonPhase(this.currentDate);
-                    this.moonIllum = {
-                        fraction: illum.phase_fraction,
-                        phase: phaseDeg / 360.0
-                    };
-                } else {
-                    const illumination = SunCalc.getMoonIllumination(this.currentDate);
-                    this.moonIllum = illumination;
-                }
+                const illum = Astronomy.Illumination(Astronomy.Body.Moon, this.currentDate);
+                const phaseDeg = Astronomy.MoonPhase(this.currentDate);
+                this.moonIllum = {
+                    fraction: illum.phase_fraction,
+                    phase: phaseDeg / 360.0
+                };
             } catch (e) {
                 console.error("Moon calc error:", e);
                 this.moonRiseTime = null;
@@ -151,24 +146,19 @@ class TimeKeeper {
         this.otherSunsetHourString = this._formatVisTime(set.hour, set.minute);
 
         // --- Moon Times ---
-        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof SunCalc !== 'undefined') {
+        if (typeof EnableMoonCalcs !== 'undefined' && EnableMoonCalcs && typeof Astronomy !== 'undefined') {
             try {
                 const trueLon = -lon;
                 const moonTimes = this._getAccurateMoonTimes(this.currentDate, lat, trueLon, tzOffset);
                 this.otherMoonRiseTime = moonTimes.rise;
                 this.otherMoonSetTime = moonTimes.set;
 
-                if (typeof Astronomy !== 'undefined') {
-                    const illum = Astronomy.Illumination(Astronomy.Body.Moon, this.currentDate);
-                    const phaseDeg = Astronomy.MoonPhase(this.currentDate);
-                    this.otherMoonIllum = {
-                        fraction: illum.phase_fraction,
-                        phase: phaseDeg / 360.0
-                    };
-                } else {
-                    const illumination = SunCalc.getMoonIllumination(this.currentDate);
-                    this.otherMoonIllum = illumination;
-                }
+                const illum = Astronomy.Illumination(Astronomy.Body.Moon, this.currentDate);
+                const phaseDeg = Astronomy.MoonPhase(this.currentDate);
+                this.otherMoonIllum = {
+                    fraction: illum.phase_fraction,
+                    phase: phaseDeg / 360.0
+                };
             } catch (e) {
                 console.error("Moon calc error:", e);
                 this.otherMoonRiseTime = null;
@@ -252,16 +242,6 @@ class TimeKeeper {
                 } else {
                     break;
                 }
-            }
-        } else {
-            // SunCalc fallback
-            // Query a 72-hour UTC window to ensure we catch all events that might bleed into our target local timezone day
-            for (let i = -1; i <= 1; i++) {
-                const dUTC = new Date(Date.UTC(targetYear, targetMonth, targetDay + i));
-                const times = SunCalc.getMoonTimes(dUTC, lat, lon, true);
-
-                if (!riseTime) riseTime = checkEvent(times.rise);
-                if (!setTime) setTime = checkEvent(times.set);
             }
         }
 
