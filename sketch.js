@@ -3154,7 +3154,12 @@ function handlePresetLocation(lat, lon, tz, title, fullTitle) {
     // before executing heavy calculations and triggering animation, preventing
     // dropped animation frames (especially on strict mobile browsers).
     setTimeout(() => {
+      // 1. Immediately visually set the hardcoded offset to get the animation going
       setOtherLocation(lat, lon, tz, title);
+
+      // 2. Fire an async background fetch for the LIVE offset (to correct Daylight Savings)
+      const requestId = ++OtherLocationFetchSerial;
+      getTzUsingLatLong(lat, lon, requestId, title, true, false);
     }, 50);
     return;
   }
