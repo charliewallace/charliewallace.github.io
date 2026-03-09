@@ -2238,64 +2238,6 @@ function getFormattedTime(h, m) {
   return `${h12}:${mStr} ${ampm}`;
 }
 
-function handleCitySubmitModal() {
-  PrevLocaleTitle = LocaleTitle; // Capture for error reversion
-  var city = select('#input-city-modal').value().trim();
-  var errEl = select('#city-error-msg');
-  errEl.html('Searching...'); // Use .html() for p5 element or .textContent for vanilla
-  setLoadingState();
-
-
-  if (city && city.length > 0) {
-    const requestId = ++LocationFetchSerial;
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${city}`;
-
-    // Pass requestId to callback using a wrapper
-    loadJSON(url, (data) => gotCityLocationDataModal(data, requestId), handleNetworkError);
-  } else {
-    errEl.html("Please enter a city name.");
-  }
-}
-
-// Callback for mobile modal city lookup
-function gotCityLocationDataModal(data, requestId) {
-  if (requestId && requestId !== LocationFetchSerial) return;
-  var errEl = select('#city-error-msg');
-
-  if (data && data.length > 0) {
-    // Success
-    IsUserInitiatedLocation = true; // User entered city via modal
-    var lat = parseFloat(data[0].lat);
-    var lon = parseFloat(data[0].lon);
-    Latitude = round(lat, 3);
-    Longitude = round(lon, 3);
-
-    CityNameInput.value(''); // Clear the main input
-    select('#input-city-modal').value(''); // Clear the modal input
-    LocaleTitle = data[0].display_name.split(',')[0];
-
-    // Update other state
-    LatLocal = Latitude;
-    LngLocal = Longitude;
-    LatInput.value(str(Latitude));
-    LngInput.value(str(Longitude));
-
-    getTzUsingLatLong(Latitude, Longitude, requestId); // This updates TZ and closes loop
-    closeAllModals();
-    // If we have a success callback (from the OK button), call it now
-    if (successCallback) {
-      successCallback();
-    }
-    // Also clear input on success
-    if (CityNameInput) CityNameInput.value('');
-
-  } else {
-    clearLoadingState();
-    let errEl = select('#city-error-msg');
-    if (errEl) errEl.html("City not found. Please try 'City, Country'.");
-    // DO NOT call successCallback here, so modal stays open for user to fix input
-  }
-}
 
 
 
@@ -3207,8 +3149,13 @@ function setMelbourne() {
  */
 function handlePresetLocation(lat, lon, tz, title, fullTitle) {
   if (IsSearchingForOtherLocation) {
-    setOtherLocation(lat, lon, tz, title);
     closeAllModals();
+    // Allow the modal to visually close and browser layout to stabilize
+    // before executing heavy calculations and triggering animation, preventing
+    // dropped animation frames (especially on strict mobile browsers).
+    setTimeout(() => {
+      setOtherLocation(lat, lon, tz, title);
+    }, 50);
     return;
   }
 
