@@ -46,8 +46,9 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.7.0 ©2026 Charlie Wallace";
+const APP_VERSION = "v0.7.1 \u00A92026 Charlie Wallace";
 
+// --- Global Setup for External Renderers ---
 console.log("📦 CoolweirdClocks loaded");
 var WebsiteLink;
 var CityNameInput;
