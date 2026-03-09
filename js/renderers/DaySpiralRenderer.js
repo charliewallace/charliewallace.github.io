@@ -345,7 +345,7 @@ class DaySpiralRenderer extends ClockRenderer {
             this.drawHands(activeTk, showMode, 'trailing');
         }
 
-        this.drawAmPmIndicators(showMode);
+        this.drawAmPmIndicators(activeTk, showMode);
         this.drawRiseSetTimes(activeTk, showMode);
 
         // Draw spiral hours in Dial mode
@@ -1641,7 +1641,7 @@ class DaySpiralRenderer extends ClockRenderer {
     }
 
     // Draw AM/PM indicators and separator line for Dial mode when numbers are hidden
-    drawAmPmIndicators(showMode = 'dual') {
+    drawAmPmIndicators(tk, showMode = 'dual') {
         if (typeof EnableSpiralAnnotations !== 'undefined' && EnableSpiralAnnotations === 0) return;
 
         // Only show if: style is Dial, hours are hidden
@@ -1681,10 +1681,62 @@ class DaySpiralRenderer extends ClockRenderer {
         let pmAngleDeg = 10;
         let pmIndexOffset = Math.round((pmAngleDeg / 360) * this.numPointsPerTurn);
 
+        // --- Collision Detection Logic ---
+        let totalDailyPts = this.numPointsPerTurn * 2;
+        let annotationIndices = [];
+        let collisionThreshold = 25; // roughly 1 hour in points
+
+        if (tk) {
+            let addAnnotationIdx = (timeObj, isMoon = false) => {
+                if (!timeObj || typeof timeObj.totalSeconds !== 'number' || timeObj.hour < 0) return;
+
+                let sunRise = tk.sunriseTime;
+                let sunSet = tk.sunsetTime;
+                if (showMode === 'other') {
+                    sunRise = tk.otherSunriseTime || tk.sunriseTime;
+                    sunSet = tk.otherSunsetTime || tk.sunsetTime;
+                }
+
+                if (isMoon) {
+                    // Moon is only drawn during nighttime and not too close to sun
+                    if (this._isTimeTooClose(timeObj, sunRise) || this._isTimeTooClose(timeObj, sunSet) || !this._isNighttime(timeObj, sunRise, sunSet)) {
+                        return; // Will not be drawn
+                    }
+                }
+                annotationIndices.push(Math.floor((timeObj.totalSeconds / 86400) * totalDailyPts));
+            };
+
+            let sunR = tk.sunriseTime;
+            let sunS = tk.sunsetTime;
+            if (showMode === 'other') {
+                sunR = tk.otherSunriseTime || tk.sunriseTime;
+                sunS = tk.otherSunsetTime || tk.sunsetTime;
+            }
+            addAnnotationIdx(sunR);
+            addAnnotationIdx(sunS);
+
+            if (typeof ShowMoon !== 'undefined' && ShowMoon) {
+                let mRise = (showMode === 'other') ? tk.otherMoonRiseTime : tk.moonRiseTime;
+                let mSet = (showMode === 'other') ? tk.otherMoonSetTime : tk.moonSetTime;
+                addAnnotationIdx(mRise, true);
+                addAnnotationIdx(mSet, true);
+            }
+        }
+
+        let isColliding = (checkIdx) => {
+            return annotationIndices.some(aIdx => {
+                let diff = Math.abs(aIdx - checkIdx);
+                // Wrap around midnight
+                if (diff > totalDailyPts / 2) diff = totalDailyPts - diff;
+                return diff < collisionThreshold;
+            });
+        };
+        // ----------------------------------
+
         // AM Indicator - Top Outer Ring
         // Base Index 0 (Top) + offset
         let amIdx = amIndexOffset;
-        if (amIdx < this.xSpiral.length) {
+        if (!isColliding(amIdx) && amIdx < this.xSpiral.length) {
             let amX = this.centerX + this.xSpiral[amIdx];
             let amY = this.centerY + this.ySpiral[amIdx];
             text("AM", amX, amY);
@@ -1693,7 +1745,7 @@ class DaySpiralRenderer extends ClockRenderer {
         // PM Indicator - Top Inner Ring
         // Base Index numPointsPerTurn (Top of 2nd turn) + offset
         let pmIdx = this.numPointsPerTurn + pmIndexOffset;
-        if (pmIdx < this.xSpiral.length) {
+        if (!isColliding(pmIdx) && pmIdx < this.xSpiral.length) {
             let pmX = this.centerX + this.xSpiral[pmIdx];
             let pmY = this.centerY + this.ySpiral[pmIdx];
             text("PM", pmX, pmY);
