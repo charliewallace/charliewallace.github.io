@@ -3694,20 +3694,50 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
   }
   console.log(`Entering gotCityTzData(lat=${lat}, lon=${lon}, isOther=${isOther}).`);
 
-  if (data.length != 0) {
-    let timeZoneOffset = data.gmtOffset;
+  if (data) {
+    let timeZoneOffset = data.gmtOffset || 0;
+    let isDstActive = false;
+
+    if (data.timezoneId) {
+      try {
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: data.timezoneId,
+          timeZoneName: 'shortOffset'
+        });
+        const parts = formatter.formatToParts(now);
+        const tzPart = parts.find(p => p.type === 'timeZoneName').value;
+
+        let match = tzPart.match(/GMT([+-]\d+)(?::(\d+))?/);
+        if (match) {
+          timeZoneOffset = parseFloat(match[1]) + (match[2] ? parseFloat(match[2]) / 60 : 0);
+          const janParts = formatter.formatToParts(new Date(now.getFullYear(), 0, 1));
+          const julParts = formatter.formatToParts(new Date(now.getFullYear(), 6, 1));
+
+          let getOffset = (partsArray) => {
+            let pt = partsArray.find(p => p.type === 'timeZoneName').value;
+            let m = pt.match(/GMT([+-]\d+)(?::(\d+))?/);
+            if (m) return parseFloat(m[1]) + (m[2] ? parseFloat(m[2]) / 60 : 0);
+            return timeZoneOffset;
+          };
+          let stdOffset = Math.min(getOffset(janParts), getOffset(julParts));
+          isDstActive = (timeZoneOffset > stdOffset);
+          console.log(`[${requestId}] Resolved via Intl - Offset: ${timeZoneOffset}, DST: ${isDstActive}`);
+        }
+      } catch (e) {
+        console.warn(`[${requestId}] Could not use Intl.DateTimeFormat for timezone ${data.timezoneId}`, e);
+        if (data.dstActive !== undefined) isDstActive = data.dstActive === true;
+        else isDstActive = (data.rawOffset !== undefined && data.rawOffset !== data.gmtOffset);
+      }
+    } else {
+      if (data.dstActive !== undefined) isDstActive = data.dstActive === true;
+      else isDstActive = (data.rawOffset !== undefined && data.rawOffset !== data.gmtOffset);
+    }
 
     // UNIFIED 'OTHER' MODE (DaySpiral Dual or Mobius Substitution)
     if (isOther) {
       console.log(`  🌎 Other Location mode: Setting other location to ${cityName}`);
-
-      let otherIsDst = false;
-      let rawOffset = data.rawOffset;
-      if (rawOffset !== undefined && rawOffset != timeZoneOffset) {
-        otherIsDst = true;
-      }
-
-      setOtherLocation(lat, lon, timeZoneOffset, cityName, otherIsDst);
+      setOtherLocation(lat, lon, timeZoneOffset, cityName, isDstActive);
 
       // Reset flags
       IsSearchingForOtherLocation = false;
@@ -3719,14 +3749,7 @@ function gotCityTzData(data, requestId, lat, lon, cityName, isOther = IsSearchin
     }
 
     TzOffset = timeZoneOffset;
-
-    let rawOffset = data.rawOffset;
-    if (rawOffset == timeZoneOffset) {
-      IsDst = false;
-    }
-    else {
-      IsDst = true;
-    }
+    IsDst = isDstActive;
 
     Latitude = lat;
     Longitude = lon;
@@ -3978,12 +4001,10 @@ function fetchTimezoneWithFailover(lat, lon, requestId, cityName, isOther, isAut
       name: 'TimeAPI.io',
       url: `https://www.timeapi.io/api/Time/current/coordinate?latitude=${lat}&longitude=${lon}`,
       parse: (d) => {
-        if (!d || !d.timeZone || !d.currentOffset) return null;
-        // Map to GeoNames-like format
+        if (!d || !d.timeZone) return null;
         return {
-          gmtOffset: d.currentOffset.seconds / 3600,
-          rawOffset: d.currentOffset.seconds / 3600, // imprecise for DST but better than zero
-          timezoneId: d.timeZone
+          timezoneId: d.timeZone,
+          dstActive: d.dstActive === true
         };
       }
     }
