@@ -4407,13 +4407,27 @@ function updateAboutModalContent() {
       "Noon is at the bottom of the upper arch, and midnight is at the top. " +
       "The minute and second indicators move along the center of the strip, so they complete a cycle in only one turn.";
     if (locationWarning) descText += " " + locationWarning;
-  } else if (activeRenderer === spiroClockRenderer || (typeof steampunk3DRenderer !== 'undefined' && activeRenderer === steampunk3DRenderer)) {
-    title = "About Steampunk Clock";
+  } else if (activeRenderer === spiroClockRenderer) {
+    title = "About Steampunk Clock (2D)";
     descText = "The Steampunk Clock uses nested spirographic gears to display the time. " +
       "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
       "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion. " +
       "The black indicators light up in red each time they enter a socket; " +
-      "watch 4 red dots light up in sequence on the hour!"
+      "watch 4 red dots light up in sequence on the hour!";
+  } else if (typeof steampunk3DRenderer !== 'undefined' && activeRenderer === steampunk3DRenderer) {
+    title = "About Steampunk Clock (3D)";
+    descText = "The 3D Steampunk Clock uses nested spirographic gears to display the time. " +
+      "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
+      "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion. " +
+      "The lanterns light up in red each time they enter a socket; " +
+      "watch 4 lanterns light up in sequence on the hour!<br><br>";
+
+    descText += "<strong>Controls:</strong> ";
+    if (IsDesktop) {
+      descText += "Use mouse drag to rotate, mouse wheel to zoom, and shift-drag to change location.";
+    } else {
+      descText += "Drag to rotate, pinch to zoom, and two-finger drag to move.";
+    }
   }
 
   if (aboutTitleEl) aboutTitleEl.html(title);
