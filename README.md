@@ -62,7 +62,7 @@ A 12-hour clock face where time moves along a fully three-dimensional Mobius str
 
 ![Steampunk Clock](SteampunkClock.png)
 
-A stylized clock that uses nested spirographic gears to display the time. The image shows the clock at 7:50:00.
+A stylized clock that uses nested spirographic gears to display the time. The image shows the clock at 11:01:25.
 - **Nested Gears**: Each ring rolls inside the one outside it, with the hour, minute, and second values shown on successively smaller gears.
 - **Always in Motion**: The spinning anti-gear and support gears keep the mechanism in continuous motion.
 - **Red Indicator Lights**: Black indicators light up in red each time they enter a socket, creating a sequence of 4 red dots lighting up on the hour.
