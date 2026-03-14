@@ -1050,7 +1050,7 @@ function parseUrlHash() {
   var povParam = params.get('pov');
   if (steampunkStyle || povParam) {
     window._initialSteampunkState = {
-      style: steampunkStyle || '2d',
+      style: steampunkStyle || '3d',
       pov: null
     };
     if (povParam) {
@@ -1532,20 +1532,31 @@ function updateUrlHash() {
   // Steampunk-specific state
   if (spiroClockRenderer || steampunk3DRenderer) {
     const style = (activeRenderer === steampunk3DRenderer) ? '3d' : '2d';
-    if (style === '3d') {
-      params.set('steampunkStyle', '3d');
+    if (style === '2d') {
+      params.set('steampunkStyle', '2d');
+      params.delete('pov');
+    } else {
+      // 3D is now the default style for Steampunk mode
+      params.delete('steampunkStyle');
       if (steampunk3DRenderer) {
-        const pov = steampunk3DRenderer.getPOV();
-        if (pov) {
-          // Serialize to cx,cy,cz,tx,ty,tz
-          const povStr = [pov.cx, pov.cy, pov.cz, pov.tx, pov.ty, pov.tz].join(',');
-          params.set('pov', povStr);
+        // Only include POV in URL if it was provided at startup OR if the user manually clicked "Save View"
+        if (WasPovProvidedAtStartup || WasSaveViewClicked) {
+          const pov = steampunk3DRenderer.getPOV();
+          if (pov) {
+            const povStr = [pov.cx, pov.cy, pov.cz, pov.tx, pov.ty, pov.tz].join(',');
+            
+            // Still suppress if it exactly matches the hardcoded "Wow View" coordinates
+            const defaultPOV = "-2.3,-208.7,105,3.8,-26.1,-38.9";
+            if (povStr === defaultPOV) {
+              params.delete('pov');
+            } else {
+              params.set('pov', povStr);
+            }
+          }
+        } else {
+          params.delete('pov');
         }
       }
-    } else {
-      // 2D is default style for Steampunk mode
-      params.delete('steampunkStyle');
-      params.delete('pov');
     }
   }
 
@@ -4200,7 +4211,7 @@ function setClockMode(mode) {
     if (setupBtn) setupBtn.removeClass('hidden');
   } else if (mode === 'steampunk') {
     // Use the stored steampunk style to decide which renderer to use
-    if (window.steampunkStyle === '3d') {
+    if (window.steampunkStyle !== '2d') {
       activeRenderer = steampunk3DRenderer;
       select('#btn-save-view').removeClass('hidden');
       select('#btn-load-view').removeClass('hidden');
