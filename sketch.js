@@ -190,6 +190,8 @@ var LastSavedPOV = "-2.3,-208.7,105,3.8,-26.1,-38.9";
 var WasPovProvidedAtStartup = false;
 var WasSaveViewClicked = false;
 var KeepNumbersRadial = 1;
+var SteampunkTextures = 1;
+var steampunkStyle = '3d';
 var activeRenderer;
 
 // NEW Moon Calculation override
@@ -758,6 +760,12 @@ function oneTimeInit() {
     updateUrlHash();
   });
 
+  select('#check-steampunk-textures').changed(() => {
+    SteampunkTextures = select('#check-steampunk-textures').checked() ? 1 : 0;
+    if (steampunk3DRenderer) steampunk3DRenderer.setTexturesEnabled(SteampunkTextures === 1);
+    updateUrlHash();
+  });
+
   var btnDali = select('#btn-dali');
   if (btnDali) btnDali.mousePressed(() => {
     if (mobiusRenderer.active) {
@@ -1095,6 +1103,10 @@ function parseUrlHash() {
   if (steampunkRadial !== null) {
     KeepNumbersRadial = parseInt(steampunkRadial);
   }
+  var steampunkTextures = params.get('stmpnkTextures');
+  if (steampunkTextures !== null) {
+    SteampunkTextures = parseInt(steampunkTextures);
+  }
 
   var daySpiralStyle = params.get('daySpiralStyle');
   var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
@@ -1282,6 +1294,13 @@ function applyInitialState() {
       
       const sel = select('#select-steampunk-orientation');
       if (sel) sel.value(KeepNumbersRadial.toString());
+    }
+
+    // Propagate textures setting
+    if (SteampunkTextures !== undefined) {
+      if (steampunk3DRenderer) steampunk3DRenderer.setTexturesEnabled(SteampunkTextures === 1);
+      const chk = select('#check-steampunk-textures');
+      if (chk) chk.checked(SteampunkTextures === 1);
     }
 
     delete window._initialSteampunkState;
@@ -1494,7 +1513,7 @@ function updateUrlHash() {
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
     'otherLat', 'otherLon', 'otherTz', 'otherCity',
-    'steampunkStyle', 'pov', 'stmpnkNumRadial'
+    'steampunkStyle', 'pov', 'stmpnkNumRadial', 'stmpnkTextures'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1564,12 +1583,15 @@ function updateUrlHash() {
 
   // Steampunk-specific state
   if (spiroClockRenderer || steampunk3DRenderer) {
-    const style = (activeRenderer === steampunk3DRenderer) ? '3d' : '2d';
+    const style = (activeRenderer === steampunk3DRenderer) ? '3d' : 
+                  (activeRenderer === spiroClockRenderer) ? '2d' : 
+                  (steampunkStyle || '3d');
+    
     if (style === '2d') {
       params.set('steampunkStyle', '2d');
       params.delete('pov');
     } else {
-      // 3D is now the default style for Steampunk mode
+      // 3D is the default
       params.delete('steampunkStyle');
       if (steampunk3DRenderer) {
         // Only include POV in URL if it was provided at startup OR if the user manually clicked "Save View"
@@ -1598,6 +1620,11 @@ function updateUrlHash() {
     params.set('stmpnkNumRadial', '0');
   } else {
     params.delete('stmpnkNumRadial');
+  }
+  if (SteampunkTextures === 0) {
+    params.set('stmpnkTextures', '0');
+  } else {
+    params.delete('stmpnkTextures');
   }
 
   // DaySpiral-specific state
@@ -4259,7 +4286,7 @@ function setClockMode(mode) {
     }
   } else if (mode === 'steampunk') {
     // Use the stored steampunk style to decide which renderer to use
-    if (window.steampunkStyle !== '2d') {
+    if (steampunkStyle !== '2d') {
       activeRenderer = steampunk3DRenderer;
       select('#btn-save-view').removeClass('hidden');
       select('#btn-load-view').removeClass('hidden');
@@ -4283,6 +4310,15 @@ function setClockMode(mode) {
         
         // Ensure UI reflects current state
         select('#select-steampunk-orientation').value(KeepNumbersRadial.toString());
+        const chk = select('#check-steampunk-textures');
+        if (chk) chk.checked(SteampunkTextures === 1);
+        
+        // Show/Hide textures section based on style
+        const texSection = select('#section-steampunk-textures');
+        if (texSection) {
+          if (window.steampunkStyle === '3d') texSection.show();
+          else texSection.hide();
+        }
       });
     }
   } else {
@@ -4374,7 +4410,7 @@ function updateAboutModalContent() {
 
 function setSteampunkStyle(style) {
   console.log(`⚙️ Setting Steampunk Style to: ${style}`);
-  window.steampunkStyle = style;
+  steampunkStyle = style;
 
   // UI Highlighting
   const opt2d = select('#opt-steampunk-2d');
@@ -4397,10 +4433,14 @@ function setSteampunkStyle(style) {
       activeRenderer = steampunk3DRenderer;
       select('#btn-save-view').removeClass('hidden');
       select('#btn-load-view').removeClass('hidden');
+      const texSection = select('#section-steampunk-textures');
+      if (texSection) texSection.show();
     } else {
       activeRenderer = spiroClockRenderer;
       select('#btn-save-view').addClass('hidden');
       select('#btn-load-view').addClass('hidden');
+      const texSection = select('#section-steampunk-textures');
+      if (texSection) texSection.hide();
     }
 
     activeRenderer.activate();

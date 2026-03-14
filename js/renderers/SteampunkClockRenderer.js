@@ -1310,6 +1310,31 @@ class SteampunkClockRenderer {
     this.renderer.render(this.scene, this.camera);
   }
 
+  setTexturesEnabled(enabled) {
+    this.texturesEnabled = enabled;
+    for (const key in this.materials) {
+      const mat = this.materials[key];
+      if (mat.isAgedMaterial) {
+        if (enabled) {
+          // Restore textures
+          mat.color.set(0xffffff);
+          if (mat.metalType && this.metalTextures[mat.metalType]) {
+            this._applyTextureToMaterial(mat, this.metalTextures[mat.metalType]);
+          } else if (mat.userData && mat.userData.proceduralTexture) {
+            // Restore procedural if nothing better
+            mat.map = mat.bumpMap = mat.userData.proceduralTexture;
+          }
+        } else {
+          // Remove textures, use base color
+          mat.map = null;
+          mat.bumpMap = null;
+          mat.color.set(mat.baseColor);
+        }
+        mat.needsUpdate = true;
+      }
+    }
+  }
+
   _animate() {
     if (!this.active) return;
     requestAnimationFrame(() => this._animate());
@@ -1391,6 +1416,8 @@ class SteampunkClockRenderer {
     mat.isAgedMaterial = true;
     mat.isLargeSurface = isLargeSurface;
     mat.metalType = metalType;
+    mat.baseColor = baseColor; // Store for texture toggling
+    mat.userData = { proceduralTexture: proceduralTexture }; // Store for fallback
 
     // If texture is already loaded, apply it immediately
     if (metalType && this.metalTextures[metalType]) {
