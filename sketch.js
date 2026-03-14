@@ -191,6 +191,7 @@ var WasPovProvidedAtStartup = false;
 var WasSaveViewClicked = false;
 var KeepNumbersRadial = 1;
 var SteampunkTextures = 1;
+var SteampunkUseGears = 1;
 var steampunkStyle = '3d';
 var activeRenderer;
 
@@ -766,6 +767,13 @@ function oneTimeInit() {
     updateUrlHash();
   });
 
+  select('#select-steampunk-substyle').changed(() => {
+    const val = select('#select-steampunk-substyle').value();
+    SteampunkUseGears = (val === 'gears') ? 1 : 0;
+    if (steampunk3DRenderer) steampunk3DRenderer.setStyle(val);
+    updateUrlHash();
+  });
+
   var btnDali = select('#btn-dali');
   if (btnDali) btnDali.mousePressed(() => {
     if (mobiusRenderer.active) {
@@ -1107,6 +1115,10 @@ function parseUrlHash() {
   if (steampunkTextures !== null) {
     SteampunkTextures = parseInt(steampunkTextures);
   }
+  var steampunkUseGears = params.get('stmpnkUseGears');
+  if (steampunkUseGears !== null) {
+    SteampunkUseGears = parseInt(steampunkUseGears);
+  }
 
   var daySpiralStyle = params.get('daySpiralStyle');
   var daySpiralTimeFormat = params.get('daySpiralTimeFormat');
@@ -1286,24 +1298,28 @@ function applyInitialState() {
       LastSavedPOV = window._initialSteampunkState.pov;
       WasPovProvidedAtStartup = true;
     }
-    
-    // Propagate orientation setting
-    if (KeepNumbersRadial !== undefined) {
-      if (steampunk3DRenderer) steampunk3DRenderer.setRotationMode(KeepNumbersRadial);
-      if (spiroClockRenderer) spiroClockRenderer.keepNumbersRadial = KeepNumbersRadial;
-      
-      const sel = select('#select-steampunk-orientation');
-      if (sel) sel.value(KeepNumbersRadial.toString());
-    }
-
-    // Propagate textures setting
-    if (SteampunkTextures !== undefined) {
-      if (steampunk3DRenderer) steampunk3DRenderer.setTexturesEnabled(SteampunkTextures === 1);
-      const chk = select('#check-steampunk-textures');
-      if (chk) chk.checked(SteampunkTextures === 1);
-    }
-
     delete window._initialSteampunkState;
+  }
+
+  // Propagate Steampunk settings (can be in URL without style/pov)
+  if (KeepNumbersRadial !== undefined) {
+    if (steampunk3DRenderer) steampunk3DRenderer.setRotationMode(KeepNumbersRadial);
+    if (spiroClockRenderer) spiroClockRenderer.keepNumbersRadial = KeepNumbersRadial;
+    
+    const sel = select('#select-steampunk-orientation');
+    if (sel) sel.value(KeepNumbersRadial.toString());
+  }
+
+  if (SteampunkTextures !== undefined) {
+    if (steampunk3DRenderer) steampunk3DRenderer.setTexturesEnabled(SteampunkTextures === 1);
+    const chk = select('#check-steampunk-textures');
+    if (chk) chk.checked(SteampunkTextures === 1);
+  }
+
+  if (SteampunkUseGears !== undefined) {
+    if (steampunk3DRenderer) steampunk3DRenderer.setStyle(SteampunkUseGears === 1 ? 'gears' : 'rollers');
+    const sel = select('#select-steampunk-substyle');
+    if (sel) sel.value(SteampunkUseGears === 1 ? 'gears' : 'rollers');
   }
 
   if (window._initialClockMode) delete window._initialClockMode;
@@ -1513,7 +1529,7 @@ function updateUrlHash() {
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
     'otherLat', 'otherLon', 'otherTz', 'otherCity',
-    'steampunkStyle', 'pov', 'stmpnkNumRadial', 'stmpnkTextures'
+    'steampunkStyle', 'pov', 'stmpnkNumRadial', 'stmpnkTextures', 'stmpnkUseGears'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1625,6 +1641,11 @@ function updateUrlHash() {
     params.set('stmpnkTextures', '0');
   } else {
     params.delete('stmpnkTextures');
+  }
+  if (SteampunkUseGears === 0) {
+    params.set('stmpnkUseGears', '0');
+  } else {
+    params.delete('stmpnkUseGears');
   }
 
   // DaySpiral-specific state
@@ -4312,12 +4333,19 @@ function setClockMode(mode) {
         select('#select-steampunk-orientation').value(KeepNumbersRadial.toString());
         const chk = select('#check-steampunk-textures');
         if (chk) chk.checked(SteampunkTextures === 1);
+        const subSel = select('#select-steampunk-substyle');
+        if (subSel) subSel.value(SteampunkUseGears === 1 ? 'gears' : 'rollers');
         
         // Show/Hide textures section based on style
         const texSection = select('#section-steampunk-textures');
+        const styleSection = select('#section-steampunk-substyle');
         if (texSection) {
-          if (window.steampunkStyle === '3d') texSection.show();
+          if (steampunkStyle === '3d') texSection.show();
           else texSection.hide();
+        }
+        if (styleSection) {
+          if (steampunkStyle === '3d') styleSection.show();
+          else styleSection.hide();
         }
       });
     }
@@ -4434,13 +4462,17 @@ function setSteampunkStyle(style) {
       select('#btn-save-view').removeClass('hidden');
       select('#btn-load-view').removeClass('hidden');
       const texSection = select('#section-steampunk-textures');
+      const styleSection = select('#section-steampunk-substyle');
       if (texSection) texSection.show();
+      if (styleSection) styleSection.show();
     } else {
       activeRenderer = spiroClockRenderer;
       select('#btn-save-view').addClass('hidden');
       select('#btn-load-view').addClass('hidden');
       const texSection = select('#section-steampunk-textures');
+      const styleSection = select('#section-steampunk-substyle');
       if (texSection) texSection.hide();
+      if (styleSection) styleSection.hide();
     }
 
     activeRenderer.activate();

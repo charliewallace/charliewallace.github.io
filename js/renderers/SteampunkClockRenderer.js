@@ -102,9 +102,12 @@ class SteampunkClockRenderer {
     // Clock Base Radius (arbitrary scaling factor for 3D world)
     this.baseRadius = 300;
 
-    // Rings group
+    // Groups for layout
     this.ringsGroup = new THREE.Group();
     this.scene.add(this.ringsGroup);
+
+    this.gearsGroup = new THREE.Group();
+    this.scene.add(this.gearsGroup);
 
     // Sub-groups for rotations
     this.ringMeshes = {};
@@ -165,6 +168,7 @@ class SteampunkClockRenderer {
     // Load Font for 3D Numbers
     const loader = new THREE.FontLoader();
     loader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_bold.typeface.json', (font) => {
+      this.font = font; // Store for rebuilding
       this._addLabelsToRings(font);
     });
 
@@ -263,9 +267,9 @@ class SteampunkClockRenderer {
     const supportGear1 = this._createMiniGearMesh(sgR_visual, thickness, nSG);
     const supportGear2 = this._createMiniGearMesh(sgR_visual, thickness, nSG);
 
-    this.scene.add(antiGear);
-    this.scene.add(supportGear1);
-    this.scene.add(supportGear2);
+    this.gearsGroup.add(antiGear);
+    this.gearsGroup.add(supportGear1);
+    this.gearsGroup.add(supportGear2);
 
     return {
       antiGear,
@@ -1308,6 +1312,29 @@ class SteampunkClockRenderer {
     if (!this.standalone && this.controls) this.controls.update();
     this._updateKinematics(timeKeeper);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  setStyle(style) {
+    if (this.style === style) return;
+    this.style = style;
+    
+    // Clear existing rings and gears
+    while(this.ringsGroup.children.length > 0) {
+      this.ringsGroup.remove(this.ringsGroup.children[0]);
+    }
+    while(this.gearsGroup.children.length > 0) {
+      this.gearsGroup.remove(this.gearsGroup.children[0]);
+    }
+
+    this.ringMeshes = {};
+    if (this.miniGears) {
+      this.miniGears = {};
+    }
+    
+    this._buildRings();
+    if (this.font) {
+      this._addLabelsToRings(this.font);
+    }
   }
 
   setTexturesEnabled(enabled) {
