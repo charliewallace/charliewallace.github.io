@@ -11,8 +11,8 @@ CoolweirdClocks provides a robust set of features common to all its clock design
 - **Universal Location Detection**: Some clocks need your location, for example to calculate sunrise/sunset. Automatically detects your approximate location using IP geolocation for a seamless startup experience.
 - **Precise GPS Location**: Optionally grant location permission for exact coordinates and the most accurate sunrise/sunset calculations (in Location Details dialog).
 - **Manual Location Entry**: Enter any city name or manual coordinates (latitude, longitude, and GMT offset) to view the time anywhere in the world.
-- **Clock Selector**: Easily switch between different clock designs (currently featuring DaySpiral and Mobius).
-- **Zen Mode**: A minimalist mode that hides all UI controls for a clean, immersive visualization.
+- **Clock Selector**: Easily switch between different clock designs (currently featuring DaySpiral, Steampunk, and Mobius).
+- **Zen Mode**: A minimalist mode that hides all UI controls for a clean, immersive visualization. Try "shift-click" or long-press for a secret *Super Zen* mode that goes to full screen and turns off noisy settings
 - **Full Screen Mode**: Useful for wall-mounted displays and mobile devices/small screens.
 - **Privacy-First URL Persistence**: Your settings are preserved in the URL, so you can save and share your favorite clock settings via bookmarks, avoiding the need for cookies.
 
@@ -63,23 +63,31 @@ A 12-hour clock face where time moves along a fully three-dimensional Mobius str
 ![Steampunk Clock](SteampunkClock.png)
 
 A stylized clock that uses nested spirographic gears to display the time. The image shows the clock at 7:50:00.
-- **Nested Gears**: Each ring rolls inside the one above it, with the hour, minute, and second values shown on successively smaller gears.
+- **Nested Gears**: Each ring rolls inside the one outside it, with the hour, minute, and second values shown on successively smaller gears.
 - **Always in Motion**: The spinning anti-gear and support gears keep the mechanism in continuous motion.
 - **Red Indicator Lights**: Black indicators light up in red each time they enter a socket, creating a sequence of 4 red dots lighting up on the hour.
 - **Orientation Control**: Option to keep all numbers upright as they rotate around the clock face.
+- **2-D or 3-D View**: In the extra-steampunky 3-D view we show aged metal textures and gears or rollers. Plus you can navigate the model to fully explore the mechanism; and you can save your favorite view in the url so you can share and bookmark it.
+- **3-D Navigation**:
+  - **Desktop**: Use mouse drag to rotate, mouse wheel to zoom, and shift-drag to change location.
+  - **Mobile**: Drag to rotate, pinch to zoom, and two-finger drag to move.
 
 **Specific URL Parameters:**
 - `clock=steampunk`: Activates the Steampunk clock.
-- `keepNumbersHoriz=1`: Keeps the numbers upright instead of rotating with the gears.
-- `colorStyle=[brass|silver|bronze]`: Changes the metallic styling of the steampunk clock (hypothetical example, if you add this later).
+- `steampunkStyle=2d`: Selects the 2-D rendering style (defaults to 3-D).
+- `stmpnkNumRadial=0`: Keeps the numbers upright (parallel to the top) instead of rotating with the gears.
+- `stmpnkTextures=0`: Disables the "Aged Texture" look for a clean metallic finish.
+- `stmpnkUseGears=0`: Switches the mechanism to "Rollers" instead of traditional teeth-gears.
+- `pov=cx,cy,cz,tx,ty,tz`: Sets a custom 3-D camera Point of View (camera x,y,z and target x,y,z). Use the "Save View" button to save your favorite view in the url so you can share and bookmark it.
 
 ---
 
 ## Suggested Use Case
 
 Have an old tablet? Convert it into a beautiful wall or shelf clock! Use **Zen Mode** for a clean look. Bookmark your favorite setup (e.g., `https://dayspiral.com/#clock=mobius&rotation=1&zen=1`) and set it as the device's home screen.
-
 Try it here: [dayspiral.com/#clock=mobius&rotation=1&zen=1](https://dayspiral.com/#clock=mobius&rotation=1&zen=1)
+
+Note: browsers don't allow setting the full-screen mode from a url hash setting for security reasons, but you can select it using the "Full Screen" button.
 
 ## Technologies
 
