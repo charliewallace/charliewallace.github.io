@@ -19,6 +19,7 @@ class SteampunkClockRenderer {
     this.materialStyle = options.materialStyle || 'aged'; // Can be 'new' or 'aged'
     this.texturePath = options.texturePath || './'; // Configurable path to texture PNGs
     this.standalone = options.standalone || false; // True when running outside CoolweirdClocks
+    this.keepNumbersRadial = options.keepNumbersRadial !== undefined ? options.keepNumbersRadial : 1;
 
     // Configuration constants (from original)
     this.FIXED_RING_OUTER_RADIUS_FRAC = 0.95;
@@ -188,7 +189,8 @@ class SteampunkClockRenderer {
     // Ring definitions: { parentRadius, widthFrac, cyclesPerRev, numScoops }
     // 0: Fixed (outer static) - 12 scoops
     let fixedScoopR = 0.2 * (fixedOuter - fixedInner);
-    this._createRing('fixed', fixedOuter, fixedInner, 12, 0);
+    const fixedGroup = this._createRing('fixed', fixedOuter, fixedInner, 12, 0);
+    fixedGroup.rotation.z = Math.PI / 2; // Fixed ring also uses indicator at top
 
     // 1: Hour12 (rolls inside fixed). gearR = (11/12) * fixedInner
     let h12R = (11 / 12) * fixedInner;
@@ -680,6 +682,7 @@ class SteampunkClockRenderer {
       this.ringMeshes[name].indMatNormal = group.userData.indMatNormal;
       this.ringMeshes[name].indMatRed = group.userData.indMatRed;
     }
+    return group;
   }
 
   _addTeethToRing(name, parentMesh, outerRadius, innerRadius, depth) {
@@ -1187,7 +1190,7 @@ class SteampunkClockRenderer {
 
   _addLabelsToRings(font) {
     const ringLabels = {
-      'fixed': { labels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], angleOffset: -Math.PI / 2 },
+      'fixed': { labels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], angleOffset: 0 },
       'hour12': { labels: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60], angleOffset: 0 },
       'min60': { labels: [1, 2, 3, 4, 5], angleOffset: 0 },
       'min5': { labels: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60], angleOffset: 0 }
@@ -1222,7 +1225,7 @@ class SteampunkClockRenderer {
 
       for (let i = 0; i < n; i++) {
         let la = conf.angleOffset + (i + 1) * da;
-        let angle3D = -la;
+        let angle3D = -la; // All labels are CW from local 0
 
         // Visual tweaks for certain numbers
         // "12" on fixed ring: move left (CCW) by ~1/3 width of "1"
@@ -1259,15 +1262,42 @@ class SteampunkClockRenderer {
         tm.position.z = zPos;
 
         if (name !== 'fixed') {
-          // If the user wants keepNumbersLevel OFF, they should rotate outward
-          // Since angle3D = -la, outward rotation is angle3D - PI/2
-          tm.rotation.z = angle3D - Math.PI / 2;
+          if (this.keepNumbersRadial === 1) {
+            tm.rotation.z = angle3D - Math.PI / 2;
+          } else {
+            // Parallel (Follows root segment orientation - horizontal at top)
+            tm.rotation.z = -Math.PI / 2;
+          }
+          tm.userData = { angle3D: angle3D }; // Store for dynamic re-orientation
         } else {
-          // Fixed ring (static) expects upright text
-          tm.rotation.z = 0;
+          // Fixed ring is also rotated PI/2, so Radial baseline for 12 (at local 0) is -PI/2
+          if (this.keepNumbersRadial === 1) {
+            tm.rotation.z = angle3D - Math.PI / 2;
+          } else {
+            tm.rotation.z = -Math.PI / 2;
+          }
+          tm.userData = { angle3D: angle3D };
         }
 
         data.mesh.add(tm);
+        if (!data.labels) data.labels = [];
+        data.labels.push(tm);
+      }
+    }
+  }
+
+  setRotationMode(mode) {
+    this.keepNumbersRadial = mode;
+    for (const name in this.ringMeshes) {
+      const data = this.ringMeshes[name];
+      if (data.labels) {
+        data.labels.forEach(tm => {
+          if (this.keepNumbersRadial === 1) {
+            tm.rotation.z = tm.userData.angle3D - Math.PI / 2;
+          } else {
+            tm.rotation.z = -Math.PI / 2;
+          }
+        });
       }
     }
   }

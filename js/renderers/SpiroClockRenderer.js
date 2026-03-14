@@ -14,6 +14,7 @@
 // =============================================================================
 class SpiroClock {
   constructor(options = {}) {
+    this.keepNumbersRadial = options.keepNumbersRadial !== undefined ? options.keepNumbersRadial : 1;
     // Configuration constants (from C#)
     this.FIXED_RING_OUTER_RADIUS_FRAC = 0.95;
     this.HOUR12_RING_WIDTH_FRAC = 0.83;
@@ -252,7 +253,12 @@ class SpiroClock {
         if (rotateLabels) {
           push();
           translate(lx, ly);
-          rotate(la + HALF_PI);
+          if (this.keepNumbersRadial === 1) {
+            rotate(la + HALF_PI);
+          } else {
+            // Parallel (Horizontal when at top segment)
+            rotate(angle + HALF_PI);
+          }
           text(str(labels[i]), 0, 0);
           pop();
         } else {

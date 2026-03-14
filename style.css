@@ -1999,6 +1999,14 @@ body.zen-mode #btn-zen-desktop:hover {
   }
 }
 
+/* Mobile gear-btn optimization */
+@media screen and (max-width: 600px) {
+  .ui-btn.gear-btn {
+    padding: 6px 4px !important;
+    min-width: 32px;
+  }
+}
+
 
 /* NOTE: The old max-width:600px 1-col override is replaced by explicit
    breakpoint rules above (.details-dual-wrapper portrait/landscape blocks). */
