@@ -581,16 +581,7 @@ function oneTimeInit() {
     }
   });
 
-  // Steampunk: Keep Numbers Level toggle button
-  var btnKeepLevel = select('#btn-keep-numbers-level');
-  if (btnKeepLevel) btnKeepLevel.mousePressed(() => {
-    if (spiroClockRenderer) {
-      spiroClockRenderer.keepNumbersHoriz = !spiroClockRenderer.keepNumbersHoriz;
-      if (spiroClockRenderer.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
-      else btnKeepLevel.removeClass('toggled-on');
-      updateUrlHash();
-    }
-  });
+
 
   // Moon Toggle Button
   var btnToggleMoon = select('#btn-toggle-moon');
@@ -1223,14 +1214,6 @@ function applyInitialState() {
     if (window._initialSteampunkState.style) {
       setSteampunkStyle(window._initialSteampunkState.style);
     }
-    if (window._initialSteampunkState.keepNumbersHoriz !== undefined) {
-      if (spiroClockRenderer) spiroClockRenderer.keepNumbersHoriz = window._initialSteampunkState.keepNumbersHoriz;
-      let btn = select('#btn-keep-numbers-level');
-      if (btn) {
-        if (spiroClockRenderer.keepNumbersHoriz) btn.addClass('toggled-on');
-        else btn.removeClass('toggled-on');
-      }
-    }
     if (window._initialSteampunkState.pov && steampunk3DRenderer) {
       steampunk3DRenderer.setPOV(window._initialSteampunkState.pov);
     }
@@ -1403,20 +1386,7 @@ function applyInitialState() {
     delete window._initialMobiusState; // Clean up
   }
 
-  // Apply Steampunk state if specified
-  if (window._initialSteampunkState) {
-    console.log("  ⚙️ Applying Steampunk settings:", window._initialSteampunkState);
-    const state = window._initialSteampunkState;
-    if (state.keepNumbersHoriz !== undefined && spiroClockRenderer) {
-      spiroClockRenderer.keepNumbersHoriz = state.keepNumbersHoriz;
-      const btnKeepLevel = select('#btn-keep-numbers-level');
-      if (btnKeepLevel) {
-        if (state.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
-        else btnKeepLevel.removeClass('toggled-on');
-      }
-    }
-    delete window._initialSteampunkState;
-  }
+
 
   // Apply alternate location if specified
   if (window._initialOtherLocation) {
@@ -1445,7 +1415,7 @@ function updateUrlHash() {
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
     'otherLat', 'otherLon', 'otherTz', 'otherCity',
-    'keepNumbersHoriz', 'steampunkStyle', 'pov'
+    'steampunkStyle', 'pov'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1530,10 +1500,6 @@ function updateUrlHash() {
       // 2D is default style for Steampunk mode
       params.delete('steampunkStyle');
       params.delete('pov');
-    }
-
-    if (spiroClockRenderer && spiroClockRenderer.keepNumbersHoriz === true) {
-      params.set('keepNumbersHoriz', '1');
     }
   }
 

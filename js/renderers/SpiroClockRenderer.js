@@ -28,8 +28,7 @@ class SpiroClock {
     this.MIN5_LABELS = [1, 2, 3, 4, 5];
     this.SEC60_LABELS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
 
-    // Options (host app passes these; standalone bootstrap reads URL hash)
-    this.keepNumbersHoriz = options.keepNumbersHoriz || false;
+
 
     // State
     this.active = false;
@@ -232,7 +231,7 @@ class SpiroClock {
 
       // Determine whether labels on this ring should rotate
       let isStaticRing = (labelAngleOrigin !== undefined && labelAngleOrigin !== null);
-      let rotateLabels = !this.keepNumbersHoriz && !isStaticRing;
+      let rotateLabels = !isStaticRing;
 
       // Shift moving-ring labels slightly inward for tick clearance
       let labelR = isStaticRing ? midR : midR - fontSize / 8;
@@ -458,9 +457,7 @@ function setup() {
   // Parse URL hash options (in CoolweirdClocks, the host does this centrally)
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
 
-  spiroClock = new SpiroClock({
-    keepNumbersHoriz: hashParams.get('keepNumbersHoriz') === '1'
-  });
+  spiroClock = new SpiroClock();
   spiroClock.init();
   spiroClock.activate();
   spiroClock.resize(width, height);
