@@ -46,7 +46,7 @@ Future Enhancement Ideas ------------
 
 //======== GLOBALS ===================================
 // Name convention: global vars are capitalized
-const APP_VERSION = "v0.7.1 \u00A92026 Charlie Wallace";
+const APP_VERSION = "v0.8.0 \u00A92026 Charlie Wallace";
 
 // --- Global Setup for External Renderers ---
 console.log("📦 CoolweirdClocks loaded");
@@ -184,6 +184,15 @@ var timeKeeper;
 var locManager;
 var daySpiralRenderer;
 var mobiusRenderer;
+var spiroClockRenderer;
+var steampunk3DRenderer;
+var LastSavedPOV = "-2.3,-208.7,105,3.8,-26.1,-38.9";
+var WasPovProvidedAtStartup = false;
+var WasSaveViewClicked = false;
+var KeepNumbersRadial = 1;
+var SteampunkTextures = 1;
+var SteampunkUseGears = 1;
+var steampunkStyle = '3d';
 var activeRenderer;
 
 // NEW Moon Calculation override
@@ -396,8 +405,18 @@ function oneTimeInit() {
   mobiusRenderer = new MobiusRenderer('mobius-container');
   mobiusRenderer.init();
 
-  spiroClockRenderer = new SpiroClock({ keepNumbersHoriz: false });
-  spiroClockRenderer.init();
+    steampunk3DRenderer = new SteampunkClockRenderer('steampunk-container', {
+      texturePath: 'assets/textures/steampunk/',
+      materialStyle: 'aged',
+      keepNumbersRadial: KeepNumbersRadial
+    });
+    steampunk3DRenderer.init();
+    
+    // 2D renderer
+    spiroClockRenderer = new SpiroClock({
+      keepNumbersRadial: KeepNumbersRadial
+    });
+    spiroClockRenderer.init();
 
   // Select the default renderer and activate it.
   activeRenderer = daySpiralRenderer; // Start with default
@@ -576,16 +595,7 @@ function oneTimeInit() {
     }
   });
 
-  // Steampunk: Keep Numbers Level toggle button
-  var btnKeepLevel = select('#btn-keep-numbers-level');
-  if (btnKeepLevel) btnKeepLevel.mousePressed(() => {
-    if (spiroClockRenderer) {
-      spiroClockRenderer.keepNumbersHoriz = !spiroClockRenderer.keepNumbersHoriz;
-      if (spiroClockRenderer.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
-      else btnKeepLevel.removeClass('toggled-on');
-      updateUrlHash();
-    }
-  });
+
 
   // Moon Toggle Button
   var btnToggleMoon = select('#btn-toggle-moon');
@@ -653,6 +663,48 @@ function oneTimeInit() {
   select('#opt-mobius').mousePressed(() => setClockMode('mobius'));
   select('#opt-steampunk').mousePressed(() => setClockMode('steampunk'));
 
+  // Steampunk Style Selector
+  select('#opt-steampunk-2d').mousePressed(() => setSteampunkStyle('2d'));
+  select('#opt-steampunk-3d').mousePressed(() => setSteampunkStyle('3d'));
+
+  // Steampunk Save/Load View Buttons
+  var btnSaveView = select('#btn-save-view');
+  if (btnSaveView) btnSaveView.mousePressed(() => {
+    if (steampunk3DRenderer && steampunk3DRenderer.active) {
+      // Update LastSavedPOV before saving
+      const pov = steampunk3DRenderer.getPOV();
+      if (pov) {
+        LastSavedPOV = [pov.cx, pov.cy, pov.cz, pov.tx, pov.ty, pov.tz].join(',');
+      }
+      
+      WasSaveViewClicked = true;
+      let btnLoad = select('#btn-load-view');
+      if (btnLoad) btnLoad.html('Load View');
+
+      updateUrlHash();
+      // Optional: Visual feedback
+      btnSaveView.addClass('toggled-on');
+      setTimeout(() => btnSaveView.removeClass('toggled-on'), 500);
+    }
+  });
+
+  var btnLoadView = select('#btn-load-view');
+  if (btnLoadView) {
+    if (!WasPovProvidedAtStartup && !WasSaveViewClicked) {
+      btnLoadView.html('Wow View');
+    }
+
+    btnLoadView.mousePressed(() => {
+      if (steampunk3DRenderer && steampunk3DRenderer.active) {
+        const povObj = parsePOV(LastSavedPOV);
+        steampunk3DRenderer.setPOV(povObj);
+        // Optional: Visual feedback
+        btnLoadView.addClass('toggled-on');
+        setTimeout(() => btnLoadView.removeClass('toggled-on'), 500);
+      }
+    });
+  }
+
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
 
@@ -699,6 +751,27 @@ function oneTimeInit() {
       // Update URL hash
       updateUrlHash();
     }
+  });
+
+  // Bind Steampunk setup
+  select('#select-steampunk-orientation').changed(() => {
+    KeepNumbersRadial = parseInt(select('#select-steampunk-orientation').value());
+    if (steampunk3DRenderer) steampunk3DRenderer.setRotationMode(KeepNumbersRadial);
+    if (spiroClockRenderer) spiroClockRenderer.keepNumbersRadial = KeepNumbersRadial;
+    updateUrlHash();
+  });
+
+  select('#check-steampunk-textures').changed(() => {
+    SteampunkTextures = select('#check-steampunk-textures').checked() ? 1 : 0;
+    if (steampunk3DRenderer) steampunk3DRenderer.setTexturesEnabled(SteampunkTextures === 1);
+    updateUrlHash();
+  });
+
+  select('#select-steampunk-substyle').changed(() => {
+    const val = select('#select-steampunk-substyle').value();
+    SteampunkUseGears = (val === 'gears') ? 1 : 0;
+    if (steampunk3DRenderer) steampunk3DRenderer.setStyle(val);
+    updateUrlHash();
   });
 
   var btnDali = select('#btn-dali');
@@ -1004,17 +1077,47 @@ function parseUrlHash() {
     window._initialClockMode = clockMode;
   }
 
+  // Steampunk style and POV
+  var steampunkStyle = params.get('steampunkStyle');
+  var povParam = params.get('pov');
+  if (steampunkStyle || povParam) {
+    window._initialSteampunkState = {
+      style: steampunkStyle || '3d',
+      pov: null
+    };
+    if (povParam) {
+      const p = povParam.split(',').map(Number);
+      if (p.length === 6 && !p.some(isNaN)) {
+        window._initialSteampunkState.pov = { cx: p[0], cy: p[1], cz: p[2], tx: p[3], ty: p[4], tz: p[5] };
+      }
+    }
+  }
+
   // Steampunk state - store for later application
   if (params.has('keepNumbersHoriz')) {
-    window._initialSteampunkState = {
-      keepNumbersHoriz: params.get('keepNumbersHoriz') === '1'
-    };
+    if (!window._initialSteampunkState) window._initialSteampunkState = {};
+    window._initialSteampunkState.keepNumbersHoriz = params.get('keepNumbersHoriz') === '1';
   }
 
   // DaySpiral state - store for later application
   var gmt = params.get('gmt');
-  if (gmt === '1') {
-    window._initialGmtEnabled = true;
+  if (params.get('gmt') === '1') {
+    if (!window._initialDaySpiralState) window._initialDaySpiralState = {};
+    window._initialDaySpiralState.gmt = true;
+  }
+  
+  // Steampunk settings
+  var steampunkRadial = params.get('stmpnkNumRadial');
+  if (steampunkRadial !== null) {
+    KeepNumbersRadial = parseInt(steampunkRadial);
+  }
+  var steampunkTextures = params.get('stmpnkTextures');
+  if (steampunkTextures !== null) {
+    SteampunkTextures = parseInt(steampunkTextures);
+  }
+  var steampunkUseGears = params.get('stmpnkUseGears');
+  if (steampunkUseGears !== null) {
+    SteampunkUseGears = parseInt(steampunkUseGears);
   }
 
   var daySpiralStyle = params.get('daySpiralStyle');
@@ -1179,8 +1282,47 @@ function applyInitialState() {
   if (window._initialClockMode) {
     console.log("  📍 Applying clock mode:", window._initialClockMode);
     setClockMode(window._initialClockMode);
-    delete window._initialClockMode; // Clean up
+    // Don't delete yet, need it for style application
   }
+
+  // Apply Steampunk state
+  if (window._initialSteampunkState) {
+    console.log("  ⚙️ Applying Steampunk style/POV", window._initialSteampunkState);
+    if (window._initialSteampunkState.style) {
+      setSteampunkStyle(window._initialSteampunkState.style);
+    }
+    if (window._initialSteampunkState.pov && steampunk3DRenderer) {
+      // Set as initial POV and update LastSavedPOV for future 'Load View' clicks
+      const povObj = parsePOV(window._initialSteampunkState.pov);
+      steampunk3DRenderer.setPOV(povObj);
+      LastSavedPOV = window._initialSteampunkState.pov;
+      WasPovProvidedAtStartup = true;
+    }
+    delete window._initialSteampunkState;
+  }
+
+  // Propagate Steampunk settings (can be in URL without style/pov)
+  if (KeepNumbersRadial !== undefined) {
+    if (steampunk3DRenderer) steampunk3DRenderer.setRotationMode(KeepNumbersRadial);
+    if (spiroClockRenderer) spiroClockRenderer.keepNumbersRadial = KeepNumbersRadial;
+    
+    const sel = select('#select-steampunk-orientation');
+    if (sel) sel.value(KeepNumbersRadial.toString());
+  }
+
+  if (SteampunkTextures !== undefined) {
+    if (steampunk3DRenderer) steampunk3DRenderer.setTexturesEnabled(SteampunkTextures === 1);
+    const chk = select('#check-steampunk-textures');
+    if (chk) chk.checked(SteampunkTextures === 1);
+  }
+
+  if (SteampunkUseGears !== undefined) {
+    if (steampunk3DRenderer) steampunk3DRenderer.setStyle(SteampunkUseGears === 1 ? 'gears' : 'rollers');
+    const sel = select('#select-steampunk-substyle');
+    if (sel) sel.value(SteampunkUseGears === 1 ? 'gears' : 'rollers');
+  }
+
+  if (window._initialClockMode) delete window._initialClockMode;
 
   // Apply DaySpiral GMT state if specified (regardless of active renderer)
   if (window._initialGmtEnabled) {
@@ -1346,20 +1488,7 @@ function applyInitialState() {
     delete window._initialMobiusState; // Clean up
   }
 
-  // Apply Steampunk state if specified
-  if (window._initialSteampunkState) {
-    console.log("  ⚙️ Applying Steampunk settings:", window._initialSteampunkState);
-    const state = window._initialSteampunkState;
-    if (state.keepNumbersHoriz !== undefined && spiroClockRenderer) {
-      spiroClockRenderer.keepNumbersHoriz = state.keepNumbersHoriz;
-      const btnKeepLevel = select('#btn-keep-numbers-level');
-      if (btnKeepLevel) {
-        if (state.keepNumbersHoriz) btnKeepLevel.addClass('toggled-on');
-        else btnKeepLevel.removeClass('toggled-on');
-      }
-    }
-    delete window._initialSteampunkState;
-  }
+
 
   // Apply alternate location if specified
   if (window._initialOtherLocation) {
@@ -1371,6 +1500,18 @@ function applyInitialState() {
 
   console.log("  ✅ Initial state applied");
   updateUrlHash(); // Ensure URL reflects all applied state
+}
+
+
+// Helper to parse POV string (cx,cy,cz,tx,ty,tz) into object
+function parsePOV(povStr) {
+  if (!povStr || typeof povStr !== 'string') return null;
+  const parts = povStr.split(',').map(Number);
+  if (parts.length < 6) return null;
+  return {
+    cx: parts[0], cy: parts[1], cz: parts[2],
+    tx: parts[3], ty: parts[4], tz: parts[5]
+  };
 }
 
 // Update URL hash with current state
@@ -1388,7 +1529,7 @@ function updateUrlHash() {
     'timeStyle', 'shapeHours', 'shapeMinutes', 'shapeSeconds',
     'tickScheme', 'rotation', 'demo', 'showHours', 'dali', 'dayNight',
     'otherLat', 'otherLon', 'otherTz', 'otherCity',
-    'keepNumbersHoriz'
+    'steampunkStyle', 'pov', 'stmpnkNumRadial', 'stmpnkTextures', 'stmpnkUseGears'
   ];
   managedKeys.forEach(key => params.delete(key));
 
@@ -1448,12 +1589,63 @@ function updateUrlHash() {
   if (typeof activeRenderer !== 'undefined' && typeof mobiusRenderer !== 'undefined') {
     if (activeRenderer === mobiusRenderer) {
       params.set('clock', 'mobius');
-    } else if (activeRenderer === spiroClockRenderer) {
+    } else if (activeRenderer === spiroClockRenderer || activeRenderer === steampunk3DRenderer) {
       params.set('clock', 'steampunk');
     } else {
       // Don't set clock if it's the default (dayspiral)
       params.delete('clock');
     }
+  }
+
+  // Steampunk-specific state
+  if (spiroClockRenderer || steampunk3DRenderer) {
+    const style = (activeRenderer === steampunk3DRenderer) ? '3d' : 
+                  (activeRenderer === spiroClockRenderer) ? '2d' : 
+                  (steampunkStyle || '3d');
+    
+    if (style === '2d') {
+      params.set('steampunkStyle', '2d');
+      params.delete('pov');
+    } else {
+      // 3D is the default
+      params.delete('steampunkStyle');
+      if (steampunk3DRenderer) {
+        // Only include POV in URL if it was provided at startup OR if the user manually clicked "Save View"
+        if (WasPovProvidedAtStartup || WasSaveViewClicked) {
+          const pov = steampunk3DRenderer.getPOV();
+          if (pov) {
+            const povStr = [pov.cx, pov.cy, pov.cz, pov.tx, pov.ty, pov.tz].join(',');
+            
+            // Still suppress if it exactly matches the hardcoded "Wow View" coordinates
+            const defaultPOV = "-2.3,-208.7,105,3.8,-26.1,-38.9";
+            if (povStr === defaultPOV) {
+              params.delete('pov');
+            } else {
+              params.set('pov', povStr);
+            }
+          }
+        } else {
+          params.delete('pov');
+        }
+      }
+    }
+  }
+
+  // Steampunk settings persistence
+  if (KeepNumbersRadial === 0) {
+    params.set('stmpnkNumRadial', '0');
+  } else {
+    params.delete('stmpnkNumRadial');
+  }
+  if (SteampunkTextures === 0) {
+    params.set('stmpnkTextures', '0');
+  } else {
+    params.delete('stmpnkTextures');
+  }
+  if (SteampunkUseGears === 0) {
+    params.set('stmpnkUseGears', '0');
+  } else {
+    params.delete('stmpnkUseGears');
   }
 
   // DaySpiral-specific state
@@ -1533,12 +1725,7 @@ function updateUrlHash() {
     }
   }
 
-  // Steampunk-specific state
-  if (typeof spiroClockRenderer !== 'undefined' && spiroClockRenderer) {
-    if (spiroClockRenderer.keepNumbersHoriz === true) {
-      params.set('keepNumbersHoriz', '1');
-    }
-  }
+  // Steampunk-specific state (Moved above to keep clock-specific logic together)
 
   var hash = params.toString().replace(/=(&|$)/g, '$1');
   console.log("  📝 Generated hash (refined):", hash);
@@ -1673,7 +1860,7 @@ function updateUIElements() {
       'completing a cycle in only one turn.';
 
     if (descEl) descEl.textContent = mobiusDescText;
-  } else if (typeof activeRenderer !== 'undefined' && typeof spiroClockRenderer !== 'undefined' && activeRenderer === spiroClockRenderer) {
+  } else if (typeof activeRenderer !== 'undefined' && (activeRenderer === spiroClockRenderer || (typeof steampunk3DRenderer !== 'undefined' && activeRenderer === steampunk3DRenderer))) {
     if (titleEl) titleEl.textContent = 'Steampunk Clock';
     var steampunkDescText = "Uses nested spirographic gears to display the time. " +
       "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
@@ -1985,7 +2172,7 @@ function updateUIElements() {
     if (optSpiral) optSpiral.addClass('active');
   } else if (activeRenderer === mobiusRenderer) {
     if (optMobius) optMobius.addClass('active');
-  } else if (activeRenderer === spiroClockRenderer) {
+  } else if (activeRenderer === spiroClockRenderer || activeRenderer === steampunk3DRenderer) {
     if (optSteampunk) optSteampunk.addClass('active');
   }
 
@@ -4088,7 +4275,7 @@ function draw() {
 function setClockMode(mode) {
   if ((mode === 'dayspiral' && activeRenderer === daySpiralRenderer) ||
     (mode === 'mobius' && activeRenderer === mobiusRenderer) ||
-    (mode === 'steampunk' && activeRenderer === spiroClockRenderer)) {
+    (mode === 'steampunk' && (activeRenderer === spiroClockRenderer || activeRenderer === steampunk3DRenderer))) {
     return; // Already in this mode
   }
 
@@ -4109,13 +4296,59 @@ function setClockMode(mode) {
     select('#controls-mobius').removeClass('hidden');
     select('#opt-mobius').addClass('active');
     var setupBtn = select('#btn-setup');
-    if (setupBtn) setupBtn.removeClass('hidden');
+    if (setupBtn) {
+      setupBtn.removeClass('hidden');
+      setupBtn.mousePressed(() => {
+        // Hide all modals first
+        selectAll('.modal-content').forEach(m => m.addClass('hidden'));
+        select('#modal-setup-mobius').removeClass('hidden');
+        select('#modal-overlay').removeClass('hidden');
+      });
+    }
   } else if (mode === 'steampunk') {
-    activeRenderer = spiroClockRenderer;
+    // Use the stored steampunk style to decide which renderer to use
+    if (steampunkStyle !== '2d') {
+      activeRenderer = steampunk3DRenderer;
+      select('#btn-save-view').removeClass('hidden');
+      select('#btn-load-view').removeClass('hidden');
+    } else {
+      activeRenderer = spiroClockRenderer;
+      select('#btn-save-view').addClass('hidden');
+      select('#btn-load-view').addClass('hidden');
+    }
+
     select('#controls-steampunk').removeClass('hidden');
     select('#opt-steampunk').addClass('active');
+    
     var setupBtn = select('#btn-setup');
-    if (setupBtn) setupBtn.addClass('hidden');
+    if (setupBtn) {
+      setupBtn.removeClass('hidden');
+      setupBtn.mousePressed(() => {
+        // Hide all modals first
+        selectAll('.modal-content').forEach(m => m.addClass('hidden'));
+        select('#modal-setup-steampunk').removeClass('hidden');
+        select('#modal-overlay').removeClass('hidden');
+        
+        // Ensure UI reflects current state
+        select('#select-steampunk-orientation').value(KeepNumbersRadial.toString());
+        const chk = select('#check-steampunk-textures');
+        if (chk) chk.checked(SteampunkTextures === 1);
+        const subSel = select('#select-steampunk-substyle');
+        if (subSel) subSel.value(SteampunkUseGears === 1 ? 'gears' : 'rollers');
+        
+        // Show/Hide textures section based on style
+        const texSection = select('#section-steampunk-textures');
+        const styleSection = select('#section-steampunk-substyle');
+        if (texSection) {
+          if (steampunkStyle === '3d') texSection.show();
+          else texSection.hide();
+        }
+        if (styleSection) {
+          if (steampunkStyle === '3d') styleSection.show();
+          else styleSection.hide();
+        }
+      });
+    }
   } else {
     activeRenderer = daySpiralRenderer;
     select('#controls-dayspiral').removeClass('hidden');
@@ -4128,7 +4361,7 @@ function setClockMode(mode) {
   activeRenderer.resize(window.innerWidth, window.innerHeight);
 
   // Set page background to match the active renderer
-  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer) ? 'rgb(64,64,64)' : '';
+  document.body.style.backgroundColor = (activeRenderer === spiroClockRenderer || activeRenderer === steampunk3DRenderer) ? 'rgb(64,64,64)' : '';
 
   updateUIElements(); // Ensure title/desc update immediately
   updateAboutModalContent(); // Update About content based on clock
@@ -4175,12 +4408,26 @@ function updateAboutModalContent() {
       "The minute and second indicators move along the center of the strip, so they complete a cycle in only one turn.";
     if (locationWarning) descText += " " + locationWarning;
   } else if (activeRenderer === spiroClockRenderer) {
-    title = "About Steampunk Clock";
+    title = "About Steampunk Clock (2D)";
     descText = "The Steampunk Clock uses nested spirographic gears to display the time. " +
       "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
       "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion. " +
       "The black indicators light up in red each time they enter a socket; " +
-      "watch 4 red dots light up in sequence on the hour!"
+      "watch 4 red dots light up in sequence on the hour!";
+  } else if (typeof steampunk3DRenderer !== 'undefined' && activeRenderer === steampunk3DRenderer) {
+    title = "About Steampunk Clock (3D)";
+    descText = "The 3D Steampunk Clock uses nested spirographic gears to display the time. " +
+      "Each ring rolls inside the one above it, with the hour, minute, and second values shown " +
+      "on successively smaller gears. The spinning anti-gear and support gears keep the mechanism in motion. " +
+      "The lanterns light up in red each time they enter a socket; " +
+      "watch 4 lanterns light up in sequence on the hour!<br><br>";
+
+    descText += "<strong>Controls:</strong> ";
+    if (IsDesktop) {
+      descText += "Use mouse drag to rotate, mouse wheel to zoom, and shift-drag to change location.";
+    } else {
+      descText += "Drag to rotate, pinch to zoom, and two-finger drag to move.";
+    }
   }
 
   if (aboutTitleEl) aboutTitleEl.html(title);
@@ -4200,13 +4447,57 @@ function updateAboutModalContent() {
     '<a href="#" onclick="showReadme(); return false;" style="color: var(--link-color); text-decoration: none; position: relative; z-index: 2000; pointer-events: auto;">Readme</a>' +
     '</p>' +
     '<p style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid #444; pt-10">Privacy: Location data is used only for sunrise/sunset calculations and is not saved.</p>';
+
 }
 
-function toggleClockMode() {
-  if (activeRenderer === daySpiralRenderer) {
-    setClockMode('mobius');
+function setSteampunkStyle(style) {
+  console.log(`⚙️ Setting Steampunk Style to: ${style}`);
+  steampunkStyle = style;
+
+  // UI Highlighting
+  const opt2d = select('#opt-steampunk-2d');
+  const opt3d = select('#opt-steampunk-3d');
+  if (style === '3d') {
+    if (opt3d) opt3d.addClass('active');
+    if (opt2d) opt2d.removeClass('active');
   } else {
-    setClockMode('dayspiral');
+    if (opt2d) opt2d.addClass('active');
+    if (opt3d) opt3d.removeClass('active');
+  }
+
+  // If already in steampunk mode, switch renderer immediately
+  if (activeRenderer === spiroClockRenderer || activeRenderer === steampunk3DRenderer) {
+    const currentMode = 'steampunk';
+    // Deactivate current
+    activeRenderer.deactivate();
+
+    if (style === '3d') {
+      activeRenderer = steampunk3DRenderer;
+      select('#btn-save-view').removeClass('hidden');
+      select('#btn-load-view').removeClass('hidden');
+      const texSection = select('#section-steampunk-textures');
+      const styleSection = select('#section-steampunk-substyle');
+      if (texSection) texSection.show();
+      if (styleSection) styleSection.show();
+    } else {
+      activeRenderer = spiroClockRenderer;
+      select('#btn-save-view').addClass('hidden');
+      select('#btn-load-view').addClass('hidden');
+      const texSection = select('#section-steampunk-textures');
+      const styleSection = select('#section-steampunk-substyle');
+      if (texSection) texSection.hide();
+      if (styleSection) styleSection.hide();
+    }
+
+    activeRenderer.activate();
+    activeRenderer.resize(window.innerWidth, window.innerHeight);
+
+    // Set page background
+    document.body.style.backgroundColor = 'rgb(64,64,64)';
+
+    updateUIElements();
+    updateAboutModalContent();
+    updateUrlHash();
   }
 }
 

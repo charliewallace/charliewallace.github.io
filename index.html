@@ -16,8 +16,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>CoolweirdClocks</title>
-  <link rel="stylesheet" href="style.css?v=0.7.1">
-  <link rel="stylesheet" href="modal-fixes.css?v=0.7.1">
+  <link rel="stylesheet" href="style.css?v=0.8.0">
+  <link rel="stylesheet" href="modal-fixes.css?v=0.8.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
 
@@ -40,6 +40,7 @@
   <div id="app-container">
     <div id="canvas-container"></div>
     <div id="mobius-container" class="hidden"></div>
+    <div id="steampunk-container" class="hidden"></div>
 
     <!-- UI Overlay Layer -->
     <div id="ui-layer">
@@ -157,7 +158,17 @@
 
           <!-- Steampunk Specific Controls (Hidden by default) -->
           <div id="controls-steampunk" class="controls-group hidden">
-            <button id="btn-keep-numbers-level" class="ui-btn">Keep Numbers Level</button>
+            <div id="steampunk-style-selector" class="selector-box">
+              <div class="selector-title">Select Style</div>
+              <div class="selector-options">
+                <span id="opt-steampunk-2d" class="selector-opt">2-D</span>
+                <span id="opt-steampunk-3d" class="selector-opt active">3-D</span>
+              </div>
+            </div>
+            <div class="horizontal-row">
+              <button id="btn-save-view" class="ui-btn hidden">Save View</button>
+              <button id="btn-load-view" class="ui-btn hidden">Load View</button>
+            </div>
           </div>
 
         </div>
@@ -367,6 +378,42 @@
           <button class="ui-btn btn-close-modal">OK</button>
         </div>
       </div>
+      <!-- Modal: Steampunk Settings -->
+      <div id="modal-setup-steampunk" class="modal-content hidden">
+        <button class="modal-close">&times;</button>
+        <h2>Steampunk Settings</h2>
+        <div class="modal-body">
+          <div class="settings-section">
+            <h3>Labels Orientation</h3>
+            <div class="form-row">
+              <label>Number Style:</label>
+              <select id="select-steampunk-orientation" class="modal-input">
+                <option value="1" selected>Radial (Inward)</option>
+                <option value="0">Parallel (Top-Fixed)</option>
+              </select>
+            </div>
+          </div>
+          <div id="section-steampunk-substyle" class="settings-section">
+            <div class="form-row">
+              <label>Gears or Rollers:</label>
+              <select id="select-steampunk-substyle" class="modal-input">
+                <option value="gears" selected>Gears</option>
+                <option value="rollers">Rollers</option>
+              </select>
+            </div>
+          </div>
+          <hr class="separator">
+          <div id="section-steampunk-textures" class="settings-section">
+            <div class="form-row">
+              <label for="check-steampunk-textures">Aged Texture:</label>
+              <input type="checkbox" id="check-steampunk-textures" checked>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="ui-btn btn-close-modal">OK</button>
+        </div>
+      </div>
 
     </div>
 
@@ -375,16 +422,19 @@
 
   <!-- THREE.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 
-  <script src="sketch.js?v=0.7.1"></script>
+  <script src="sketch.js?v=0.8.0"></script>
 
   <!-- App Modules -->
-  <script src="js/TimeKeeper.js?v=0.7.1"></script>
-  <script src="js/LocationManager.js?v=0.7.1"></script>
-  <script src="js/ClockRenderer.js?v=0.7.1"></script>
-  <script src="js/renderers/DaySpiralRenderer.js?v=0.7.1"></script>
-  <script src="js/renderers/MobiusRenderer.js?v=0.7.1"></script>
-  <script src="js/renderers/SpiroClockRenderer.js"></script> <!-- NEW -->
+  <script src="js/TimeKeeper.js?v=0.8.0"></script>
+  <script src="js/LocationManager.js?v=0.8.0"></script>
+  <script src="js/ClockRenderer.js?v=0.8.0"></script>
+  <script src="js/renderers/DaySpiralRenderer.js?v=0.8.0"></script>
+  <script src="js/renderers/MobiusRenderer.js?v=0.8.0"></script>
+  <script src="js/renderers/SpiroClockRenderer.js"></script>
+  <script src="js/renderers/SteampunkClockRenderer.js"></script>
 </body>
 
 </html>

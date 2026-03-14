@@ -65,7 +65,8 @@ body {
   display: block;
 }
 
-#mobius-container {
+#mobius-container,
+#steampunk-container {
   position: absolute;
   top: 0;
   left: 0;
@@ -80,7 +81,8 @@ body {
   /* Let clicks pass through if needed, but THREE.js usually handles them */
 }
 
-#mobius-container canvas {
+#mobius-container canvas,
+#steampunk-container canvas {
   pointer-events: auto;
   /* Re-enable for canvas */
 }
@@ -1994,6 +1996,14 @@ body.zen-mode #btn-zen-desktop:hover {
 
   .details-column .value {
     font-size: 0.85rem !important;
+  }
+}
+
+/* Mobile gear-btn optimization */
+@media screen and (max-width: 600px) {
+  .ui-btn.gear-btn {
+    padding: 6px 4px !important;
+    min-width: 32px;
   }
 }
 
