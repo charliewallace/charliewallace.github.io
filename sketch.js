@@ -186,6 +186,9 @@ var daySpiralRenderer;
 var mobiusRenderer;
 var spiroClockRenderer;
 var steampunk3DRenderer;
+var LastSavedPOV = "-2.3,-208.7,105,3.8,-26.1,-38.9";
+var WasPovProvidedAtStartup = false;
+var WasSaveViewClicked = false;
 var activeRenderer;
 
 // NEW Moon Calculation override
@@ -653,16 +656,43 @@ function oneTimeInit() {
   select('#opt-steampunk-2d').mousePressed(() => setSteampunkStyle('2d'));
   select('#opt-steampunk-3d').mousePressed(() => setSteampunkStyle('3d'));
 
-  // Steampunk Save View Button
+  // Steampunk Save/Load View Buttons
   var btnSaveView = select('#btn-save-view');
   if (btnSaveView) btnSaveView.mousePressed(() => {
     if (steampunk3DRenderer && steampunk3DRenderer.active) {
+      // Update LastSavedPOV before saving
+      const pov = steampunk3DRenderer.getPOV();
+      if (pov) {
+        LastSavedPOV = [pov.cx, pov.cy, pov.cz, pov.tx, pov.ty, pov.tz].join(',');
+      }
+      
+      WasSaveViewClicked = true;
+      let btnLoad = select('#btn-load-view');
+      if (btnLoad) btnLoad.html('Load View');
+
       updateUrlHash();
       // Optional: Visual feedback
       btnSaveView.addClass('toggled-on');
       setTimeout(() => btnSaveView.removeClass('toggled-on'), 500);
     }
   });
+
+  var btnLoadView = select('#btn-load-view');
+  if (btnLoadView) {
+    if (!WasPovProvidedAtStartup && !WasSaveViewClicked) {
+      btnLoadView.html('Wow View');
+    }
+
+    btnLoadView.mousePressed(() => {
+      if (steampunk3DRenderer && steampunk3DRenderer.active) {
+        const povObj = parsePOV(LastSavedPOV);
+        steampunk3DRenderer.setPOV(povObj);
+        // Optional: Visual feedback
+        btnLoadView.addClass('toggled-on');
+        setTimeout(() => btnLoadView.removeClass('toggled-on'), 500);
+      }
+    });
+  }
 
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
@@ -1215,7 +1245,11 @@ function applyInitialState() {
       setSteampunkStyle(window._initialSteampunkState.style);
     }
     if (window._initialSteampunkState.pov && steampunk3DRenderer) {
-      steampunk3DRenderer.setPOV(window._initialSteampunkState.pov);
+      // Set as initial POV and update LastSavedPOV for future 'Load View' clicks
+      const povObj = parsePOV(window._initialSteampunkState.pov);
+      steampunk3DRenderer.setPOV(povObj);
+      LastSavedPOV = window._initialSteampunkState.pov;
+      WasPovProvidedAtStartup = true;
     }
     delete window._initialSteampunkState;
   }
@@ -1398,6 +1432,18 @@ function applyInitialState() {
 
   console.log("  ✅ Initial state applied");
   updateUrlHash(); // Ensure URL reflects all applied state
+}
+
+
+// Helper to parse POV string (cx,cy,cz,tx,ty,tz) into object
+function parsePOV(povStr) {
+  if (!povStr || typeof povStr !== 'string') return null;
+  const parts = povStr.split(',').map(Number);
+  if (parts.length < 6) return null;
+  return {
+    cx: parts[0], cy: parts[1], cz: parts[2],
+    tx: parts[3], ty: parts[4], tz: parts[5]
+  };
 }
 
 // Update URL hash with current state
@@ -4157,9 +4203,11 @@ function setClockMode(mode) {
     if (window.steampunkStyle === '3d') {
       activeRenderer = steampunk3DRenderer;
       select('#btn-save-view').removeClass('hidden');
+      select('#btn-load-view').removeClass('hidden');
     } else {
       activeRenderer = spiroClockRenderer;
       select('#btn-save-view').addClass('hidden');
+      select('#btn-load-view').addClass('hidden');
     }
 
     select('#controls-steampunk').removeClass('hidden');
@@ -4277,9 +4325,11 @@ function setSteampunkStyle(style) {
     if (style === '3d') {
       activeRenderer = steampunk3DRenderer;
       select('#btn-save-view').removeClass('hidden');
+      select('#btn-load-view').removeClass('hidden');
     } else {
       activeRenderer = spiroClockRenderer;
       select('#btn-save-view').addClass('hidden');
+      select('#btn-load-view').addClass('hidden');
     }
 
     activeRenderer.activate();
