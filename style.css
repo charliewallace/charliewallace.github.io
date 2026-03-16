@@ -2052,6 +2052,33 @@ body.zen-mode .color-other {
   .details-column .value {
     font-size: 0.85rem !important;
   }
+
+  /* Layout refinements for tight vertical viewports */
+  #bottom-left-container,
+  #bottom-right-container {
+    bottom: 8px !important;
+  }
+
+  .button-group-bottom-right {
+    gap: 4px !important;
+  }
+
+  .controls-group {
+    gap: 2px !important;
+  }
+
+  /* Move Other Location button closer to Location Details */
+  .button-stack {
+    gap: 2px !important;
+  }
+
+  .preset-buttons {
+    margin-bottom: 4px !important;
+  }
+
+  .selector-box {
+    margin-bottom: 0 !important;
+  }
 }
 
 /* Mobile gear-btn optimization */
