@@ -705,6 +705,18 @@ function oneTimeInit() {
     });
   }
 
+  var btnResetView = select('#btn-reset-view');
+  if (btnResetView) {
+    btnResetView.mousePressed(() => {
+      if (steampunk3DRenderer && steampunk3DRenderer.active) {
+        steampunk3DRenderer.resetView();
+        // Optional: Visual feedback
+        btnResetView.addClass('toggled-on');
+        setTimeout(() => btnResetView.removeClass('toggled-on'), 500);
+      }
+    });
+  }
+
   // DaySpiral Hours Toggle
   select('#btn-dayspiral-hours').mousePressed(toggleDaySpiralHours);
 
@@ -4311,10 +4323,12 @@ function setClockMode(mode) {
       activeRenderer = steampunk3DRenderer;
       select('#btn-save-view').removeClass('hidden');
       select('#btn-load-view').removeClass('hidden');
+      select('#btn-reset-view').removeClass('hidden');
     } else {
       activeRenderer = spiroClockRenderer;
       select('#btn-save-view').addClass('hidden');
       select('#btn-load-view').addClass('hidden');
+      select('#btn-reset-view').addClass('hidden');
     }
 
     select('#controls-steampunk').removeClass('hidden');
@@ -4475,6 +4489,7 @@ function setSteampunkStyle(style) {
       activeRenderer = steampunk3DRenderer;
       select('#btn-save-view').removeClass('hidden');
       select('#btn-load-view').removeClass('hidden');
+      select('#btn-reset-view').removeClass('hidden');
       const texSection = select('#section-steampunk-textures');
       const styleSection = select('#section-steampunk-substyle');
       if (texSection) texSection.show();
@@ -4483,6 +4498,7 @@ function setSteampunkStyle(style) {
       activeRenderer = spiroClockRenderer;
       select('#btn-save-view').addClass('hidden');
       select('#btn-load-view').addClass('hidden');
+      select('#btn-reset-view').addClass('hidden');
       const texSection = select('#section-steampunk-textures');
       const styleSection = select('#section-steampunk-substyle');
       if (texSection) texSection.hide();

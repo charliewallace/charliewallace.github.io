@@ -914,6 +914,21 @@ class SteampunkClockRenderer {
     this.hasSetPOV = true;
   }
 
+  /**
+   * Resets the camera to the default flat view.
+   */
+  resetView() {
+    this.hasSetPOV = false;
+    // Reset position and target to origin-centric
+    this.camera.position.set(0, 0, this.camera.position.z);
+    if (this.controls) {
+      this.controls.target.set(0, 0, 0);
+      this.controls.update();
+    }
+    // Re-run resize to calculate the perfect distance
+    this.resize();
+  }
+
   resize(w, h) {
     w = w || window.innerWidth || 1;
     h = h || window.innerHeight || 1;
