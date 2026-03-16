@@ -284,16 +284,15 @@ body {
 }
 
 #app-title {
-  font-size: 1.1rem;
-  font-weight: 600;
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1;
   color: #ffffff;
   /* Pure white */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   /* Pop against gray */
+  transition: all 0.5s ease;
 }
 
 #app-description {
@@ -1048,8 +1047,13 @@ screen and (max-height: 600px) {
     font-size: 1.3rem;
     /* Match app title size */
     font-weight: 400;
-    /* Non-bold */
+    /* Non-bold by default */
     color: var(--text-color);
+  }
+
+  body.zen-mode #time-display {
+    font-weight: bold;
+    /* Bold in Zen mode for visibility */
   }
 
   #time-display.dual-time-upper {
@@ -1335,6 +1339,8 @@ screen and (max-height: 600px) {
   #app-title {
     font-size: 2.2rem;
     min-height: auto;
+    line-height: 1;
+    margin-top: 0;
     margin-bottom: 2px;
   }
 
@@ -1477,10 +1483,31 @@ body.zen-mode {
 }
 
 /* Hide UI containers - EXEMPT Bottom Left so Zen button stays */
+/* EXEMPT Top Left partially to keep Title visible */
 body.zen-mode #top-left-container {
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+body.zen-mode #top-left-container>*:not(#app-title) {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
+}
+
+body.zen-mode #app-title {
+  color: #666;
+  font-weight: 300;
+  text-shadow: none;
+}
+
+/* Mobile bolder title in Zen mode */
+@media screen and (max-width: 950px),
+screen and (max-height: 600px) {
+  body.zen-mode #app-title {
+    font-weight: bold;
+  }
 }
 
 /* Hide Full Screen button in Zen Mode */
@@ -1576,6 +1603,17 @@ body.zen-mode #btn-zen-desktop {
 body.zen-mode #btn-zen-desktop:hover {
   color: #999;
   border-color: #999;
+}
+
+/* DaySpiral Color Overrides for Zen mode consistency */
+body.zen-mode #time-display-large.color-local,
+body.zen-mode #time-display-large.color-other {
+  color: #666 !important;
+}
+
+body.zen-mode .color-local,
+body.zen-mode .color-other {
+  color: #888 !important;
 }
 
 /* ----------------------------------------------------- */
