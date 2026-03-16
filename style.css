@@ -1473,7 +1473,7 @@ screen and (max-height: 600px) {
    Zen Mode
    =================================================== */
 body.zen-mode {
-  background-color: #000 !important;
+  background-color: #1a1a1a !important;
 }
 
 /* Hide UI containers - EXEMPT Bottom Left so Zen button stays */

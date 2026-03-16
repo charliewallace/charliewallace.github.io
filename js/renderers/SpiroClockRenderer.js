@@ -86,8 +86,8 @@ class SpiroClock {
   update(timeKeeper) {
     if (!this.active) return;
 
-    // Darken background by 25% (to 48) instead of 50% when in Zen or Super-Zen mode
-    this.bgColor = (typeof IsZenMode !== 'undefined' && IsZenMode) ? 48 : 64;
+    // Darken background to 26 (matching #1a1a1a) when in Zen or Super-Zen mode
+    this.bgColor = (typeof IsZenMode !== 'undefined' && IsZenMode) ? 26 : 64;
     background(this.bgColor); // Clear canvas to chosen gray level each frame
 
 
