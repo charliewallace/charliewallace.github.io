@@ -1518,8 +1518,8 @@ body.zen-mode #btn-gps-ok {
 }
 
 body.zen-mode #time-display-large {
-  color: #444;
-  /* Dimmed Time */
+  color: #666;
+  /* Dimmed Time - slightly brightened for visibility */
   transition: color 0.5s ease;
 }
 
@@ -1537,23 +1537,23 @@ body.zen-mode #bottom-right-container>* {
 
 /* Dim Visible Elements */
 body.zen-mode #locale-title {
-  color: #666;
+  color: #888;
   text-shadow: none;
 }
 
 body.zen-mode #time-display {
-  color: #666;
+  color: #888;
 }
 
 body.zen-mode #btn-zen {
-  background: transparent;
-  border-color: #555;
-  color: #555;
+  background: #000;
+  border-color: #777;
+  color: #777;
 }
 
 body.zen-mode #btn-zen:hover {
-  color: #777;
-  border-color: #777;
+  color: #999;
+  border-color: #999;
 }
 
 /* Ensure Desktop Zen button stays visible */
@@ -1568,14 +1568,14 @@ body.zen-mode #btn-fullscreen-desktop {
 }
 
 body.zen-mode #btn-zen-desktop {
-  background: transparent;
-  border-color: #555;
-  color: #555;
+  background: #000;
+  border-color: #777;
+  color: #777;
 }
 
 body.zen-mode #btn-zen-desktop:hover {
-  color: #777;
-  border-color: #777;
+  color: #999;
+  border-color: #999;
 }
 
 /* ----------------------------------------------------- */
