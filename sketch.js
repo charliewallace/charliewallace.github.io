@@ -1524,10 +1524,18 @@ function applyInitialState() {
     const other = window._initialOtherLocation;
     console.log("  🌎 Applying initial alternate location:", other.city);
     setOtherLocation(other.lat, other.lon, other.tz, other.city);
-    delete window._initialOtherLocation;
+    delete window._initialLocationData;
   }
 
-  console.log("  ✅ Initial state applied");
+  // Final SEO update for initial state
+  if (typeof activeRenderer !== 'undefined' && activeRenderer) {
+    let mode = 'dayspiral';
+    if (activeRenderer === mobiusRenderer) mode = 'mobius';
+    else if (activeRenderer === spiroClockRenderer || (typeof steampunk3DRenderer !== 'undefined' && activeRenderer === steampunk3DRenderer)) mode = 'steampunk';
+    updateDynamicMetadata(mode);
+  }
+
+  console.log("🎨 Initial state applied.");
   updateUrlHash(); // Ensure URL reflects all applied state
 }
 
@@ -1865,6 +1873,61 @@ function onFullScreenChange(e) {
   }
 
   WasFullScreenLastCheck = fs; // save state for next check
+}
+
+/**
+ * Updates page title and SEO metadata (OG/Twitter/Canonical) dynamically based on the current mode.
+ * This ensures that sharing a specific clock link (even via hash) generates a correct preview.
+ */
+function updateDynamicMetadata(mode) {
+  let title = "CoolweirdClocks";
+  let description = "Explore unique digital timepieces and innovative clock designs.";
+  let image = "https://coolweird.net/coolweird_clocks_screenshot_large.png";
+  let canonicalUrl = "https://coolweird.net/";
+
+  // Domain-aware canonical link
+  const currentHost = window.location.hostname;
+  if (currentHost.includes("dayspiral.com")) canonicalUrl = "https://dayspiral.com/";
+  else if (currentHost.includes("mobiusclock.com")) canonicalUrl = "https://mobiusclock.com/";
+  else if (currentHost.includes("steampunkclock.com")) canonicalUrl = "https://steampunkclock.com/";
+  else if (currentHost.includes("coolweird")) canonicalUrl = "https://coolweird.net/";
+
+  if (mode === 'dayspiral') {
+    title = "DaySpiral Clock - Visualize Your Day";
+    description = "A unique clock that visualizes the entire day as a spiral, showing sunrise, sunset, and moon phases.";
+    image = "https://coolweird.net/coolweird_clocks_screenshot.png";
+  } else if (mode === 'mobius') {
+    title = "Mobius Clock - 3D Infinite Time";
+    description = "A 12-hour clock face where time moves along a fully three-dimensional Mobius strip.";
+    image = "https://coolweird.net/MobiusClock.png";
+  } else if (mode === 'steampunk') {
+    title = "Steampunk Clock - Nested Spirographic Gears";
+    description = "A stylized mechanical clock with nested gears and a 3D navigator. Explore the mechanism in 3D.";
+    image = "https://coolweird.net/SteampunkClockLarge3D.png";
+  }
+
+  // Set document title
+  document.title = title + " - CoolweirdClocks";
+
+  // Update Meta Tags
+  const updateMeta = (selector, attr, value) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute(attr, value);
+  };
+
+  updateMeta('meta[name="description"]', 'content', description);
+  updateMeta('link[rel="canonical"]', 'href', canonicalUrl);
+
+  // OG Tags
+  updateMeta('meta[property="og:title"]', 'content', title);
+  updateMeta('meta[property="og:description"]', 'content', description);
+  updateMeta('meta[property="og:image"]', 'content', image);
+  updateMeta('meta[property="og:url"]', 'content', window.location.href);
+
+  // Twitter Tags
+  updateMeta('meta[name="twitter:title"]', 'content', title);
+  updateMeta('meta[name="twitter:description"]', 'content', description);
+  updateMeta('meta[name="twitter:image"]', 'content', image);
 }
 
 // Update HTML UI elements with current data
@@ -4414,6 +4477,9 @@ function setClockMode(mode) {
 
   // Update URL hash to reflect clock mode change
   updateUrlHash();
+
+  // Update SEO metadata dynamically
+  updateDynamicMetadata(mode);
 }
 
 /**
