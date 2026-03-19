@@ -4368,7 +4368,15 @@ function setClockMode(mode) {
     select('#controls-dayspiral').removeClass('hidden');
     select('#opt-dayspiral').addClass('active');
     var setupBtn = select('#btn-setup');
-    if (setupBtn) setupBtn.removeClass('hidden');
+    if (setupBtn) {
+      setupBtn.removeClass('hidden');
+      setupBtn.mousePressed(() => {
+        // Hide all modals first
+        selectAll('.modal-content').forEach(m => m.addClass('hidden'));
+        select('#modal-setup-dayspiral').removeClass('hidden');
+        select('#modal-overlay').removeClass('hidden');
+      });
+    }
   }
 
   activeRenderer.activate();
