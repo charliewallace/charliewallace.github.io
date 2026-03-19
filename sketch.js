@@ -667,7 +667,7 @@ function oneTimeInit() {
   select('#opt-steampunk-2d').mousePressed(() => setSteampunkStyle('2d'));
   select('#opt-steampunk-3d').mousePressed(() => setSteampunkStyle('3d'));
 
-  // Steampunk Save/Load View Buttons
+  // Steampunk View Buttons (Save, Load, Wow, Reset)
   var btnSaveView = select('#btn-save-view');
   if (btnSaveView) btnSaveView.mousePressed(() => {
     if (steampunk3DRenderer && steampunk3DRenderer.active) {
@@ -678,29 +678,42 @@ function oneTimeInit() {
       }
       
       WasSaveViewClicked = true;
+      // Show Load button after first Save
       let btnLoad = select('#btn-load-view');
-      if (btnLoad) btnLoad.html('Load View');
+      if (btnLoad) btnLoad.removeClass('hidden');
 
       updateUrlHash();
-      // Optional: Visual feedback
+      // Visual feedback
       btnSaveView.addClass('toggled-on');
       setTimeout(() => btnSaveView.removeClass('toggled-on'), 500);
     }
   });
 
+  // Load View: restores the last saved POV
   var btnLoadView = select('#btn-load-view');
   if (btnLoadView) {
-    if (!WasPovProvidedAtStartup && !WasSaveViewClicked) {
-      btnLoadView.html('Wow View');
-    }
-
     btnLoadView.mousePressed(() => {
       if (steampunk3DRenderer && steampunk3DRenderer.active) {
         const povObj = parsePOV(LastSavedPOV);
         steampunk3DRenderer.setPOV(povObj);
-        // Optional: Visual feedback
+        // Visual feedback
         btnLoadView.addClass('toggled-on');
         setTimeout(() => btnLoadView.removeClass('toggled-on'), 500);
+      }
+    });
+  }
+
+  // Wow View: always applies the hardcoded default "wow" POV
+  var btnWowView = select('#btn-wow-view');
+  if (btnWowView) {
+    btnWowView.mousePressed(() => {
+      if (steampunk3DRenderer && steampunk3DRenderer.active) {
+        const defaultWowPOV = "-2.3,-208.7,105,3.8,-26.1,-38.9";
+        const povObj = parsePOV(defaultWowPOV);
+        steampunk3DRenderer.setPOV(povObj);
+        // Visual feedback
+        btnWowView.addClass('toggled-on');
+        setTimeout(() => btnWowView.removeClass('toggled-on'), 500);
       }
     });
   }
@@ -710,7 +723,7 @@ function oneTimeInit() {
     btnResetView.mousePressed(() => {
       if (steampunk3DRenderer && steampunk3DRenderer.active) {
         steampunk3DRenderer.resetView();
-        // Optional: Visual feedback
+        // Visual feedback
         btnResetView.addClass('toggled-on');
         setTimeout(() => btnResetView.removeClass('toggled-on'), 500);
       }
@@ -1100,7 +1113,8 @@ function parseUrlHash() {
     if (povParam) {
       const p = povParam.split(',').map(Number);
       if (p.length === 6 && !p.some(isNaN)) {
-        window._initialSteampunkState.pov = { cx: p[0], cy: p[1], cz: p[2], tx: p[3], ty: p[4], tz: p[5] };
+        // Store as string for consistency with parsePOV() and LastSavedPOV
+        window._initialSteampunkState.pov = povParam;
       }
     }
   }
@@ -1309,6 +1323,9 @@ function applyInitialState() {
       steampunk3DRenderer.setPOV(povObj);
       LastSavedPOV = window._initialSteampunkState.pov;
       WasPovProvidedAtStartup = true;
+      // Show Load button since a custom POV was provided
+      let btnLoad = select('#btn-load-view');
+      if (btnLoad) btnLoad.removeClass('hidden');
     }
     delete window._initialSteampunkState;
   }
@@ -4321,14 +4338,21 @@ function setClockMode(mode) {
     // Use the stored steampunk style to decide which renderer to use
     if (steampunkStyle !== '2d') {
       activeRenderer = steampunk3DRenderer;
-      select('#btn-save-view').removeClass('hidden');
-      select('#btn-load-view').removeClass('hidden');
-      select('#btn-reset-view').removeClass('hidden');
+      var viewBox = select('#view-controls-box');
+      if (viewBox) viewBox.removeClass('hidden');
+      // Only show Load if user has saved or POV was provided at startup
+      var loadBtn = select('#btn-load-view');
+      if (loadBtn) {
+        if (WasSaveViewClicked || WasPovProvidedAtStartup) {
+          loadBtn.removeClass('hidden');
+        } else {
+          loadBtn.addClass('hidden');
+        }
+      }
     } else {
       activeRenderer = spiroClockRenderer;
-      select('#btn-save-view').addClass('hidden');
-      select('#btn-load-view').addClass('hidden');
-      select('#btn-reset-view').addClass('hidden');
+      var viewBox = select('#view-controls-box');
+      if (viewBox) viewBox.addClass('hidden');
     }
 
     select('#controls-steampunk').removeClass('hidden');
@@ -4495,18 +4519,25 @@ function setSteampunkStyle(style) {
 
     if (style === '3d') {
       activeRenderer = steampunk3DRenderer;
-      select('#btn-save-view').removeClass('hidden');
-      select('#btn-load-view').removeClass('hidden');
-      select('#btn-reset-view').removeClass('hidden');
+      var viewBox = select('#view-controls-box');
+      if (viewBox) viewBox.removeClass('hidden');
+      // Only show Load if user has saved or POV was provided at startup
+      var loadBtn = select('#btn-load-view');
+      if (loadBtn) {
+        if (WasSaveViewClicked || WasPovProvidedAtStartup) {
+          loadBtn.removeClass('hidden');
+        } else {
+          loadBtn.addClass('hidden');
+        }
+      }
       const texSection = select('#section-steampunk-textures');
       const styleSection = select('#section-steampunk-substyle');
       if (texSection) texSection.show();
       if (styleSection) styleSection.show();
     } else {
       activeRenderer = spiroClockRenderer;
-      select('#btn-save-view').addClass('hidden');
-      select('#btn-load-view').addClass('hidden');
-      select('#btn-reset-view').addClass('hidden');
+      var viewBox = select('#view-controls-box');
+      if (viewBox) viewBox.addClass('hidden');
       const texSection = select('#section-steampunk-textures');
       const styleSection = select('#section-steampunk-substyle');
       if (texSection) texSection.hide();
