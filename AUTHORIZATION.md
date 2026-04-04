@@ -2,11 +2,14 @@
 
 Since your Google Cloud VM is headless (no browser), you cannot authorize Google Drive directly on it. Follow these steps instead:
 
+## Alternative: Using rcloneView
+If you have **rcloneView** installed on your local PC, you can use its graphical interface to add the Google Drive remote. Once configured locally, you can find the generated token in your local `rclone.conf` file (usually in `%AppData%/rclone/rclone.conf` on Windows or `~/.config/rclone/rclone.conf` on Mac/Linux) and copy it to the VM.
+
 ## 1. Install Rclone on your local machine (PC/Mac)
-You only need Rclone locally to generate the authorization token.
+If you don't use rcloneView, you only need the Rclone CLI locally to generate the authorization token.
 Download it from [rclone.org](https://rclone.org/downloads/).
 
-## 2. Generate the Token
+## 2. Generate the Token via CLI
 Open a terminal on your **local machine** and run:
 ```bash
 rclone authorize "drive"
